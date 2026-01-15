@@ -14,8 +14,8 @@ const axiosClient = axios.create({
 
 function getToken() {
   return (
-    localStorage.getItem("ACCESS_TOKEN") ||
-    sessionStorage.getItem("ACCESS_TOKEN")
+    localStorage.getItem("token") ||
+    sessionStorage.getItem("token")
   );
 }
 

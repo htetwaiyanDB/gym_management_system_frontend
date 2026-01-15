@@ -8,17 +8,26 @@ export default function Login() {
 
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
-  const [captcha, setCaptcha] = useState(""); // UI only
+  const [captcha, setCaptcha] = useState("");
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState(null);
 
-  // ✅ Always show captcha image using Laravel WEB captcha route
-  // (No CORS / no HTML injection issues)
-  const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://8.222.195.9:6060";
-  const [captchaUrl, setCaptchaUrl] = useState(`${backendUrl}/captcha?${Date.now()}`);
+  // Captcha served from backend web route
+  const backendUrl =
+    import.meta.env.VITE_BACKEND_URL || "http://8.222.195.9:6060";
+
+  // Start with empty, set once in useEffect to avoid extra request during render
+  const [captchaUrl, setCaptchaUrl] = useState("");
 
   const refreshCaptcha = () => {
-    setCaptchaUrl(`${backendUrl}/captcha?${Date.now()}`);
+    // Prevent refresh while submitting (avoids canceled requests / mismatch)
+    if (loading) return;
+
+    // Clear the input because new captcha will be generated
+    setCaptcha("");
+
+    // Bust cache to always get a fresh captcha
+    setCaptchaUrl(`${backendUrl}/captcha?ts=${Date.now()}`);
   };
 
   useEffect(() => {
@@ -29,14 +38,20 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMsg(null);
+
+    // Basic guard: don’t submit without captcha
+    if (!captcha || captcha.trim().length === 0) {
+      setMsg("Please enter captcha.");
+      return;
+    }
+
     setLoading(true);
 
     try {
       const res = await axiosClient.post("/api/login", {
-        // email: identifier, // ✅ FIXED
         identifier,
         password,
-        captcha, // (backend validating)
+        captcha: captcha.trim(),
       });
 
       const token = res?.data?.token;
@@ -44,12 +59,13 @@ export default function Login() {
 
       if (!token || !user) throw new Error("Invalid login response");
 
-      localStorage.setItem("ACCESS_TOKEN", token);
+      // IMPORTANT: your axiosClient must read the same key.
+      // If axiosClient reads "token", keep this.
+      localStorage.setItem("token", token);
       localStorage.setItem("user", JSON.stringify(user));
 
       const role = String(user?.role || "").toLowerCase();
 
-      // ✅ FIXED NAVIGATION (matches your real App.jsx routes)
       if (role === "administrator" || role === "admin") {
         navigate("/admin/dashboard", { replace: true });
       } else if (role === "trainer") {
@@ -58,7 +74,15 @@ export default function Login() {
         navigate("/user/scan", { replace: true });
       }
     } catch (err) {
-      setMsg(err?.response?.data?.message || "Login failed.");
+      // show server message if present
+      const serverMsg =
+        err?.response?.data?.message ||
+        err?.response?.data?.errors?.captcha?.[0] ||
+        "Login failed.";
+
+      setMsg(serverMsg);
+
+      // On failure, refresh captcha (new challenge)
       refreshCaptcha();
     } finally {
       setLoading(false);
@@ -102,19 +126,23 @@ export default function Login() {
             />
           </div>
 
-          {/* ✅ CAPTCHA (UI only) — now it will ALWAYS appear */}
           <div className="mb-3">
             <label className="form-label">Captcha</label>
 
             <div className="captcha-box d-flex align-items-center gap-2">
               <div className="captcha-img flex-grow-1">
-                <img src={captchaUrl} alt="captcha" />
+                {captchaUrl ? (
+                  <img src={captchaUrl} alt="captcha" />
+                ) : (
+                  <div style={{ height: 48 }} />
+                )}
               </div>
 
               <button
                 type="button"
                 className="btn btn-outline-light"
                 onClick={refreshCaptcha}
+                disabled={loading}
                 title="Refresh captcha"
               >
                 ↻
@@ -123,9 +151,12 @@ export default function Login() {
 
             <input
               className="form-control mt-2"
-              placeholder="Enter captcha (for display)"
+              placeholder="Enter captcha"
               value={captcha}
               onChange={(e) => setCaptcha(e.target.value)}
+              inputMode="numeric"
+              autoComplete="off"
+              required
             />
           </div>
 
