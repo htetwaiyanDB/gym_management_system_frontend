@@ -273,7 +273,7 @@ export default function AdminBlogs() {
             <div
               className="card"
               style={{
-                background: "rgba(255,255,255,0.95)",
+                background: "rgba(10, 1, 1, 0.72)",
                 border: "1px solid rgba(0,0,0,0.08)",
                 borderRadius: 10,
               }}
@@ -281,7 +281,7 @@ export default function AdminBlogs() {
               <div className="card-body p-4">
                 <form onSubmit={submit}>
                   <div className="mb-3">
-                    <label className="form-label fw-semibold">Title</label>
+                    <label className="form-label fw-bold">Title</label>
                     <input
                       className="form-control"
                       value={title}
@@ -292,7 +292,7 @@ export default function AdminBlogs() {
                   </div>
 
                   <div className="mb-3">
-                    <label className="form-label fw-semibold">Summary</label>
+                    <label className="form-label fw-bold">Summary</label>
                     <textarea
                       className="form-control"
                       rows={3}
@@ -304,7 +304,7 @@ export default function AdminBlogs() {
                   </div>
 
                   <div className="mb-3">
-                    <label className="form-label fw-semibold">Content</label>
+                    <label className="form-label fw-bold">Content</label>
                     <textarea
                       className="form-control"
                       rows={8}
@@ -316,14 +316,11 @@ export default function AdminBlogs() {
                   </div>
 
                   <div className="mb-2">
-                    <label className="form-label fw-semibold">Cover Image</label>
+                    <label className="form-label fw-bold">Cover Image</label>
 
                     {currentCoverUrl ? (
                       <div className="small mb-1">
-                        <span className="text-muted">Current:</span>{" "}
-                        <a href={currentCoverUrl} target="_blank" rel="noreferrer" className="link-success">
-                          View image
-                        </a>
+                        
                       </div>
                     ) : null}
 
@@ -333,17 +330,17 @@ export default function AdminBlogs() {
                       accept="image/*"
                       onChange={(e) => onPickCover(e.target.files?.[0] || null)}
                     />
-                    <div className="small text-muted mt-1">Image will be resized to 1200x627.</div>
+                    <div className="small text-light mt-1">Image will be resized to 1200x627.</div>
 
                     <div className="mt-2">
-                      <div className="small fw-semibold mb-1">Preview</div>
+                      <div className="small text-light fw-semibold mb-1">Preview</div>
                       <div
                         style={{
                           border: "1px solid rgba(0,0,0,0.08)",
                           borderRadius: 8,
                           height: 170,
                           overflow: "hidden",
-                          background: "#f8f9fa",
+                          background: "#0d0d0ed7",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
@@ -356,7 +353,7 @@ export default function AdminBlogs() {
                             style={{ width: "100%", height: "100%", objectFit: "cover" }}
                           />
                         ) : (
-                          <div className="text-muted">Cover image preview</div>
+                          <div className="text-light">Cover image preview</div>
                         )}
                       </div>
                     </div>
@@ -364,19 +361,19 @@ export default function AdminBlogs() {
 
                   <div className="d-flex align-items-center gap-2 mt-3">
                     <input
-                      className="form-check-input"
+                      className="form-check-input text-light"
                       type="checkbox"
                       id="publishImmediately"
                       checked={publishImmediately}
                       onChange={(e) => setPublishImmediately(e.target.checked)}
                     />
-                    <label className="form-check-label" htmlFor="publishImmediately">
+                    <label className="form-check-label text-light" htmlFor="publishImmediately">
                       Publish immediately
                     </label>
                   </div>
 
                   <div className="mt-3">
-                    <label className="form-label fw-semibold">Publish Date (optional)</label>
+                    <label className="form-label text-light fw-semibold">Publish Date (optional)</label>
                     <input
                       type="datetime-local"
                       className="form-control"
@@ -407,10 +404,7 @@ export default function AdminBlogs() {
               </div>
             </div>
 
-            <div className="admin-muted small mt-3">
-              Uses admin API endpoints: <code>GET /api/admin/blogs</code>, <code>POST /api/admin/blogs</code>,{" "}
-              <code>PUT /api/admin/blogs/{`{id}`}</code>, <code>DELETE /api/admin/blogs/{`{id}`}</code>
-            </div>
+            
           </div>
         </div>
       </div>
@@ -470,9 +464,9 @@ export default function AdminBlogs() {
                 return (
                   <tr key={post?.id}>
                     <td>
-                      <div className="fw-semibold">{safeText(post?.title)}</div>
+                      <div className="fw-semibold text-white">{safeText(post?.title)}</div>
                       {post?.summary ? (
-                        <div className="text-muted small" style={{ maxWidth: 640 }}>
+                        <div className="text-light small" style={{ maxWidth: 640 }}>
                           {safeText(post.summary).slice(0, 90)}
                           {safeText(post.summary).length > 90 ? "..." : ""}
                         </div>
@@ -481,9 +475,9 @@ export default function AdminBlogs() {
 
                     <td>{statusBadge(st)}</td>
 
-                    <td className="text-muted">{formatDateShort(post?.published_at)}</td>
+                    <td className="text-light">{formatDateShort(post?.published_at)}</td>
 
-                    <td className="text-muted">{formatDateShort(post?.updated_at)}</td>
+                    <td className="text-light">{formatDateShort(post?.updated_at)}</td>
 
                     <td>
                       <div className="d-flex gap-2">

@@ -77,6 +77,11 @@ export default function AdminSubscriptions() {
     }
   };
 
+  const closeModal = () => {
+    setShowModal(false);
+    setOptionsLoading(false);
+  };
+
   const createSubscription = async () => {
     setMsg(null);
 
@@ -156,6 +161,11 @@ export default function AdminSubscriptions() {
     return m;
   }, [plans]);
 
+  const selectedPlan = useMemo(() => {
+    if (!planId) return null;
+    return planMap.get(String(planId)) || null;
+  }, [planId, planMap]);
+
   return (
     <div className="admin-card p-4">
       <div className="d-flex align-items-center justify-content-between mb-3">
@@ -227,7 +237,9 @@ export default function AdminSubscriptions() {
                     <td>{s.end_date || "-"}</td>
                     <td>
                       {status === "Active" && <span className="badge bg-success">Active</span>}
-                      {status === "On Hold" && <span className="badge bg-warning text-dark">On Hold</span>}
+                      {status === "On Hold" && (
+                        <span className="badge bg-warning text-dark">On Hold</span>
+                      )}
                       {status === "Expired" && <span className="badge bg-secondary">Expired</span>}
                       {!["Active", "On Hold", "Expired"].includes(status) && (
                         <span className="badge bg-info text-dark">{status || "-"}</span>
@@ -262,103 +274,110 @@ export default function AdminSubscriptions() {
         </table>
       </div>
 
-      {/* Modal (Bootstrap) */}
+      {/* Modal (same style as Create User modal) */}
       {showModal && (
-        <div
-          className="modal fade show"
-          style={{ display: "block", background: "rgba(0,0,0,0.6)" }}
-          tabIndex="-1"
-          role="dialog"
-          aria-modal="true"
-        >
-          <div className="modal-dialog modal-dialog-centered" role="document">
-            <div className="modal-content bg-dark text-light">
-              <div className="modal-header border-secondary">
-                <h5 className="modal-title">Choose a member and plan</h5>
-                <button
-                  type="button"
-                  className="btn-close btn-close-white"
-                  onClick={() => setShowModal(false)}
-                  aria-label="Close"
-                ></button>
-              </div>
-
-              <div className="modal-body">
-                <div className="admin-muted mb-3">
-                  Select a member and plan to create a new subscription.
+        <>
+          <div className="modal fade show d-block" tabIndex="-1">
+            <div className="modal-dialog modal-dialog-centered">
+              <div className="modal-content bg-dark text-white">
+                <div className="modal-header">
+                  <h5 className="modal-title fw-bolder">Add New Subscription</h5>
+                  <button
+                    className="btn-close btn-close-white"
+                    onClick={closeModal}
+                    aria-label="Close"
+                    disabled={optionsLoading}
+                  ></button>
                 </div>
 
-                <div className="mb-3">
-                  <label className="form-label">Member</label>
-                  <select
-                    className="form-select"
-                    value={memberId}
-                    onChange={(e) => setMemberId(e.target.value)}
+                <div className="modal-body">
+    <div className="row g-3">
+    
+    <div className="col-md-4">
+      <label className="form-label fw-bold">Member</label>
+      <select
+        className="form-select bg-dark text-white"
+        value={memberId}
+        onChange={(e) => setMemberId(e.target.value)}
+        disabled={optionsLoading}
+      >
+        <option value="">Select member</option>
+        {members.map((m) => (
+          <option key={m.id} value={m.id}>
+            {m.name} {m.phone ? `- ${m.phone}` : ""}
+          </option>
+        ))}
+      </select>
+    </div>
+
+    
+    <div className="col-md-4">
+      <label className="form-label fw-bold">Plan</label>
+      <select
+        className="form-select bg-dark text-white"
+        value={planId}
+        onChange={(e) => setPlanId(e.target.value)}
+        disabled={optionsLoading}
+      >
+        <option value="">Select plan</option>
+        {plans.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.name}
+          </option>
+        ))}
+      </select>
+    </div>
+
+    {/* Start Date */}
+    <div className="col-md-4">
+      <label className="form-label fw-bold">Start Date</label>
+      <input
+        type="date"
+        className="form-control bg-dark text-white"
+        value={startDate}
+        onChange={(e) => setStartDate(e.target.value)}
+        disabled={optionsLoading}
+      />
+    </div>
+  </div>
+
+  {/* Plan summary */}
+  {selectedPlan && (
+    <div className="mt-3 p-3 rounded bg-black border">
+      <div className="fw-bold">{selectedPlan.name}</div>
+      <div className="text-muted">
+        Duration: {selectedPlan.duration_days} day(s)
+      </div>
+      <div className="text-muted">
+        Price: {moneyMMK(selectedPlan.price)}
+      </div>
+    </div>
+  )}
+</div>
+
+
+                <div className="modal-footer">
+                  <button
+                    className="btn btn-outline-light"
+                    onClick={closeModal}
                     disabled={optionsLoading}
                   >
-                    <option value="">Select an option</option>
-                    {members.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.name} {m.phone ? `- ${m.phone}` : ""}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="mb-3">
-                  <label className="form-label">Plan</label>
-                  <select
-                    className="form-select"
-                    value={planId}
-                    onChange={(e) => setPlanId(e.target.value)}
+                    Cancel
+                  </button>
+                  <button
+                    className="btn btn-primary"
+                    onClick={createSubscription}
                     disabled={optionsLoading}
                   >
-                    <option value="">Select an option</option>
-                    {plans.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name} - {p.duration_days} day(s) - {moneyMMK(p.price)}
-                      </option>
-                    ))}
-                  </select>
-
-                  {planId && planMap.get(String(planId)) && (
-                    <div className="admin-muted mt-2">
-                      Selected:{" "}
-                      <b>
-                        {planMap.get(String(planId)).name} ({planMap.get(String(planId)).duration_days} days)
-                      </b>
-                    </div>
-                  )}
+                    {optionsLoading ? "Loading..." : "Save Subscription"}
+                  </button>
                 </div>
-
-                {/* Optional start date (backend supports it). Keep it, but admin can ignore. */}
-                <div className="mb-2">
-                  <label className="form-label">Start Date (optional)</label>
-                  <input
-                    type="date"
-                    className="form-control"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    disabled={optionsLoading}
-                  />
-                </div>
-              </div>
-
-              <div className="modal-footer border-secondary">
-                <button className="btn btn-outline-light" onClick={() => setShowModal(false)}>
-                  Cancel
-                </button>
-                <button
-                  className="btn btn-primary"
-                  onClick={createSubscription}
-                  disabled={optionsLoading}
-                >
-                  Save Subscription
-                </button>
               </div>
             </div>
           </div>
-        </div>
+
+          <div className="modal-backdrop fade show"></div>
+        </>
       )}
     </div>
   );

@@ -396,11 +396,11 @@ export default function AdminAttendance() {
 
               <div className="row g-3 align-items-end">
                 <div className="col-12 col-md-4">
-                  <label className="form-label" style={bodyText}>
-                    QR Type
+                  <label className="form-label fw-bold" style={bodyText}>
+                   Select QR Type
                   </label>
                   <select
-                    className="form-select"
+                    className="form-select bg-dark"
                     style={glassSelectStyle}
                     value={overrideQrType}
                     onChange={(e) => {
@@ -409,23 +409,23 @@ export default function AdminAttendance() {
                     }}
                     disabled={overrideLoading}
                   >
-                    <option value="user">Member</option>
-                    <option value="trainer">Trainer</option>
+                    <option value="user" className="fw-bold text-light">Member</option>
+                    <option value="trainer" className="fw-bold text-light">Trainer</option>
                   </select>
                 </div>
 
                 <div className="col-12 col-md-5">
-                  <label className="form-label" style={bodyText}>
+                  <label className="form-label fw-bold" style={bodyText}>
                     User
                   </label>
                   <select
-                    className="form-select"
+                    className="form-select bg-dark"
                     style={glassSelectStyle}
                     value={overrideUserId}
                     onChange={(e) => setOverrideUserId(e.target.value)}
                     disabled={overrideLoading}
                   >
-                    <option value="">{overrideLoading ? "Loading users..." : "Select user"}</option>
+                    <option value="" className="fw-bold text-light">{overrideLoading ? "Loading users..." : "Select user"}</option>
                     {filteredOverrideUsers.map((u) => (
                       <option key={u.id} value={u.id}>
                         {u.name} ({normalizeRole(u.role)})
@@ -445,7 +445,7 @@ export default function AdminAttendance() {
         </div>
       )}
 
-      {/* ================= CHECKED TAB ================= */}
+      
       {activeTab === "checked" && (
         <div>
           <div className="d-flex align-items-start justify-content-between mb-3">

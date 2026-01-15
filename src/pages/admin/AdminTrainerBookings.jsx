@@ -264,37 +264,37 @@ export default function AdminTrainerBookings() {
 
       {msg && <div className={`alert alert-${msg.type}`}>{msg.text}</div>}
 
-      {/* ✅ Quick filters (Paid/Unpaid/Status) */}
+      
       <div className="d-flex flex-wrap gap-2 align-items-end mb-3">
         <div style={{ minWidth: 180 }}>
           <label className="form-label mb-1">Paid Filter</label>
           <select
-            className="form-select"
+            className="form-select bg-dark"
             value={filterPaid}
             onChange={(e) => setFilterPaid(e.target.value)}
           >
-            <option value="all">All</option>
-            <option value="paid">Paid</option>
-            <option value="unpaid">Unpaid</option>
+            <option value="all" className="text-light fw-bold">All</option>
+            <option value="paid" className="text-light fw-bold">Paid</option>
+            <option value="unpaid" className="text-light fw-bold">Unpaid</option>
           </select>
         </div>
 
         <div style={{ minWidth: 220 }}>
           <label className="form-label mb-1">Status Filter</label>
           <select
-            className="form-select"
+            className="form-select bg-dark"
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
           >
-            <option value="all">All</option>
-            <option value="pending">Pending</option>
-            <option value="confirmed">Confirmed</option>
-            <option value="cancelled">Cancelled</option>
+            <option value="all" className="fw-bold text-white">All</option>
+            <option value="pending" className="fw-bold text-white">Pending</option>
+            <option value="confirmed" className="fw-bold text-white">Confirmed</option>
+            <option value="cancelled" className="fw-bold text-white">Cancelled</option>
           </select>
         </div>
 
         <button
-          className="btn btn-outline-light"
+          className="btn btn-outline-primary"
           onClick={() => {
             setFilterPaid("all");
             setFilterStatus("all");
@@ -397,14 +397,14 @@ export default function AdminTrainerBookings() {
               <div className="modal-body">
                 <div className="row g-3">
                   <div className="col-12 col-md-6">
-                    <label className="form-label">Member</label>
+                    <label className="form-label fw-bold">Member</label>
                     <select
-                      className="form-select"
+                      className="form-select bg-dark"
                       value={memberId}
                       onChange={(e) => setMemberId(e.target.value)}
                       disabled={optionsLoading}
                     >
-                      <option value="">Select member</option>
+                      <option value="" className="fw-bold text-white">Select member</option>
                       {members.map((m) => (
                         <option key={m.id} value={m.id}>
                           {m.name} {m.phone ? `- ${m.phone}` : ""}
@@ -414,14 +414,14 @@ export default function AdminTrainerBookings() {
                   </div>
 
                   <div className="col-12 col-md-6">
-                    <label className="form-label">Trainer</label>
+                    <label className="form-label fw-bold">Trainer</label>
                     <select
-                      className="form-select"
+                      className="form-select bg-dark"
                       value={trainerId}
                       onChange={(e) => setTrainerId(e.target.value)}
                       disabled={optionsLoading}
                     >
-                      <option value="">Select trainer</option>
+                      <option value="" className="fw-bold text-white">Select trainer</option>
                       {trainers.map((t) => (
                         <option key={t.id} value={t.id}>
                           {t.name} {t.phone ? `- ${t.phone}` : ""}
@@ -431,7 +431,7 @@ export default function AdminTrainerBookings() {
                   </div>
 
                   <div className="col-12 col-md-6">
-                    <label className="form-label">Date & Time</label>
+                    <label className="form-label fw-bold">Date & Time</label>
                     <input
                       type="datetime-local"
                       className="form-control"
@@ -442,7 +442,7 @@ export default function AdminTrainerBookings() {
                   </div>
 
                   <div className="col-12 col-md-3">
-                    <label className="form-label">Duration (min)</label>
+                    <label className="form-label fw-bold">Duration (min)</label>
                     <input
                       className="form-control"
                       value={durationMinutes}
@@ -452,7 +452,7 @@ export default function AdminTrainerBookings() {
                   </div>
 
                   <div className="col-12 col-md-3">
-                    <label className="form-label">Sessions</label>
+                    <label className="form-label fw-bold">Sessions</label>
                     <input
                       className="form-control"
                       value={sessionsCount}
@@ -462,7 +462,7 @@ export default function AdminTrainerBookings() {
                   </div>
 
                   <div className="col-12 col-md-6">
-                    <label className="form-label">Price per Session (MMK)</label>
+                    <label className="form-label fw-bold">Price per Session (MMK)</label>
                     <input
                       className="form-control"
                       value={pricePerSession}
@@ -473,9 +473,9 @@ export default function AdminTrainerBookings() {
                   </div>
 
                   <div className="col-12 col-md-3">
-                    <label className="form-label">Status</label>
+                    <label className="form-label fw-bold">Status</label>
                     <select
-                      className="form-select"
+                      className="form-select bg-dark"
                       value={status}
                       onChange={(e) => setStatus(e.target.value)}
                       disabled={optionsLoading}
@@ -489,9 +489,9 @@ export default function AdminTrainerBookings() {
                   </div>
 
                   <div className="col-12 col-md-3">
-                    <label className="form-label">Paid Status</label>
+                    <label className="form-label fw-bold">Paid Status</label>
                     <select
-                      className="form-select"
+                      className="form-select bg-dark"
                       value={paidStatus}
                       onChange={(e) => setPaidStatus(e.target.value)}
                       disabled={optionsLoading}
@@ -505,20 +505,29 @@ export default function AdminTrainerBookings() {
                   </div>
 
                   <div className="col-12">
-                    <label className="form-label">Notes</label>
+                    <label className="form-label fw-bold">Notes</label>
                     <textarea
-                      className="form-control"
+                      className="form-control admin-search"
                       rows="3"
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
                       disabled={optionsLoading}
                       placeholder="Optional notes..."
                     />
+                    <style>
+    {`
+      .admin-search::placeholder {
+        color: #ffffff !important;
+        font-weight: 600;
+        opacity: 1; /* Firefox fix */
+      }
+    `}
+  </style>
                   </div>
 
                   <div className="col-12">
                     <div className="d-flex align-items-center justify-content-between p-3 rounded border border-secondary">
-                      <div className="admin-muted">Total Amount</div>
+                      <div className="admin-muted fw-bold">Total Amount</div>
                       <div className="fs-5 fw-bold">{moneyMMK(total)}</div>
                     </div>
                   </div>

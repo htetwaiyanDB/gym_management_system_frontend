@@ -210,12 +210,7 @@ export default function AdminMessages() {
   return (
     <div className="admin-card p-4">
       <div className="d-flex align-items-start justify-content-between mb-3">
-        <div>
-          <h4 className="mb-1">Messages</h4>
-          <div className="admin-muted">
-            View conversations and send messages to users/trainers.
-          </div>
-        </div>
+        
 
         <button className="btn btn-outline-light" onClick={loadConversations} disabled={loading}>
           {loading ? "Loading..." : "Refresh"}
@@ -230,7 +225,7 @@ export default function AdminMessages() {
           <div className="card bg-transparent border-0">
             <div className="d-flex gap-2 mb-2">
               <input
-                className="form-control"
+                className="form-control admin-search"
                 placeholder="Search..."
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
@@ -240,6 +235,16 @@ export default function AdminMessages() {
                   border: "1px solid rgba(255,255,255,0.14)",
                 }}
               />
+              <style>
+    {`
+      .admin-search::placeholder {
+        color: #ffffff !important;
+        font-weight: 600;
+        opacity: 1; /* Firefox fix */
+      }
+    `}
+  </style>
+
             </div>
 
             <div className="table-responsive">
@@ -271,12 +276,12 @@ export default function AdminMessages() {
                         >
                           <td>
                             <div className="fw-semibold">{getUserLabel(c)}</div>
-                            <div className="text-muted small" style={{ maxWidth: 280 }}>
+                            <div className="text-light small" style={{ maxWidth: 280 }}>
                               {safeText(getLastMessage(c)).slice(0, 60)}
                               {safeText(getLastMessage(c)).length > 60 ? "..." : ""}
                             </div>
                           </td>
-                          <td className="text-muted small">
+                          <td className="text-light small">
                             {formatDateTimeVideoStyle(getUpdatedAt(c))}
                           </td>
                         </tr>
@@ -311,7 +316,7 @@ export default function AdminMessages() {
                 color: "#fff",
               }}
             >
-              <div className="fw-semibold">
+              <div className="fw-semibold text-light">
                 {activeUserId ? activeLabel : "Select a conversation"}
               </div>
 
@@ -335,11 +340,11 @@ export default function AdminMessages() {
               }}
             >
               {!activeUserId ? (
-                <div className="text-muted">Choose a user from the left list.</div>
+                <div className="text-light">Choose a user from the left list.</div>
               ) : threadLoading ? (
-                <div className="text-muted">Loading messages...</div>
+                <div className="text-light">Loading messages...</div>
               ) : thread.length === 0 ? (
-                <div className="text-muted">No messages yet.</div>
+                <div className="text-light">No messages yet.</div>
               ) : (
                 <div className="d-flex flex-column gap-2">
                   {thread.map((m, i) => {
@@ -368,7 +373,7 @@ export default function AdminMessages() {
                           <div style={{ whiteSpace: "pre-wrap" }}>
                             {safeText(msgText(m))}
                           </div>
-                          <div className="small text-muted mt-1">
+                          <div className="small text-light mt-1">
                             {formatDateTimeVideoStyle(msgTime(m))}
                           </div>
                         </div>
@@ -411,9 +416,7 @@ export default function AdminMessages() {
                 </button>
               </div>
 
-              <div className="small text-muted mt-2">
-                API: <code>GET /api/messages</code>, <code>GET /api/messages/{`{user}`}</code>, <code>POST /api/messages/{`{user}`}</code>
-              </div>
+              
             </div>
           </div>
         </div>

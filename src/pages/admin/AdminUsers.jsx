@@ -215,8 +215,8 @@ export default function AdminUsers() {
       {/* Header */}
       <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
         <div>
-          <h4 className="mb-1">Users</h4>
-          <div className="admin-muted">Role badges + pagination + create/update/delete</div>
+          <h4 className="mb-1">Users Mangement</h4>
+          
         </div>
 
         <div className="d-flex gap-2">
@@ -237,26 +237,35 @@ export default function AdminUsers() {
       <div className="row g-2 align-items-center mb-3">
         <div className="col-md-6">
           <input
-            className="form-control"
+            className="form-control admin-search"
             placeholder="Search name / email / phone / role"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
+          <style>
+    {`
+      .admin-search::placeholder {
+        color: #ffffff !important;
+        font-weight: 600;
+        opacity: 1; /* Firefox fix */
+      }
+    `}
+  </style>
         </div>
 
         <div className="col-md-6 d-flex justify-content-md-end gap-2">
           <div className="d-flex align-items-center gap-2">
             <span className="text-muted small">Rows</span>
             <select
-              className="form-select form-select-sm"
+              className="form-select form-select-sm bg-dark"
               style={{ width: 90 }}
               value={pageSize}
               onChange={(e) => setPageSize(Number(e.target.value))}
             >
-              <option value={5}>5</option>
-              <option value={10}>10</option>
-              <option value={20}>20</option>
-              <option value={50}>50</option>
+              <option value={5} className="text-light fw-bold">5</option>
+              <option value={10} className="text-light fw-bold">10</option>
+              <option value={20} className="text-light fw-bold">20</option>
+              <option value={50} className="text-light fw-bold">50</option>
             </select>
           </div>
 
@@ -307,26 +316,52 @@ export default function AdminUsers() {
                         <span className="badge bg-success">Active</span>
                       )}
                     </td>
-                    <td className="d-flex gap-2 flex-wrap">
-                      <button
-                        className="btn btn-sm btn-outline-info"
-                        onClick={() => openEdit(u)}
-                        disabled={isDeleted}
-                        title={isDeleted ? "Restore user first to update" : "Update"}
-                      >
-                        Update
-                      </button>
+                    <td
+  style={{
+    verticalAlign: "middle",
+  }}
+>
+  <div
+    style={{
+      display: "flex",
+      alignItems: "center",     // vertical centering
+      justifyContent: "center", // horizontal alignment
+      gap: "8px",
+      flexWrap: "nowrap",       //  prevents buttons from wrapping
+      whiteSpace: "nowrap",     //  keeps buttons in one line
+      minHeight: "100%",
+    }}
+  >
+    <button
+      className="btn btn-sm btn-outline-info"
+      onClick={() => openEdit(u)}
+      disabled={isDeleted}
+      title={isDeleted ? "Restore user first to update" : "Update"}
+      style={{ minWidth: 70 }}
+    >
+      Update
+    </button>
 
-                      {isDeleted ? (
-                        <button className="btn btn-sm btn-outline-warning" onClick={() => restore(id)}>
-                          Restore
-                        </button>
-                      ) : (
-                        <button className="btn btn-sm btn-outline-danger" onClick={() => destroy(id)}>
-                          Delete
-                        </button>
-                      )}
-                    </td>
+    {isDeleted ? (
+      <button
+        className="btn btn-sm btn-outline-warning"
+        onClick={() => restore(id)}
+        style={{ minWidth: 70 }}
+      >
+        Restore
+      </button>
+    ) : (
+      <button
+        className="btn btn-sm btn-outline-danger"
+        onClick={() => destroy(id)}
+        style={{ minWidth: 70 }}
+      >
+        Delete
+      </button>
+    )}
+  </div>
+</td>
+
                   </tr>
                 );
               })
@@ -342,16 +377,16 @@ export default function AdminUsers() {
         </div>
 
         <div className="btn-group">
-          <button className="btn btn-outline-light btn-sm" onClick={() => goTo(1)} disabled={page === 1}>
+          <button className="btn btn-outline-light btn-sm fw-bold" onClick={() => goTo(1)} disabled={page === 1}>
             « First
           </button>
-          <button className="btn btn-outline-light btn-sm" onClick={() => goTo(page - 1)} disabled={page === 1}>
+          <button className="btn btn-outline-light btn-sm fw-bold" onClick={() => goTo(page - 1)} disabled={page === 1}>
             ‹ Prev
           </button>
-          <button className="btn btn-outline-light btn-sm" onClick={() => goTo(page + 1)} disabled={page === totalPages}>
+          <button className="btn btn-outline-light btn-sm fw-bold" onClick={() => goTo(page + 1)} disabled={page === totalPages}>
             Next ›
           </button>
-          <button className="btn btn-outline-light btn-sm" onClick={() => goTo(totalPages)} disabled={page === totalPages}>
+          <button className="btn btn-outline-light btn-sm fw-bold" onClick={() => goTo(totalPages)} disabled={page === totalPages}>
             Last »
           </button>
         </div>
@@ -364,56 +399,52 @@ export default function AdminUsers() {
             <div className="modal-dialog modal-dialog-centered">
               <div className="modal-content bg-dark text-white">
                 <div className="modal-header">
-                  <h5 className="modal-title">Create User</h5>
+                  <h5 className="modal-title fw-bold">Create User</h5>
                   <button className="btn-close btn-close-white" onClick={closeCreate}></button>
                 </div>
 
                 <div className="modal-body">
                   <div className="mb-2">
-                    <label className="form-label">Name</label>
+                    <label className="form- fw-bold">Name</label>
                     <input className="form-control" value={createForm.name}
                       onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })} />
                   </div>
 
                   <div className="mb-2">
-                    <label className="form-label">Email</label>
+                    <label className="form-label fw-bold">Email</label>
                     <input className="form-control" value={createForm.email}
                       onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })} />
                   </div>
 
                   <div className="mb-2">
-                    <label className="form-label">Phone</label>
+                    <label className="form-label fw-bold">Phone</label>
                     <input className="form-control" value={createForm.phone}
                       onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value })} />
                   </div>
 
                   <div className="mb-2">
-                    <label className="form-label">Role</label>
-                    <select className="form-select" value={createForm.role}
+                    <label className="form-label fw-bold">Role</label>
+                    <select className="form-select bg-dark" value={createForm.role}
                       onChange={(e) => setCreateForm({ ...createForm, role: e.target.value })}>
-                      <option value="user">User</option>
-                      <option value="trainer">Trainer</option>
+                      <option value="user" className="fw-bold text-white">User</option>
+                      <option value="trainer" className="fw-bold text-white">Trainer</option>
                     </select>
-                    <div className="text-muted small mt-1">
-                      Backend API allows only <b>user</b> and <b>trainer</b> here.
-                    </div>
+                    
                   </div>
 
                   <div className="mb-2">
-                    <label className="form-label">Password</label>
+                    <label className="form-label fw-bold">Password</label>
                     <input type="password" className="form-control" value={createForm.password}
                       onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })} />
                   </div>
 
                   <div>
-                    <label className="form-label">Confirm Password</label>
+                    <label className="form-label fw-bold">Confirm Password</label>
                     <input type="password" className="form-control" value={createForm.password_confirmation}
                       onChange={(e) => setCreateForm({ ...createForm, password_confirmation: e.target.value })} />
                   </div>
 
-                  <div className="text-muted small mt-2">
-                    Tip: use strong password (Laravel blocks leaked/common passwords).
-                  </div>
+                  
                 </div>
 
                 <div className="modal-footer">
@@ -442,35 +473,33 @@ export default function AdminUsers() {
 
                 <div className="modal-body">
                   <div className="mb-2">
-                    <label className="form-label">Name</label>
+                    <label className="form-label fw-bold">Name</label>
                     <input className="form-control" value={editForm.name}
                       onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
                   </div>
 
                   <div className="mb-2">
-                    <label className="form-label">Email</label>
+                    <label className="form-label fw-bold">Email</label>
                     <input className="form-control" value={editForm.email}
                       onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} />
                   </div>
 
                   <div className="mb-2">
-                    <label className="form-label">Phone</label>
+                    <label className="form-label fw-bold">Phone</label>
                     <input className="form-control" value={editForm.phone}
                       onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} />
                   </div>
 
                   <div>
-                    <label className="form-label">Role</label>
-                    <select className="form-select" value={editForm.role}
+                    <label className="form-label fw-bold">Role</label>
+                    <select className="form-select bg-dark" value={editForm.role}
                       onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}>
-                      <option value="user">User</option>
-                      <option value="trainer">Trainer</option>
+                      <option value="user" className="fw-bold text-white">User</option>
+                      <option value="trainer" className="fw-bold text-white">Trainer</option>
                     </select>
                   </div>
 
-                  <div className="text-muted small mt-2">
-                    Note: Update requires backend API route <code>PATCH /api/users/{`{id}`}</code>.
-                  </div>
+                  
                 </div>
 
                 <div className="modal-footer">
