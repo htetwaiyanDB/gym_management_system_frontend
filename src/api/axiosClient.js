@@ -1,7 +1,8 @@
 import axios from "axios";
 
-// MUST point to backend + port
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://8.222.195.9:6060";
+// ✅ Always point to API base (include /api)
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL || "http://8.222.195.9:6060/api";
 
 const axiosClient = axios.create({
   baseURL: API_BASE_URL,
@@ -9,14 +10,19 @@ const axiosClient = axios.create({
     Accept: "application/json",
     "Content-Type": "application/json",
   },
-  withCredentials: false, // token-based auth
+  withCredentials: false, // ✅ Bearer token auth (no cookies)
 });
 
 function getToken() {
-  return (
-    localStorage.getItem("token") ||
-    sessionStorage.getItem("token")
-  );
+  return localStorage.getItem("token") || sessionStorage.getItem("token");
+}
+
+function clearAuth() {
+  // ✅ clear the same key you actually use
+  localStorage.removeItem("token");
+  sessionStorage.removeItem("token");
+  localStorage.removeItem("user");
+  sessionStorage.removeItem("user");
 }
 
 axiosClient.interceptors.request.use((config) => {
@@ -29,10 +35,7 @@ axiosClient.interceptors.response.use(
   (res) => res,
   (err) => {
     if (err?.response?.status === 401) {
-      localStorage.removeItem("ACCESS_TOKEN");
-      localStorage.removeItem("user");
-      sessionStorage.removeItem("ACCESS_TOKEN");
-      sessionStorage.removeItem("user");
+      clearAuth();
       window.location.href = "/login";
     }
     return Promise.reject(err);

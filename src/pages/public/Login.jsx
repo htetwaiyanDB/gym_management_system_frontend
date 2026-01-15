@@ -14,7 +14,7 @@ export default function Login() {
 
   // Captcha served from backend web route
   const backendUrl =
-    import.meta.env.VITE_BACKEND_URL || "http://8.222.195.9:6060";
+    import.meta.env.VITE_BACKEND_URL || "http://8.222.195.9:6060/api";
 
   // Start with empty, set once in useEffect to avoid extra request during render
   const [captchaUrl, setCaptchaUrl] = useState("");
@@ -48,7 +48,7 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const res = await axiosClient.post("/api/login", {
+      const res = await axiosClient.post("/login", {
         identifier,
         password,
         captcha: captcha.trim(),
