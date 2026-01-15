@@ -90,6 +90,12 @@ export default function AdminBlogs() {
   const [coverPreview, setCoverPreview] = useState(null);
   const [currentCoverUrl, setCurrentCoverUrl] = useState(null);
 
+  const getPublishDateValue = () => {
+    if (publishDate) return publishDate;
+    if (publishImmediately) return nowIsoLocal();
+    return "";
+  };
+
   const resetForm = () => {
     setEditingId(null);
     setTitle("");
@@ -183,9 +189,10 @@ export default function AdminBlogs() {
       // - checkbox "Publish immediately"
       // - Publish Date (optional)
       form.append("publish_immediately", publishImmediately ? "1" : "0");
-      if (publishDate) {
+     const effectivePublishDate = getPublishDateValue();
+      if (effectivePublishDate) {
         // send as ISO-ish string; backend can parse
-        form.append("publish_date", publishDate);
+    form.append("publish_date", effectivePublishDate);
       }
 
       if (coverFile) form.append("cover_image", coverFile);
@@ -365,7 +372,13 @@ export default function AdminBlogs() {
                       type="checkbox"
                       id="publishImmediately"
                       checked={publishImmediately}
-                      onChange={(e) => setPublishImmediately(e.target.checked)}
+                     onChange={(e) => {
+                        const checked = e.target.checked;
+                        setPublishImmediately(checked);
+                        if (checked && !publishDate) {
+                          setPublishDate(nowIsoLocal());
+                        }
+                      }}
                     />
                     <label className="form-check-label text-light" htmlFor="publishImmediately">
                       Publish immediately
