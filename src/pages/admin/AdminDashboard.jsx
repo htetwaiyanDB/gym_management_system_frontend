@@ -17,13 +17,17 @@ import {
 
 /**
  * ✅ API BASE ONLY
- * Uses your new endpoint:
- *   GET /dashboard/growth-summary?months=6
+ * Uses:
+ *  - GET /api/dashboard/attendance-report
+ *  - GET /api/dashboard/growth-summary?months=6
+ *  - GET /api/dashboard/export/excel
+ *  - GET /api/dashboard/export/json
  */
 const API = {
-  ATTENDANCE_REPORT: "dashboard/attendance-report",
-  GROWTH_SUMMARY: "dashboard/growth-summary",
-  EXPORT: (format) => `dashboard/export/${format}`,
+  ATTENDANCE_REPORT: "/dashboard/attendance-report",
+  GROWTH_SUMMARY: "/dashboard/growth-summary",
+  EXPORT_EXCEL: "/dashboard/export/excel",
+  EXPORT_JSON: "/dashboard/export/json",
 };
 
 const POLL_GROWTH_EVERY_MS = 30000; // 30s (set to 0 to disable)
@@ -289,28 +293,69 @@ export default function AdminDashboard() {
     }));
   }, [metrics.chart]);
 
- const exportReport = async (format) => {
-  setMsg(null);
+  // ✅ robust export handlers
+  const decodeBlobErrorMessage = async (err) => {
+    try {
+      const data = err?.response?.data;
+      if (data instanceof Blob) {
+        const text = await data.text();
+        try {
+          const parsed = JSON.parse(text);
+          return parsed?.message || text;
+        } catch {
+          return text;
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return null;
+  };
 
-  // JSON should NOT be blob
-  const isJson = format === "json";
-  const responseType = isJson ? "json" : "blob";
+  const exportExcel = async () => {
+    setMsg(null);
+    try {
+      const res = await axiosClient.get(API.EXPORT_EXCEL, {
+        signal: abortRef.current?.signal,
+        params: { from: from || undefined, to: to || undefined },
+        responseType: "blob",
+        headers: { Accept: "*/*" },
+      });
 
-  try {
-    const res = await axiosClient.get(API.EXPORT(format), {
-      params: { from: from || undefined, to: to || undefined },
-      responseType,
-      signal: abortRef.current?.signal,
-      headers: {
-        Accept: isJson ? "application/json" : "*/*",
-      },
-    });
+      const contentType = res.headers?.["content-type"] || "application/octet-stream";
+      const blob = new Blob([res.data], { type: contentType });
+      const url = window.URL.createObjectURL(blob);
 
-    // ✅ JSON download
-    if (isJson) {
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `attendance-report_${metrics.period}.xls`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+
+      setMsg({ type: "success", text: "Exported successfully (excel)." });
+      setTimeout(() => setMsg(null), 2500);
+    } catch (e) {
+      const serverMsg = e?.response?.data?.message || (await decodeBlobErrorMessage(e));
+      setMsg({ type: "danger", text: serverMsg || "Export failed (excel)." });
+    }
+  };
+
+  const exportJson = async () => {
+    setMsg(null);
+    try {
+      const res = await axiosClient.get(API.EXPORT_JSON, {
+        signal: abortRef.current?.signal,
+        params: { from: from || undefined, to: to || undefined },
+        responseType: "json",
+        headers: { Accept: "application/json" },
+      });
+
       const jsonStr = JSON.stringify(res.data, null, 2);
       const blob = new Blob([jsonStr], { type: "application/json" });
       const url = window.URL.createObjectURL(blob);
+
       const a = document.createElement("a");
       a.href = url;
       a.download = `attendance-report_${metrics.period}.json`;
@@ -321,49 +366,11 @@ export default function AdminDashboard() {
 
       setMsg({ type: "success", text: "Exported successfully (json)." });
       setTimeout(() => setMsg(null), 2500);
-      return;
+    } catch (e) {
+      const serverMsg = e?.response?.data?.message || "Export failed (json).";
+      setMsg({ type: "danger", text: serverMsg });
     }
-
-    // ✅ PDF/CSV/Excel download
-    const contentType = res.headers?.["content-type"] || "application/octet-stream";
-    const blob = new Blob([res.data], { type: contentType });
-    const url = window.URL.createObjectURL(blob);
-
-    const a = document.createElement("a");
-    a.href = url;
-
-    const ext =
-      format === "excel" ? "xlsx" : format; // keep excel -> xlsx
-    a.download = `attendance-report_${metrics.period}.${ext}`;
-
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    window.URL.revokeObjectURL(url);
-
-    setMsg({ type: "success", text: `Exported successfully (${format}).` });
-    setTimeout(() => setMsg(null), 2500);
-  } catch (e) {
-    // ✅ If backend returns JSON error but we requested blob, decode it:
-    let serverMsg = e?.response?.data?.message;
-
-    try {
-      if (!serverMsg && e?.response?.data instanceof Blob) {
-        const text = await e.response.data.text();
-        const parsed = JSON.parse(text);
-        serverMsg = parsed?.message || text;
-      }
-    } catch {
-      // ignore parse issues
-    }
-
-    setMsg({
-      type: "danger",
-      text: serverMsg || `Export failed (${format}).`,
-    });
-  }
-};
-
+  };
 
   return (
     <div className="admin-card p-4">
@@ -571,7 +578,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Export */}
+      {/* Export (ONLY Excel + JSON) */}
       <div className="p-3" style={cardGlass}>
         <div className="d-flex flex-wrap justify-content-between align-items-center gap-2">
           <div>
@@ -584,14 +591,11 @@ export default function AdminDashboard() {
           </div>
 
           <div className="d-flex flex-wrap gap-2">
-            <button className="btn btn-outline-light" onClick={() => exportReport("pdf")}>
-              Export PDF
-            </button>
-            <button className="btn btn-outline-light" onClick={() => exportReport("csv")}>
-              Export CSV
-            </button>
-            <button className="btn btn-outline-light" onClick={() => exportReport("excel")}>
+            <button className="btn btn-outline-light" onClick={exportExcel}>
               Export Excel
+            </button>
+            <button className="btn btn-outline-light" onClick={exportJson}>
+              Export JSON
             </button>
           </div>
         </div>
@@ -599,5 +603,3 @@ export default function AdminDashboard() {
     </div>
   );
 }
-
-

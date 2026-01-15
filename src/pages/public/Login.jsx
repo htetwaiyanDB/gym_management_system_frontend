@@ -14,7 +14,7 @@ export default function Login() {
 
   // ✅ Always show captcha image using Laravel WEB captcha route
   // (No CORS / no HTML injection issues)
-  const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:8000";
+  const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://8.222.195.9:6060";
   const [captchaUrl, setCaptchaUrl] = useState(`${backendUrl}/captcha?${Date.now()}`);
 
   const refreshCaptcha = () => {
@@ -32,11 +32,11 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const res = await axiosClient.post("/login", {
+      const res = await axiosClient.post("/api/login", {
         // email: identifier, // ✅ FIXED
         identifier,
         password,
-        captcha, // for looks only (backend not validating)
+        captcha, // (backend validating)
       });
 
       const token = res?.data?.token;
@@ -44,7 +44,7 @@ export default function Login() {
 
       if (!token || !user) throw new Error("Invalid login response");
 
-      localStorage.setItem("token", token);
+      localStorage.setItem("ACCESS_TOKEN", token);
       localStorage.setItem("user", JSON.stringify(user));
 
       const role = String(user?.role || "").toLowerCase();
