@@ -2,23 +2,10 @@ import React, { useEffect, useMemo, useState } from "react";
 import axiosClient, { clearRequestCache } from "../../api/axiosClient";
 
 function normalizeList(payload) {
-  // Supports:
-  // - [ ... ]
-  // - { data: [ ... ] }
-  // - { blogs: [ ... ] }
-  // - { data: { data: [ ... ] } } (pagination)
-  // - { data: { id: ... } } (single object)
   if (Array.isArray(payload)) return payload;
-
-  const root = payload?.data ?? payload?.blogs ?? payload;
-
-  if (Array.isArray(root)) return root;
-  if (Array.isArray(root?.data)) return root.data; // pagination: data.data
   if (Array.isArray(payload?.data)) return payload.data;
   if (Array.isArray(payload?.blogs)) return payload.blogs;
-
-  if (root && typeof root === "object" && root.id) return [root];
-
+  if (Array.isArray(payload?.data?.data)) return payload.data.data;
   return [];
 }
 
@@ -35,6 +22,7 @@ function parseBackendDateTime(s) {
   return d;
 }
 
+// Video list shows: "Jan 11, 2026"
 function formatDateShort(s) {
   const d = parseBackendDateTime(s);
   if (!d) return "-";
@@ -54,57 +42,40 @@ function nowIsoLocal() {
   );
 }
 
-// "minutes ahead of UTC" (Myanmar +6:30 => 390)
-function timezoneOffsetAheadOfUtc() {
-  return -new Date().getTimezoneOffset();
-}
-
 function computeStatus(post) {
+  // expected fields from admin API:
+  // - published_at (nullable)
+  // - is_published boolean (optional)
+  // - status string (optional)
+  const status = (post?.status || "").toLowerCase();
+
+  if (status === "published") return "published";
+  if (status === "draft") return "draft";
+  if (status === "scheduled") return "scheduled";
+
   const publishedAt = parseBackendDateTime(post?.published_at);
-
-  // backend returns is_published boolean
-  const isPublished = Boolean(post?.is_published);
-
-  if (!isPublished && !publishedAt) return "draft";
-
-  if (publishedAt) {
-    const now = new Date();
-    if (publishedAt.getTime() > now.getTime()) return "scheduled";
-    return "published";
-  }
-
-  // is_published true but no date (should be rare)
+  if (!publishedAt) return "draft";
+  const now = new Date();
+  if (publishedAt.getTime() > now.getTime()) return "scheduled";
   return "published";
 }
 
 function statusBadge(status) {
   const s = String(status || "").toLowerCase();
-  if (s === "published")
-    return (
-      <span className="badge rounded-pill bg-success-subtle text-success">
-        Published
-      </span>
-    );
-  if (s === "scheduled")
-    return (
-      <span className="badge rounded-pill bg-warning-subtle text-warning">
-        Scheduled
-      </span>
-    );
-  return (
-    <span className="badge rounded-pill bg-secondary-subtle text-secondary">
-      Draft
-    </span>
-  );
+  if (s === "published") return <span className="badge rounded-pill bg-success-subtle text-success">Published</span>;
+  if (s === "scheduled") return <span className="badge rounded-pill bg-warning-subtle text-warning">Scheduled</span>;
+  return <span className="badge rounded-pill bg-secondary-subtle text-secondary">Draft</span>;
 }
 
 export default function AdminBlogs() {
+  // view: "list" | "form"
   const [view, setView] = useState("list");
 
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState(null);
   const [blogs, setBlogs] = useState([]);
 
+  // form mode
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState(null);
 
@@ -113,7 +84,7 @@ export default function AdminBlogs() {
   const [content, setContent] = useState("");
 
   const [publishImmediately, setPublishImmediately] = useState(false);
-  const [publishDate, setPublishDate] = useState("");
+  const [publishDate, setPublishDate] = useState(""); // datetime-local
 
   const [coverFile, setCoverFile] = useState(null);
   const [coverPreview, setCoverPreview] = useState(null);
@@ -133,10 +104,7 @@ export default function AdminBlogs() {
     setPublishImmediately(false);
     setPublishDate("");
     setCoverFile(null);
-
-    if (coverPreview) URL.revokeObjectURL(coverPreview);
     setCoverPreview(null);
-
     setCurrentCoverUrl(null);
   };
 
@@ -153,8 +121,10 @@ export default function AdminBlogs() {
     setSummary(safeText(post?.summary));
     setContent(safeText(post?.content));
 
+    // If published_at exists, set publishDate for editing display (optional)
     const d = parseBackendDateTime(post?.published_at);
     if (d) {
+      // convert to local datetime-local format
       const pad = (n) => String(n).padStart(2, "0");
       const local =
         `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
@@ -166,11 +136,11 @@ export default function AdminBlogs() {
 
     setPublishImmediately(false);
     setCoverFile(null);
-
-    if (coverPreview) URL.revokeObjectURL(coverPreview);
     setCoverPreview(null);
 
-    setCurrentCoverUrl(post?.cover_image_url || null);
+    // cover url from backend admin API (recommend: cover_image_url)
+    setCurrentCoverUrl(post?.cover_image_url || post?.cover_image || post?.cover || null);
+
     setView("form");
   };
 
@@ -178,13 +148,11 @@ export default function AdminBlogs() {
     setMsg(null);
     setLoading(true);
     try {
+      // admin blogs list (must include drafts)
       const res = await axiosClient.get("/blogs", { cache: false });
       setBlogs(normalizeList(res.data));
     } catch (e) {
-      setMsg({
-        type: "danger",
-        text: e?.response?.data?.message || "Failed to load blog posts.",
-      });
+      setMsg({ type: "danger", text: e?.response?.data?.message || "Failed to load blog posts." });
     } finally {
       setLoading(false);
     }
@@ -192,11 +160,10 @@ export default function AdminBlogs() {
 
   const onPickCover = (file) => {
     setCoverFile(file || null);
-
-    if (coverPreview) URL.revokeObjectURL(coverPreview);
-    setCoverPreview(null);
-
-    if (!file) return;
+    if (!file) {
+      setCoverPreview(null);
+      return;
+    }
     const url = URL.createObjectURL(file);
     setCoverPreview(url);
   };
@@ -205,6 +172,7 @@ export default function AdminBlogs() {
     e.preventDefault();
     setMsg(null);
 
+    // simple required fields (browser also validates)
     if (!title.trim() || !summary.trim() || !content.trim()) {
       setMsg({ type: "danger", text: "Please fill out Title, Summary, and Content." });
       return;
@@ -217,18 +185,14 @@ export default function AdminBlogs() {
       form.append("summary", summary.trim());
       form.append("content", content.trim());
 
-      // ✅ backend expects these:
-      const effectivePublishDate = getPublishDateValue();
-
-      // If you set publish date OR publish immediately => is_published true.
-      // If neither => draft.
-      const willBePublished = Boolean(publishImmediately || effectivePublishDate);
-
-      form.append("is_published", willBePublished ? "1" : "0");
-
+      // publish workflow like video:
+      // - checkbox "Publish immediately"
+      // - Publish Date (optional)
+      form.append("publish_immediately", publishImmediately ? "1" : "0");
+     const effectivePublishDate = getPublishDateValue();
       if (effectivePublishDate) {
-        form.append("published_at", effectivePublishDate); // "YYYY-MM-DDTHH:mm"
-        form.append("timezone_offset", String(timezoneOffsetAheadOfUtc()));
+        // send as ISO-ish string; backend can parse
+    form.append("publish_date", effectivePublishDate);
       }
 
       if (coverFile) form.append("cover_image", coverFile);
@@ -246,6 +210,8 @@ export default function AdminBlogs() {
       }
 
       clearRequestCache();
+
+      // go back to list
       setView("list");
       resetForm();
       await loadBlogs();
@@ -280,10 +246,7 @@ export default function AdminBlogs() {
       clearRequestCache();
       await loadBlogs();
     } catch (e) {
-      setMsg({
-        type: "danger",
-        text: e?.response?.data?.message || "Failed to delete blog post.",
-      });
+      setMsg({ type: "danger", text: e?.response?.data?.message || "Failed to delete blog post." });
     }
   };
 
@@ -294,6 +257,7 @@ export default function AdminBlogs() {
 
   const sortedBlogs = useMemo(() => {
     const list = [...blogs];
+    // show newest updated first like admin panels
     list.sort((a, b) => {
       const ta = parseBackendDateTime(a?.updated_at)?.getTime() ?? 0;
       const tb = parseBackendDateTime(b?.updated_at)?.getTime() ?? 0;
@@ -357,7 +321,7 @@ export default function AdminBlogs() {
                       value={content}
                       onChange={(e) => setContent(e.target.value)}
                       required
-                      placeholder="Content"
+                      placeholder="content"
                     />
                   </div>
 
@@ -365,11 +329,8 @@ export default function AdminBlogs() {
                     <label className="form-label fw-bold">Cover Image</label>
 
                     {currentCoverUrl ? (
-                      <div className="small mb-2 text-light">
-                        Current cover:&nbsp;
-                        <a className="text-decoration-none" href={currentCoverUrl} target="_blank" rel="noreferrer">
-                          View
-                        </a>
+                      <div className="small mb-1">
+                        
                       </div>
                     ) : null}
 
@@ -401,12 +362,6 @@ export default function AdminBlogs() {
                             alt="cover preview"
                             style={{ width: "100%", height: "100%", objectFit: "cover" }}
                           />
-                        ) : currentCoverUrl ? (
-                          <img
-                            src={currentCoverUrl}
-                            alt="current cover"
-                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                          />
                         ) : (
                           <div className="text-light">Cover image preview</div>
                         )}
@@ -416,11 +371,11 @@ export default function AdminBlogs() {
 
                   <div className="d-flex align-items-center gap-2 mt-3">
                     <input
-                      className="form-check-input"
+                      className="form-check-input text-light"
                       type="checkbox"
                       id="publishImmediately"
                       checked={publishImmediately}
-                      onChange={(e) => {
+                     onChange={(e) => {
                         const checked = e.target.checked;
                         setPublishImmediately(checked);
                         if (checked && !publishDate) {
@@ -452,7 +407,10 @@ export default function AdminBlogs() {
                     <button
                       type="button"
                       className="btn btn-link text-decoration-none"
-                      onClick={() => setView("list")}
+                      onClick={() => {
+                        setView("list");
+                        // keep msg so success shows on list like video
+                      }}
                       disabled={saving}
                     >
                       Cancel
@@ -461,6 +419,8 @@ export default function AdminBlogs() {
                 </form>
               </div>
             </div>
+
+            
           </div>
         </div>
       </div>
@@ -470,12 +430,19 @@ export default function AdminBlogs() {
   // LIST VIEW
   return (
     <div className="admin-card p-4">
-      {msg ? <div className={`alert alert-${msg.type}`}>{msg.text}</div> : null}
+      {/* success banner like video */}
+      {msg?.type === "success" ? (
+        <div className="alert alert-success">{msg.text}</div>
+      ) : msg ? (
+        <div className={`alert alert-${msg.type}`}>{msg.text}</div>
+      ) : null}
 
       <div className="d-flex align-items-start justify-content-between mb-3">
         <div>
           <h4 className="mb-1">Blog Management</h4>
-          <div className="admin-muted">Create and manage blog posts for members and trainers.</div>
+          <div className="admin-muted">
+            Create and manage blog posts for members and trainers.
+          </div>
         </div>
 
         <div className="d-flex gap-2">

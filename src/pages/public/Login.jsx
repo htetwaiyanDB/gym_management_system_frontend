@@ -12,7 +12,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState(null);
 
-  // Captcha served from backend web route
+  // Captcha served from backend route
   const backendUrl =
     import.meta.env.VITE_BACKEND_URL || "https://api.unityfitnessmyanmar.online/api";
 
