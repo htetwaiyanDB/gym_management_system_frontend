@@ -78,7 +78,10 @@ function resolveCoverUrl(post) {
   );
 }
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 0b4c2688226468e6896cd2200fe4c77e957f01d9
 export default function AdminBlogs() {
   // view: "list" | "form"
   const [view, setView] = useState("list");
@@ -151,8 +154,13 @@ export default function AdminBlogs() {
     setCoverPreview(null);
 
     // cover url from backend admin API (recommend: cover_image_url)
+<<<<<<< HEAD
        setCurrentCoverUrl(resolveCoverUrl(post));
 
+=======
+    setCurrentCoverUrl(resolveCoverUrl(post));
+    
+>>>>>>> 0b4c2688226468e6896cd2200fe4c77e957f01d9
     setView("form");
   };
 
@@ -207,7 +215,11 @@ export default function AdminBlogs() {
     form.append("publish_date", effectivePublishDate);
       }
 
+<<<<<<< HEAD
       if (coverFile) {
+=======
+       if (coverFile) {
+>>>>>>> 0b4c2688226468e6896cd2200fe4c77e957f01d9
         form.append("cover_image", coverFile);
         form.append("image", coverFile);
       }
@@ -341,7 +353,15 @@ export default function AdminBlogs() {
                   </div>
 
                   <div className="mb-2">
-                    <label className="form-label fw-bold">Cover Image</label>
+                   <div className="small mb-2 text-light">
+                        Current cover image
+                        <div className="mt-2">
+                          <img
+                            src={currentCoverUrl}
+                            alt="current cover"
+                            style={{ width: "100%", maxHeight: 180, objectFit: "cover", borderRadius: 8 }}
+                          />
+                        </div>
 
                     {currentCoverUrl ? (
                       <div className="small mb-2 text-light">
@@ -385,7 +405,11 @@ export default function AdminBlogs() {
                             alt="cover preview"
                             style={{ width: "100%", height: "100%", objectFit: "cover" }}
                           />
+<<<<<<< HEAD
                            ) : currentCoverUrl ? (
+=======
+                        ) : currentCoverUrl ? (
+>>>>>>> 0b4c2688226468e6896cd2200fe4c77e957f01d9
                           <img
                             src={currentCoverUrl}
                             alt="current cover"
