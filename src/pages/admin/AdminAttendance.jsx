@@ -39,6 +39,68 @@ function roleBadge(role) {
   return <span className="badge bg-secondary">{role || "Unknown"}</span>;
 }
 
+const n = (v) => {
+  const num = Number(v);
+  return Number.isFinite(num) ? num : 0;
+};
+
+const deepGet = (obj, path) => {
+  try {
+    return path.split(".").reduce((acc, k) => acc?.[k], obj);
+  } catch {
+    return undefined;
+  }
+};
+
+const deepPick = (obj, paths, fallback = 0) => {
+  for (const p of paths) {
+    const v = p.includes(".") ? deepGet(obj, p) : obj?.[p];
+    if (v !== undefined && v !== null && v !== "") return v;
+  }
+  return fallback;
+};
+
+const sumArr = (arr = []) => arr.reduce((a, b) => a + n(b), 0);
+
+const normalizeReportPayload = (resData) => {
+  let payload =
+    resData?.data ??
+    resData?.report ??
+    resData?.payload ??
+    resData?.result ??
+    resData?.attendance_report ??
+    resData?.summary ??
+    resData;
+
+  const unwrapKeys = ["data", "report", "stats", "summary", "attendance_report", "payload", "result"];
+
+  let guard = 0;
+  while (payload && typeof payload === "object" && guard < 8) {
+    guard++;
+    const keys = Object.keys(payload);
+
+    if (keys.length === 1 && unwrapKeys.includes(keys[0])) {
+      payload = payload[keys[0]];
+      continue;
+    }
+
+    let moved = false;
+    for (const k of unwrapKeys) {
+      if (payload?.[k] && typeof payload[k] === "object") {
+        payload = payload[k];
+        moved = true;
+        break;
+      }
+    }
+    if (moved) continue;
+
+    break;
+  }
+
+  return payload || {};
+};
+
+
 /**
  * Backend returns scan URLs only:
  * { user_qr: "...", trainer_qr: "..." }
@@ -108,6 +170,7 @@ export default function AdminAttendance() {
   const [checkedLoading, setCheckedLoading] = useState(false);
   const [checkedSummary, setCheckedSummary] = useState({ total_members: 0, active_checkins: 0 });
   const [checkedUsers, setCheckedUsers] = useState([]);
+  const [activeCheckinsLoading, setActiveCheckinsLoading] = useState(false);
 
   // small helper: show success and optionally auto-hide
   const showSuccess = (text) => {
@@ -180,11 +243,36 @@ export default function AdminAttendance() {
       showSuccess(res?.data?.message || "Scan recorded successfully.");
 
       // ✅ refresh tables but DO NOT clear msg inside loaders
-      await Promise.all([loadRecords(false), loadCheckedIn(false)]);
+      await Promise.all([loadRecords(false), loadCheckedIn(false), loadActiveCheckins(false)]);
     } catch (e) {
       showError(e?.response?.data?.message || "Failed to record scan.");
     } finally {
       setBusyKey(null);
+    }
+  };
+
+  const loadActiveCheckins = async (clearMsg = false) => {
+    if (clearMsg) setMsg(null);
+    setActiveCheckinsLoading(true);
+    try {
+      const res = await axiosClient.get("/dashboard/attendance-report");
+      const payload = normalizeReportPayload(res?.data || {});
+      const checkInsArr = Array.isArray(payload.check_ins) ? payload.check_ins : [];
+      const checkOutsArr = Array.isArray(payload.check_outs) ? payload.check_outs : [];
+      const sumIn = sumArr(checkInsArr);
+      const sumOut = sumArr(checkOutsArr);
+      const activeCheckins = n(
+        deepPick(payload, ["cards.active_check_ins", "active_checkins", "active_check_ins"], sumIn - sumOut)
+      );
+
+      setCheckedSummary((prev) => ({
+        ...prev,
+        active_checkins: activeCheckins,
+      }));
+    } catch (e) {
+      showError(e?.response?.data?.message || "Failed to load active check-ins.");
+    } finally {
+      setActiveCheckinsLoading(false);
     }
   };
 
@@ -232,11 +320,24 @@ export default function AdminAttendance() {
 
   useEffect(() => {
     if (activeTab === "records") loadRecords(true);
-    if (activeTab === "checked") loadCheckedIn(true);
+    if (activeTab === "checked") {
+      loadCheckedIn(true);
+      loadActiveCheckins(false);
+    }
     if (activeTab === "qr") {
       loadQr();
       loadOverrideUsers();
     }
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab !== "checked") return undefined;
+    const intervalId = window.setInterval(() => {
+      loadCheckedIn(false);
+      loadActiveCheckins(false);
+    }, 10000);
+
+    return () => window.clearInterval(intervalId);
   }, [activeTab]);
 
   // ---------------- computed ----------------
@@ -456,8 +557,15 @@ export default function AdminAttendance() {
               <div style={mutedText}>Monitor active check-ins.</div>
             </div>
 
-            <button className="btn btn-outline-light" onClick={() => loadCheckedIn(true)} disabled={checkedLoading}>
-              {checkedLoading ? "Loading..." : "Refresh"}
+            <button
+              className="btn btn-outline-light"
+              onClick={() => {
+                loadCheckedIn(true);
+                loadActiveCheckins(false);
+              }}
+              disabled={checkedLoading || activeCheckinsLoading}
+            >
+              {checkedLoading || activeCheckinsLoading ? "Loading..." : "Refresh"}
             </button>
           </div>
 
@@ -466,8 +574,8 @@ export default function AdminAttendance() {
               <span className="badge rounded-pill text-bg-light me-2">
                 Total members: <b>{checkedSummary.total_members}</b>
               </span>
-              <span className="badge rounded-pill text-bg-light">
-                Active check-ins: <b>{checkedSummary.active_checkins}</b>
+              <span className="badge rounded-pill text-bg-light me-2">
+                Active check-ins: <b>{activeCheckinsLoading ? "..." : checkedSummary.active_checkins}</b>
               </span>
             </div>
           </div>
