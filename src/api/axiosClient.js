@@ -2,7 +2,7 @@ import axios from "axios";
 
 // ✅ Always point to API base (include /api)
 const API_BASE_URL =
-  import.meta.env.VITE_API_URL || "http://8.222.195.9:6060/api";
+  import.meta.env.VITE_API_URL || "http://8.222.195.9:6060";
 
 const DEFAULT_CACHE_TTL_MS = 30000;
 const requestCache = new Map();
