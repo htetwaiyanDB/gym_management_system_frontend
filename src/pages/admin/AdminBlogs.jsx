@@ -22,6 +22,7 @@ function parseBackendDateTime(s) {
   return d;
 }
 
+// Video list shows: "Jan 11, 2026"
 function formatDateShort(s) {
   const d = parseBackendDateTime(s);
   if (!d) return "-";
@@ -42,6 +43,10 @@ function nowIsoLocal() {
 }
 
 function computeStatus(post) {
+  // expected fields from admin API:
+  // - published_at (nullable)
+  // - is_published boolean (optional)
+  // - status string (optional)
   const status = (post?.status || "").toLowerCase();
 
   if (status === "published") return "published";
@@ -50,7 +55,6 @@ function computeStatus(post) {
 
   const publishedAt = parseBackendDateTime(post?.published_at);
   if (!publishedAt) return "draft";
-
   const now = new Date();
   if (publishedAt.getTime() > now.getTime()) return "scheduled";
   return "published";
@@ -58,23 +62,9 @@ function computeStatus(post) {
 
 function statusBadge(status) {
   const s = String(status || "").toLowerCase();
-  if (s === "published")
-    return (
-      <span className="badge rounded-pill bg-success-subtle text-success">
-        Published
-      </span>
-    );
-  if (s === "scheduled")
-    return (
-      <span className="badge rounded-pill bg-warning-subtle text-warning">
-        Scheduled
-      </span>
-    );
-  return (
-    <span className="badge rounded-pill bg-secondary-subtle text-secondary">
-      Draft
-    </span>
-  );
+  if (s === "published") return <span className="badge rounded-pill bg-success-subtle text-success">Published</span>;
+  if (s === "scheduled") return <span className="badge rounded-pill bg-warning-subtle text-warning">Scheduled</span>;
+  return <span className="badge rounded-pill bg-secondary-subtle text-secondary">Draft</span>;
 }
 
 function resolveCoverUrl(post) {
@@ -88,29 +78,15 @@ function resolveCoverUrl(post) {
   );
 }
 
-// If backend returns relative path, try to make it absolute
-function toAbsoluteUrl(maybeUrl) {
-  if (!maybeUrl) return null;
-  const u = String(maybeUrl);
-
-  if (u.startsWith("http://") || u.startsWith("https://")) return u;
-
-  const apiBase = import.meta?.env?.VITE_API_URL; // e.g. http://ip:6060/api
-  if (!apiBase) return u;
-
-  // convert http://host:6060/api => http://host:6060
-  const origin = apiBase.replace(/\/api\/?$/, "");
-  if (u.startsWith("/")) return origin + u;
-  return origin + "/" + u;
-}
-
 export default function AdminBlogs() {
+  // view: "list" | "form"
   const [view, setView] = useState("list");
 
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState(null);
   const [blogs, setBlogs] = useState([]);
 
+  // form mode
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState(null);
 
@@ -119,7 +95,7 @@ export default function AdminBlogs() {
   const [content, setContent] = useState("");
 
   const [publishImmediately, setPublishImmediately] = useState(false);
-  const [publishDate, setPublishDate] = useState("");
+  const [publishDate, setPublishDate] = useState(""); // datetime-local
 
   const [coverFile, setCoverFile] = useState(null);
   const [coverPreview, setCoverPreview] = useState(null);
@@ -138,7 +114,6 @@ export default function AdminBlogs() {
     setContent("");
     setPublishImmediately(false);
     setPublishDate("");
-
     setCoverFile(null);
     setCoverPreview(null);
     setCurrentCoverUrl(null);
@@ -157,8 +132,10 @@ export default function AdminBlogs() {
     setSummary(safeText(post?.summary));
     setContent(safeText(post?.content));
 
+    // If published_at exists, set publishDate for editing display (optional)
     const d = parseBackendDateTime(post?.published_at);
     if (d) {
+      // convert to local datetime-local format
       const pad = (n) => String(n).padStart(2, "0");
       const local =
         `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
@@ -172,22 +149,21 @@ export default function AdminBlogs() {
     setCoverFile(null);
     setCoverPreview(null);
 
-    setCurrentCoverUrl(toAbsoluteUrl(resolveCoverUrl(post)));
+    // cover url from backend admin API (recommend: cover_image_url)
+       setCurrentCoverUrl(resolveCoverUrl(post));
 
-    setView("form");
+      setView("form");
   };
 
   const loadBlogs = async () => {
     setMsg(null);
     setLoading(true);
     try {
+      // admin blogs list (must include drafts)
       const res = await axiosClient.get("/blogs", { cache: false });
       setBlogs(normalizeList(res.data));
     } catch (e) {
-      setMsg({
-        type: "danger",
-        text: e?.response?.data?.message || "Failed to load blog posts.",
-      });
+      setMsg({ type: "danger", text: e?.response?.data?.message || "Failed to load blog posts." });
     } finally {
       setLoading(false);
     }
@@ -195,10 +171,6 @@ export default function AdminBlogs() {
 
   const onPickCover = (file) => {
     setCoverFile(file || null);
-
-    // cleanup old preview URL to avoid memory leak
-    if (coverPreview) URL.revokeObjectURL(coverPreview);
-
     if (!file) {
       setCoverPreview(null);
       return;
@@ -207,23 +179,13 @@ export default function AdminBlogs() {
     setCoverPreview(url);
   };
 
-  // Cleanup preview URL when leaving page
-  useEffect(() => {
-    return () => {
-      if (coverPreview) URL.revokeObjectURL(coverPreview);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const submit = async (e) => {
     e.preventDefault();
     setMsg(null);
 
+    // simple required fields (browser also validates)
     if (!title.trim() || !summary.trim() || !content.trim()) {
-      setMsg({
-        type: "danger",
-        text: "Please fill out Title, Summary, and Content.",
-      });
+      setMsg({ type: "danger", text: "Please fill out Title, Summary, and Content." });
       return;
     }
 
@@ -234,15 +196,17 @@ export default function AdminBlogs() {
       form.append("summary", summary.trim());
       form.append("content", content.trim());
 
+      // publish workflow like video:
+      // - checkbox "Publish immediately"
+      // - Publish Date (optional)
       form.append("publish_immediately", publishImmediately ? "1" : "0");
-
-      const effectivePublishDate = getPublishDateValue();
+     const effectivePublishDate = getPublishDateValue();
       if (effectivePublishDate) {
-        form.append("publish_date", effectivePublishDate);
+        // send as ISO-ish string; backend can parse
+    form.append("publish_date", effectivePublishDate);
       }
 
-      if (coverFile) {
-        // keep both keys since some backends expect one or the other
+       if (coverFile) {
         form.append("cover_image", coverFile);
         form.append("image", coverFile);
       }
@@ -261,6 +225,7 @@ export default function AdminBlogs() {
 
       clearRequestCache();
 
+      // go back to list
       setView("list");
       resetForm();
       await loadBlogs();
@@ -295,20 +260,18 @@ export default function AdminBlogs() {
       clearRequestCache();
       await loadBlogs();
     } catch (e) {
-      setMsg({
-        type: "danger",
-        text: e?.response?.data?.message || "Failed to delete blog post.",
-      });
+      setMsg({ type: "danger", text: e?.response?.data?.message || "Failed to delete blog post." });
     }
   };
 
   useEffect(() => {
     loadBlogs();
-    
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const sortedBlogs = useMemo(() => {
     const list = [...blogs];
+    // show newest updated first like admin panels
     list.sort((a, b) => {
       const ta = parseBackendDateTime(a?.updated_at)?.getTime() ?? 0;
       const tb = parseBackendDateTime(b?.updated_at)?.getTime() ?? 0;
@@ -317,15 +280,13 @@ export default function AdminBlogs() {
     return list;
   }, [blogs]);
 
-  // ---------- FORM VIEW ----------
+  // ---------- UI ----------
   if (view === "form") {
     return (
       <div className="admin-card p-4">
         <div className="d-flex align-items-start justify-content-between mb-3">
           <div>
-            <h4 className="mb-1">
-              {editingId ? "Edit Blog Post" : "Create Blog Post"}
-            </h4>
+            <h4 className="mb-1">{editingId ? "Edit Blog Post" : "Create Blog Post"}</h4>
           </div>
         </div>
 
@@ -344,9 +305,7 @@ export default function AdminBlogs() {
               <div className="card-body p-4">
                 <form onSubmit={submit}>
                   <div className="mb-3">
-                    <label className="form-label fw-bold text-light">
-                      Title
-                    </label>
+                    <label className="form-label fw-bold">Title</label>
                     <input
                       className="form-control"
                       value={title}
@@ -357,9 +316,7 @@ export default function AdminBlogs() {
                   </div>
 
                   <div className="mb-3">
-                    <label className="form-label fw-bold text-light">
-                      Summary
-                    </label>
+                    <label className="form-label fw-bold">Summary</label>
                     <textarea
                       className="form-control"
                       rows={3}
@@ -371,21 +328,17 @@ export default function AdminBlogs() {
                   </div>
 
                   <div className="mb-3">
-                    <label className="form-label fw-bold text-light">
-                      Content
-                    </label>
+                    <label className="form-label fw-bold">Content</label>
                     <textarea
                       className="form-control"
                       rows={8}
                       value={content}
                       onChange={(e) => setContent(e.target.value)}
                       required
-                      placeholder="Content"
+                      placeholder="content"
                     />
                   </div>
 
-                  {/* ✅ FIXED COVER IMAGE SECTION (was broken in your code) */}
-                  <div className="mb-3">
                     {currentCoverUrl ? (
                       <div className="small mb-2 text-light">
                         Current cover image
@@ -393,36 +346,23 @@ export default function AdminBlogs() {
                           <img
                             src={currentCoverUrl}
                             alt="current cover"
-                            style={{
-                              width: "100%",
-                              maxHeight: 180,
-                              objectFit: "cover",
-                              borderRadius: 8,
-                            }}
+                            style={{ width: "100%", maxHeight: 180, objectFit: "cover", borderRadius: 8 }}
                           />
                         </div>
+                        
                       </div>
                     ) : null}
 
-                    <label className="form-label fw-bold text-light">
-                      Cover Image
-                    </label>
                     <input
                       type="file"
                       className="form-control"
                       accept="image/*"
-                      onChange={(e) =>
-                        onPickCover(e.target.files?.[0] || null)
-                      }
+                      onChange={(e) => onPickCover(e.target.files?.[0] || null)}
                     />
-                    <div className="small text-light mt-1">
-                      Image will be resized to 1200x627.
-                    </div>
+                    <div className="small text-light mt-1">Image will be resized to 1200x627.</div>
 
                     <div className="mt-2">
-                      <div className="small text-light fw-semibold mb-1">
-                        Preview
-                      </div>
+                      <div className="small text-light fw-semibold mb-1">Preview</div>
                       <div
                         style={{
                           border: "1px solid rgba(0,0,0,0.08)",
@@ -439,21 +379,14 @@ export default function AdminBlogs() {
                           <img
                             src={coverPreview}
                             alt="cover preview"
-                            style={{
-                              width: "100%",
-                              height: "100%",
-                              objectFit: "cover",
-                            }}
+                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
                           />
-                        ) : currentCoverUrl ? (
+
+                           ) : currentCoverUrl ? (
                           <img
                             src={currentCoverUrl}
                             alt="current cover"
-                            style={{
-                              width: "100%",
-                              height: "100%",
-                              objectFit: "cover",
-                            }}
+                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
                           />
                         ) : (
                           <div className="text-light">Cover image preview</div>
@@ -464,11 +397,11 @@ export default function AdminBlogs() {
 
                   <div className="d-flex align-items-center gap-2 mt-3">
                     <input
-                      className="form-check-input"
+                      className="form-check-input text-light"
                       type="checkbox"
                       id="publishImmediately"
                       checked={publishImmediately}
-                      onChange={(e) => {
+                     onChange={(e) => {
                         const checked = e.target.checked;
                         setPublishImmediately(checked);
                         if (checked && !publishDate) {
@@ -476,18 +409,13 @@ export default function AdminBlogs() {
                         }
                       }}
                     />
-                    <label
-                      className="form-check-label text-light"
-                      htmlFor="publishImmediately"
-                    >
+                    <label className="form-check-label text-light" htmlFor="publishImmediately">
                       Publish immediately
                     </label>
                   </div>
 
                   <div className="mt-3">
-                    <label className="form-label text-light fw-semibold">
-                      Publish Date (optional)
-                    </label>
+                    <label className="form-label text-light fw-semibold">Publish Date (optional)</label>
                     <input
                       type="datetime-local"
                       className="form-control"
@@ -498,18 +426,17 @@ export default function AdminBlogs() {
                   </div>
 
                   <div className="d-flex align-items-center gap-3 mt-4">
-                    <button
-                      className="btn btn-success px-4"
-                      type="submit"
-                      disabled={saving}
-                    >
+                    <button className="btn btn-success px-4" type="submit" disabled={saving}>
                       {saving ? "Saving..." : "SAVE BLOG POST"}
                     </button>
 
                     <button
                       type="button"
                       className="btn btn-link text-decoration-none"
-                      onClick={() => setView("list")}
+                      onClick={() => {
+                        setView("list");
+                        // keep msg so success shows on list like video
+                      }}
                       disabled={saving}
                     >
                       Cancel
@@ -518,15 +445,18 @@ export default function AdminBlogs() {
                 </form>
               </div>
             </div>
+
+            
           </div>
         </div>
       </div>
     );
   }
 
-  // ---------- LIST VIEW ----------
+  // LIST VIEW
   return (
     <div className="admin-card p-4">
+      {/* success banner like video */}
       {msg?.type === "success" ? (
         <div className="alert alert-success">{msg.text}</div>
       ) : msg ? (
@@ -542,11 +472,7 @@ export default function AdminBlogs() {
         </div>
 
         <div className="d-flex gap-2">
-          <button
-            className="btn btn-outline-light"
-            onClick={loadBlogs}
-            disabled={loading}
-          >
+          <button className="btn btn-outline-light" onClick={loadBlogs} disabled={loading}>
             {loading ? "Loading..." : "Refresh"}
           </button>
           <button className="btn btn-success" onClick={openCreate}>
@@ -580,14 +506,9 @@ export default function AdminBlogs() {
                 return (
                   <tr key={post?.id}>
                     <td>
-                      <div className="fw-semibold text-white">
-                        {safeText(post?.title)}
-                      </div>
+                      <div className="fw-semibold text-white">{safeText(post?.title)}</div>
                       {post?.summary ? (
-                        <div
-                          className="text-light small"
-                          style={{ maxWidth: 640 }}
-                        >
+                        <div className="text-light small" style={{ maxWidth: 640 }}>
                           {safeText(post.summary).slice(0, 90)}
                           {safeText(post.summary).length > 90 ? "..." : ""}
                         </div>
@@ -596,26 +517,16 @@ export default function AdminBlogs() {
 
                     <td>{statusBadge(st)}</td>
 
-                    <td className="text-light">
-                      {formatDateShort(post?.published_at)}
-                    </td>
+                    <td className="text-light">{formatDateShort(post?.published_at)}</td>
 
-                    <td className="text-light">
-                      {formatDateShort(post?.updated_at)}
-                    </td>
+                    <td className="text-light">{formatDateShort(post?.updated_at)}</td>
 
                     <td>
                       <div className="d-flex gap-2">
-                        <button
-                          className="btn btn-primary btn-sm"
-                          onClick={() => openEdit(post)}
-                        >
+                        <button className="btn btn-primary btn-sm" onClick={() => openEdit(post)}>
                           Edit
                         </button>
-                        <button
-                          className="btn btn-danger btn-sm"
-                          onClick={() => remove(post)}
-                        >
+                        <button className="btn btn-danger btn-sm" onClick={() => remove(post)}>
                           Delete
                         </button>
                       </div>

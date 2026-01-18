@@ -12,7 +12,7 @@ function normalizeList(payload) {
 
 function getServerOrigin() {
   const apiBase =
-    import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api";
+    import.meta.env.VITE_API_URL || "https://api.unityfitnessmyanmar.online/api";
   return apiBase.replace(/\/api\/?$/, "");
 }
 
