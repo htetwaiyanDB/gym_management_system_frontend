@@ -39,6 +39,22 @@ function roleBadge(role) {
   return <span className="badge bg-secondary">{role || "Unknown"}</span>;
 }
 
+const normalizeRecordType = (record) => {
+  const rawType = String(record?.type || record?.scan_type || record?.action || "").toLowerCase();
+  if (rawType === "in") return "check_in";
+  if (rawType === "out") return "check_out";
+  return rawType;
+};
+
+const normalizeRecord = (record) => ({
+  name: record?.name || record?.user_name || record?.username || record?.user?.name || "-",
+  role: record?.role || record?.user_role || record?.user?.role || "-",
+  scannedAt: record?.scanned_at || record?.created_at || record?.time || record?.timestamp,
+  type: normalizeRecordType(record),
+  userId: record?.user_id || record?.user?.id || record?.member_id,
+});
+
+
 const n = (v) => {
   const num = Number(v);
   return Number.isFinite(num) ? num : 0;
@@ -281,14 +297,32 @@ export default function AdminAttendance() {
     if (clearMsg) setMsg(null);
     setCheckedLoading(true);
     try {
-      const res = await axiosClient.get("/attendance/checked-in");
+      const res = await axiosClient.get("/attendance/records");
+      const list = res.data?.records || res.data?.data || (Array.isArray(res.data) ? res.data : []);
+      const normalized = Array.isArray(list) ? list.map(normalizeRecord) : [];
 
-      const total_members = Number(res.data?.total_members ?? res.data?.total ?? 0);
-      const active_checkins = Number(res.data?.active_checkins ?? res.data?.active ?? 0);
-      const users = res.data?.users || res.data?.checked_in_users || res.data?.data || [];
+      const latestByUser = new Map();
+      const uniqueKeys = new Set();
 
-      setCheckedSummary({ total_members, active_checkins });
-      setCheckedUsers(Array.isArray(users) ? users : []);
+      normalized.forEach((record) => {
+        const key = record.userId || `${record.name}-${record.role}`;
+        uniqueKeys.add(key);
+        const ts = parseBackendDateTime(record.scannedAt)?.getTime() ?? 0;
+        const prev = latestByUser.get(key);
+        if (!prev || ts > prev.ts) {
+          latestByUser.set(key, { ...record, ts });
+        }
+      });
+
+      const activeUsers = Array.from(latestByUser.values())
+        .filter((record) => record.type === "check_in")
+        .sort((a, b) => b.ts - a.ts);
+
+      setCheckedSummary((prev) => ({
+        ...prev,
+        total_members: uniqueKeys.size,
+      }));
+      setCheckedUsers(activeUsers);
     } catch (e) {
       showError(e?.response?.data?.message || "Failed to load checked-in users.");
     } finally {
@@ -362,8 +396,7 @@ export default function AdminAttendance() {
 
     return list.filter((r) => {
       const role = String(r?.role || r?.user_role || "").toLowerCase();
-      const rawType = String(r?.type || r?.scan_type || r?.action || "").toLowerCase();
-      const type = rawType === "in" ? "check_in" : rawType === "out" ? "check_out" : rawType;
+      const type = normalizeRecordType(r);
 
       if (roleF !== "all" && role !== roleF) return false;
       if (typeF !== "all" && type !== typeF) return false;
@@ -599,10 +632,10 @@ export default function AdminAttendance() {
                   </tr>
                 ) : (
                   checkedUsers.map((u) => (
-                    <tr key={u.id || `${u.name}-${u.last_scan}`}>
-                      <td>{u.name || u.username || "-"}</td>
+                    <tr key={u.userId || `${u.name}-${u.scannedAt}`}>
+                      <td>{u.name || "-"}</td>
                       <td>{roleBadge(u.role)}</td>
-                      <td>{formatDateTimeVideoStyle(u.last_scan || u.last_scan_at || u.scanned_at)}</td>
+                      <td>{formatDateTimeVideoStyle(u.scannedAt)}</td>
                       <td>
                         <span className="badge bg-success">Active</span>
                       </td>
@@ -691,8 +724,7 @@ export default function AdminAttendance() {
                   filteredRecords.map((r, idx) => {
                     const name = r.name || r.user_name || r.username || "-";
                     const role = r.role || r.user_role || "-";
-                    const rawType = String(r.type || r.scan_type || r.action || "").toLowerCase();
-                    const type = rawType === "in" ? "check_in" : rawType === "out" ? "check_out" : rawType;
+                    const type = normalizeRecordType(r);
                     const scannedAt = r.scanned_at || r.created_at || r.time || r.timestamp;
 
                     return (
