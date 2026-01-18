@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef ,useState } from "react";
 import { Html5QrcodeScanner } from "html5-qrcode";
 import axiosClient from "../../api/axiosClient";
 import { parseTokenFromQrText } from "../../utils/qr";
 
-export default function QrScanner({ role }) {
+export default function QrScanner({ role, onDecode, cooldownMs = 1200 }) {
   const [msg, setMsg] = useState(null);
+  const busyRef = useRef(false);
 
   useEffect(() => {
     const scanner = new Html5QrcodeScanner(
@@ -14,6 +15,19 @@ export default function QrScanner({ role }) {
     );
 
     scanner.render(async (decodedText) => {
+      if (busyRef.current) return;
+
+      if (onDecode) {
+        busyRef.current = true;
+        try {
+          await onDecode(decodedText);
+        } finally {
+          setTimeout(() => {
+            busyRef.current = false;
+          }, cooldownMs);
+        }
+        return;
+      }
       const parsed = parseTokenFromQrText(decodedText);
 
       if (!parsed) {
@@ -50,7 +64,7 @@ export default function QrScanner({ role }) {
     });
 
     return () => scanner.clear().catch(() => {});
-  }, [role]);
+   }, [cooldownMs, onDecode, role]);
 
   return (
     <div className="container py-4" style={{ maxWidth: 720 }}>
