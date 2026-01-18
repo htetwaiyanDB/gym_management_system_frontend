@@ -339,6 +339,7 @@ export default function AdminBlogs() {
                     />
                   </div>
 
+                  <div className="mb-3">
                     {currentCoverUrl ? (
                       <div className="small mb-2 text-light">
                         Current cover image
@@ -382,7 +383,7 @@ export default function AdminBlogs() {
                             style={{ width: "100%", height: "100%", objectFit: "cover" }}
                           />
 
-                           ) : currentCoverUrl ? (
+                        ) : currentCoverUrl ? (
                           <img
                             src={currentCoverUrl}
                             alt="current cover"
