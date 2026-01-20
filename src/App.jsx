@@ -95,7 +95,7 @@ export default function App() {
 
 
         {/* User (mobile page) */}
-        <Routes
+        <Route
           path="/user"
           element={
             <Protected>
@@ -113,7 +113,7 @@ export default function App() {
           <Route path="bookings" element={<UserBookings />} />
           <Route path="messages" element={<UserMessages />} />
           <Route path="settings" element={<UserSettings />} />
-          </Routes>
+          </Route>
 
 
         {/* Trainer (mobile page) */}
