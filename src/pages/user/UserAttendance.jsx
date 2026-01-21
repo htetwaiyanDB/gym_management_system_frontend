@@ -29,6 +29,25 @@ function getRecordTimestamp(record) {
   return record?.timestamp || record?.created_at || record?.updated_at || null;
 }
 
+function normalizeTimestamp(value) {
+  if (!value) return null;
+  if (typeof value === "string" || typeof value === "number") return value;
+  return getRecordTimestamp(value);
+}
+
+function lastTimestampFromList(list, predicate) {
+  if (!Array.isArray(list) || list.length === 0) return null;
+  const filtered = predicate ? list.filter(predicate) : list;
+  if (filtered.length === 0) return null;
+  return normalizeTimestamp(filtered[filtered.length - 1]);
+}
+
+function lastRecordFromList(list) {
+  if (!Array.isArray(list) || list.length === 0) return null;
+  const filtered = list.filter(Boolean);
+  if (filtered.length === 0) return null;
+  return filtered[filtered.length - 1];
+}
 
 export default function UserAttendance() {
   const isMobile = useMemo(() => window.innerWidth < 768, []);
@@ -53,12 +72,39 @@ export default function UserAttendance() {
     (async () => {
       try {
         const res = await axiosClient.get("/user/check-in");
+         const payload = res?.data || {};
 
         // ✅ different backends use different keys, so we handle common ones
-        const latestScan = res?.data?.latest_scan || res?.data?.latest || null;
-        const lastIn = res?.data?.last_check_in || res?.data?.check_in_time || null;
+        const latestScan =
+          payload.latest_scan ||
+          payload.latest ||
+          lastRecordFromList(payload.records) ||
+          lastRecordFromList(payload.history) ||
+          null;
+        const lastIn =
+          payload.last_check_in ||
+          payload.check_in_time ||
+          lastTimestampFromList(payload.check_ins) ||
+          lastTimestampFromList(payload.checkins) ||
+          lastTimestampFromList(payload.records, (record) =>
+            ["check_in", "in"].includes(record?.action || record?.type)
+          ) ||
+          lastTimestampFromList(payload.history, (record) =>
+            ["check_in", "in"].includes(record?.action || record?.type)
+          ) ||
+          null;
         const lastOut =
-          res?.data?.last_check_out || res?.data?.check_out_time || null;
+          payload.last_check_out ||
+          payload.check_out_time ||
+          lastTimestampFromList(payload.check_outs) ||
+          lastTimestampFromList(payload.checkouts) ||
+          lastTimestampFromList(payload.records, (record) =>
+            ["check_out", "out"].includes(record?.action || record?.type)
+          ) ||
+          lastTimestampFromList(payload.history, (record) =>
+            ["check_out", "out"].includes(record?.action || record?.type)
+          ) ||
+          null;
 
         if (!alive) return;
 
