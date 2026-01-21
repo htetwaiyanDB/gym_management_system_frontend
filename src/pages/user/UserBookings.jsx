@@ -240,12 +240,18 @@ export default function UserBookings() {
                   <div style={{ opacity: 0.75, fontSize: 12, marginTop: 4 }}>
                     Booking ID: {toText(id)}
                   </div>
+                  <div style={{ opacity: 0.8, fontSize: 12, marginTop: 4 }}>
+                    Trainer: {toText(trainerName)}
+                  </div>
+                  <div style={{ opacity: 0.8, fontSize: 12, marginTop: 4 }}>
+                    Session: {sessionDateTime ? fmtDateTime(sessionDateTime) : "—"}
+                  </div>
                 </div>
 
                 <StatusBadge status={toText(status)} />
               </div>
 
-                            {selectedId === id && (
+                {selectedId === id && (
                 <div
                   style={{
                     marginTop: 12,
