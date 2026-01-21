@@ -25,6 +25,13 @@ function isToday(iso) {
   return isSameDay(d, new Date());
 }
 
+function isTodayOrUnknown(iso) {
+  if (!iso) return false;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return true;
+  return isSameDay(d, new Date());
+}
+
 function getRecordTimestamp(record) {
   return record?.timestamp || record?.created_at || record?.updated_at || null;
 }
@@ -60,8 +67,8 @@ export default function TrainerScan() {
         // If your backend already returns these, use them:
         const lastIn = res?.data?.last_check_in || null;
         const lastOut = res?.data?.last_check_out || null;
-        setCheckInTime(isToday(lastIn) ? lastIn : null);
-        setCheckOutTime(isToday(lastOut) ? lastOut : null);
+        setCheckInTime(isTodayOrUnknown(lastIn) ? lastIn : null);
+        setCheckOutTime(isTodayOrUnknown(lastOut) ? lastOut : null);
 
         // If latest is check_in and there's no checkout yet, keep scanning
         // If latest is check_out, still allow scanning (you can decide)
@@ -99,10 +106,11 @@ export default function TrainerScan() {
       const action = record?.action;
       const timestamp = getRecordTimestamp(record);
 
-      setLatest(isToday(timestamp) ? record : null);
+      const isTimestampUsable = isTodayOrUnknown(timestamp);
+      setLatest(isTimestampUsable ? record : null);
 
       if (action === "check_in") {
-        setCheckInTime(isToday(timestamp) ? timestamp : null);
+        setCheckInTime(isTimestampUsable ? timestamp : null);
         setCheckOutTime(null);
         setStatusMsg({
           type: "success",
@@ -112,7 +120,7 @@ export default function TrainerScan() {
         // ✅ allow second scan for check-out
         setScannerActive(true);
       } else if (action === "check_out") {
-        setCheckOutTime(timestamp);
+        setCheckOutTime(isTimestampUsable ? timestamp : null);
         setStatusMsg({
           type: "success",
           text: res?.data?.message || "Check-out recorded.",
