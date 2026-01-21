@@ -1,62 +1,98 @@
+// TrainerScan.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import axiosClient from "../../api/axiosClient";
 import QrScanner from "../common/QrScanner";
 import { parseTokenFromQrText } from "../../utils/qr";
 
-function formatTime(iso) {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return String(iso);
-  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+/* ---------------------------
+   Robust datetime helpers
+--------------------------- */
+function parseBackendDateTime(v) {
+  if (!v) return null;
+  const raw = String(v).trim();
+  // Supports "YYYY-MM-DD HH:mm:ss" too
+  const normalized = raw.includes("T") ? raw : raw.replace(" ", "T");
+  const d = new Date(normalized);
+  if (Number.isNaN(d.getTime())) return null;
+  return d;
 }
 
-function isSameDay(left, right) {
+function isSameDay(a, b) {
   return (
-    left.getFullYear() === right.getFullYear() &&
-    left.getMonth() === right.getMonth() &&
-    left.getDate() === right.getDate()
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
   );
 }
 
-function isToday(iso) {
-  if (!iso) return false;
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return false;
+function isToday(v) {
+  const d = parseBackendDateTime(v);
+  if (!d) return false;
   return isSameDay(d, new Date());
 }
 
-function isRecentOrUnknown(iso) {
-  if (!iso) return false;
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return true;
-  const diff = Math.abs(Date.now() - d.getTime());
-  return diff <= 24 * 60 * 60 * 1000;
+function formatTime(v) {
+  const d = parseBackendDateTime(v);
+  if (!d) return "—";
+  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-function getRecordTimestamp(record) {
-  return record?.timestamp || record?.created_at || record?.updated_at || null;
+/* ---------------------------
+   Record helpers
+--------------------------- */
+function normalizeAction(a) {
+  if (!a) return null;
+  return String(a).toLowerCase().replace("-", "_");
 }
 
-function normalizeTimestamp(value) {
-  if (!value) return null;
-  if (typeof value === "string" || typeof value === "number") return value;
-  return getRecordTimestamp(value);
+function getAction(obj) {
+  return normalizeAction(obj?.action ?? obj?.type ?? obj?.status ?? obj?.event ?? null);
 }
 
-function lastTimestampFromList(list, predicate) {
-  if (!Array.isArray(list) || list.length === 0) return null;
-  const filtered = predicate ? list.filter(predicate) : list;
-  if (filtered.length === 0) return null;
-  return normalizeTimestamp(filtered[filtered.length - 1]);
+function getTimestamp(obj) {
+  return obj?.timestamp ?? obj?.time ?? obj?.scanned_at ?? obj?.created_at ?? obj?.updated_at ?? null;
 }
 
-function lastRecordFromList(list) {
-  if (!Array.isArray(list) || list.length === 0) return null;
-  const filtered = list.filter(Boolean);
-  if (filtered.length === 0) return null;
-  return filtered[filtered.length - 1];
+/* ---------------------------
+   Cache (today-only)
+--------------------------- */
+const STORAGE_KEY = "trainer_attendance_today_cache_v1";
+
+function loadCache() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (!isToday(data?.cachedAt)) return null;
+    return data;
+  } catch {
+    return null;
+  }
 }
 
+function saveCache({ latest, checkInTime, checkOutTime }) {
+  try {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        cachedAt: new Date().toISOString(),
+        latest,
+        checkInTime,
+        checkOutTime,
+      })
+    );
+  } catch {
+    // ignore
+  }
+}
+
+function clearCache() {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // ignore
+  }
+}
 
 export default function TrainerScan() {
   const isMobile = useMemo(() => window.innerWidth < 768, []);
@@ -70,64 +106,66 @@ export default function TrainerScan() {
   const [checkOutTime, setCheckOutTime] = useState(null);
 
   const nextAction = useMemo(() => {
-    if (latest?.action === "check_in") return "check_out";
-    return "check_in";
+    const a = getAction(latest);
+    return a === "check_in" ? "check_out" : "check_in";
   }, [latest]);
 
+  // 1) Load cache immediately (so refresh doesn't wipe UI)
   useEffect(() => {
+    const cached = loadCache();
+    if (!cached) return;
+
+    setLatest(cached.latest ?? null);
+    setCheckInTime(cached.checkInTime ?? null);
+    setCheckOutTime(cached.checkOutTime ?? null);
+  }, []);
+
+  // 2) Load from backend: GET /trainer/check-in
+  useEffect(() => {
+    let alive = true;
+
     (async () => {
       try {
         const res = await axiosClient.get("/trainer/check-in");
         const payload = res?.data || {};
-        // adjust if your API keys differ
-        const l =
-          payload.latest_scan ||
-          payload.latest ||
-          lastRecordFromList(payload.records) ||
-          lastRecordFromList(payload.history) ||
-          null;
-        const latestTimestamp = getRecordTimestamp(l);
-        const latestIsToday = isToday(latestTimestamp);
 
-        setLatest(latestIsToday ? l : null);
+        // Expecting same shape as user:
+        // { latest_scan: {action,timestamp}, recent_scans: [{action,timestamp}, ... newest->oldest] }
+        const latestScan = payload?.latest_scan ?? null;
+        const scans = Array.isArray(payload?.recent_scans) ? payload.recent_scans : [];
 
-        // If your backend already returns these, use them:
-        const lastIn =
-          payload.last_check_in ||
-          payload.check_in_time ||
-          lastTimestampFromList(payload.check_ins) ||
-          lastTimestampFromList(payload.checkins) ||
-          lastTimestampFromList(payload.records, (record) =>
-            ["check_in", "in"].includes(record?.action || record?.type)
-          ) ||
-          lastTimestampFromList(payload.history, (record) =>
-            ["check_in", "in"].includes(record?.action || record?.type)
-          ) ||
-          null;
-        const lastOut =
-          payload.last_check_out ||
-          payload.check_out_time ||
-          lastTimestampFromList(payload.check_outs) ||
-          lastTimestampFromList(payload.checkouts) ||
-          lastTimestampFromList(payload.records, (record) =>
-            ["check_out", "out"].includes(record?.action || record?.type)
-          ) ||
-          lastTimestampFromList(payload.history, (record) =>
-            ["check_out", "out"].includes(record?.action || record?.type)
-          ) ||
-          null;
-        setCheckInTime(isRecentOrUnknown(lastIn) ? lastIn : null);
-        setCheckOutTime(isRecentOrUnknown(lastOut) ? lastOut : null);
+        const lastIn = scans.find((s) => getAction(s) === "check_in")?.timestamp || null;
+        const lastOut = scans.find((s) => getAction(s) === "check_out")?.timestamp || null;
 
-        // If latest is check_in and there's no checkout yet, keep scanning
-        // If latest is check_out, still allow scanning (you can decide)
+        if (!alive) return;
+
+        const latestTs = getTimestamp(latestScan);
+
+        const nextLatest = latestTs && isToday(latestTs) ? latestScan : null;
+        const nextIn = lastIn && isToday(lastIn) ? lastIn : null;
+        const nextOut = lastOut && isToday(lastOut) ? lastOut : null;
+
+        setLatest(nextLatest);
+        setCheckInTime(nextIn);
+        setCheckOutTime(nextOut);
+
+        if (nextLatest || nextIn || nextOut) {
+          saveCache({ latest: nextLatest, checkInTime: nextIn, checkOutTime: nextOut });
+        } else {
+          clearCache();
+        }
       } catch (e) {
+        if (!alive) return;
         setStatusMsg({
           type: "warning",
           text: e?.response?.data?.message || "Unable to load trainer scan status.",
         });
       }
     })();
+
+    return () => {
+      alive = false;
+    };
   }, []);
 
   const handleScan = async (decodedText) => {
@@ -151,37 +189,54 @@ export default function TrainerScan() {
         token: parsed.token,
       });
 
-      const record = res?.data?.record || null;
-      const action = record?.action;
-      const timestamp = getRecordTimestamp(record);
+      const record = res?.data?.record ?? null;
+      const action = getAction(record);
+      const timestamp = getTimestamp(record);
 
-      const isTimestampUsable = isRecentOrUnknown(timestamp);
-      setLatest(isTimestampUsable ? record : null);
+      // Only show if it's today
+      if (!timestamp || !isToday(timestamp)) {
+        setStatusMsg({
+          type: "warning",
+          text: res?.data?.message || "Recorded, but timestamp is not today.",
+        });
+        setScannerActive(true);
+        return;
+      }
+
+      setLatest(record);
 
       if (action === "check_in") {
-        setCheckInTime(isTimestampUsable ? timestamp : null);
+        setCheckInTime(timestamp);
         setCheckOutTime(null);
+
         setStatusMsg({
           type: "success",
           text: res?.data?.message || "Check-in recorded.",
         });
 
-        // ✅ allow second scan for check-out
+        saveCache({ latest: record, checkInTime: timestamp, checkOutTime: null });
+
+        // allow second scan for check-out
         setScannerActive(true);
       } else if (action === "check_out") {
-        setCheckOutTime(isTimestampUsable ? timestamp : null);
+        setCheckOutTime(timestamp);
+
         setStatusMsg({
           type: "success",
           text: res?.data?.message || "Check-out recorded.",
         });
 
-        // ✅ STOP scanning after check-out (as you requested)
+        saveCache({ latest: record, checkInTime, checkOutTime: timestamp });
+
+        // same behavior as your current file: stop after checkout
         setScannerActive(false);
       } else {
         setStatusMsg({
           type: "success",
           text: res?.data?.message || "Recorded.",
         });
+
+        saveCache({ latest: record, checkInTime, checkOutTime });
         setScannerActive(true);
       }
     } catch (e) {
@@ -189,12 +244,11 @@ export default function TrainerScan() {
         type: "danger",
         text: e?.response?.data?.message || "Scan failed.",
       });
-      // If API fails, allow scanning again
       setScannerActive(true);
     } finally {
       setTimeout(() => {
         busyRef.current = false;
-      }, 600);
+      }, 700);
     }
   };
 
@@ -202,9 +256,7 @@ export default function TrainerScan() {
     return (
       <div className="container py-3" style={{ maxWidth: 520 }}>
         <h4 className="mb-2">Trainer Attendance</h4>
-        <div className="alert alert-warning mb-0">
-          Trainer scan works on mobile view only.
-        </div>
+        <div className="alert alert-warning mb-0">Trainer scan works on mobile view only.</div>
       </div>
     );
   }
@@ -238,8 +290,7 @@ export default function TrainerScan() {
 
         <div className="d-flex justify-content-between mt-3">
           <div style={{ opacity: 0.9 }}>
-            Next action:{" "}
-            <b>{nextAction === "check_in" ? "CHECK-IN" : "CHECK-OUT"}</b>
+            Next action: <b>{nextAction === "check_in" ? "CHECK-IN" : "CHECK-OUT"}</b>
           </div>
 
           <div className="d-flex gap-2">
@@ -267,7 +318,6 @@ export default function TrainerScan() {
         </div>
       )}
 
-      {/* ✅ Scanner is always mounted; controlled by active flag */}
       <QrScanner onDecode={handleScan} active={scannerActive} cooldownMs={1500} />
 
       <div
@@ -282,7 +332,7 @@ export default function TrainerScan() {
       >
         <div className="d-flex justify-content-between">
           <span style={{ opacity: 0.85 }}>Last Action</span>
-          <b>{latest?.action ? latest.action.replace("_", "-") : "—"}</b>
+          <b>{latest?.action ? String(latest.action).replace("_", "-") : "—"}</b>
         </div>
 
         <div className="d-flex justify-content-between mt-2">
@@ -293,6 +343,25 @@ export default function TrainerScan() {
         <div className="d-flex justify-content-between mt-2">
           <span style={{ opacity: 0.85 }}>Check-out Time</span>
           <b>{formatTime(checkOutTime)}</b>
+        </div>
+
+        <div className="mt-3 d-flex gap-2">
+          <button
+            className="btn btn-sm btn-outline-light w-100"
+            onClick={() => {
+              clearCache();
+              setLatest(null);
+              setCheckInTime(null);
+              setCheckOutTime(null);
+              setStatusMsg({ type: "info", text: "Cleared local display (cache cleared)." });
+            }}
+          >
+            Clear Display
+          </button>
+
+          <button className="btn btn-sm btn-outline-light w-100" onClick={() => window.location.reload()}>
+            Refresh
+          </button>
         </div>
       </div>
     </div>
