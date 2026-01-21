@@ -75,6 +75,16 @@ function findBlogArrayDeep(payload) {
   return walk(payload) || [];
 }
 
+function normalizeBlogList(payload) {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.blogs)) return payload.blogs;
+  if (Array.isArray(payload?.posts)) return payload.posts;
+  if (Array.isArray(payload?.data?.data)) return payload.data.data;
+  return findBlogArrayDeep(payload);
+}
+
+
 function getServerOrigin() {
   const apiBase =
     import.meta.env.VITE_API_URL || "https://api.unityfitnessmyanmar.online/api";
@@ -124,6 +134,35 @@ function resolveBlogImage(blog) {
   );
 }
 
+function mergeBlogImages(base, source) {
+  if (!source || resolveBlogImage(base)) return base;
+
+  const imageFields = [
+    "cover_image_url",
+    "image_url",
+    "cover_image",
+    "image",
+    "thumbnail",
+    "photo",
+    "cover_image_path",
+    "image_path",
+    "thumbnail_path",
+    "coverImageUrl",
+    "imageUrl",
+    "coverImagePath",
+    "coverImage",
+  ];
+
+  const merged = { ...base };
+  for (const field of imageFields) {
+    if (!merged?.[field] && source?.[field]) {
+      merged[field] = source[field];
+    }
+  }
+  return merged;
+}
+
+
 function getBlogId(blog, idx) {
   return blog?.id ?? blog?.blog_id ?? blog?.post_id ?? idx;
 }
@@ -149,9 +188,6 @@ export default function UserHome() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // for debugging only (shows keys so you can confirm response)
-  const [debugKeys, setDebugKeys] = useState("");
-
   useEffect(() => {
     let alive = true;
 
@@ -160,18 +196,26 @@ export default function UserHome() {
         setLoading(true);
         setError("");
 
-        const res = await axiosClient.get("/user/home");
+       const [homeRes, blogsRes] = await Promise.allSettled([
+          axiosClient.get("/user/home"),
+          axiosClient.get("/blogs"),
+        ]);
 
-        // ✅ Debug: see real API response structure in console
-        console.log("GET /user/home RESPONSE:", res?.data);
+       const homeData =
+          homeRes.status === "fulfilled" ? homeRes.value?.data : null;
+       const blogsData =
+          blogsRes.status === "fulfilled" ? blogsRes.value?.data : null;
 
-        const keys = res?.data && typeof res.data === "object"
-          ? Object.keys(res.data).join(", ")
-          : typeof res?.data;
+       const homeList = normalizeBlogList(homeData);
+       const blogsList = normalizeBlogList(blogsData);
 
-        if (alive) setDebugKeys(String(keys || ""));
+        const blogById = new Map(
+          blogsList.map((blog, idx) => [getBlogId(blog, idx), blog])
+        );
 
-        const list = findBlogArrayDeep(res.data);
+       const list = homeList.map((blog, idx) =>
+          mergeBlogImages(blog, blogById.get(getBlogId(blog, idx)))
+        );
 
         const sorted = [...list].sort((a, b) => {
           const da = new Date(getBlogDate(a) || 0).getTime();
@@ -217,13 +261,6 @@ export default function UserHome() {
       {!loading && error && (
         <div className="alert alert-danger" style={{ fontWeight: 600 }}>
           {error}
-        </div>
-      )}
-
-      {/* Optional: remove this later (helps you confirm backend response keys) */}
-      {!loading && !error && (
-        <div style={{ fontSize: 12, opacity: 0.65, marginBottom: 10 }}>
-          Debug keys from /user/home: {debugKeys || "—"}
         </div>
       )}
 
