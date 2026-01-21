@@ -1,139 +1,88 @@
+// UserAttendance.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import axiosClient from "../../api/axiosClient";
 import QrScanner from "../common/QrScanner";
 import { parseTokenFromQrText } from "../../utils/qr";
 
-/** --------------------------
- * Robust date parsing helpers
- * -------------------------- */
-function parseBackendDateTime(value) {
-  if (!value) return null;
+/**
+ * Your backend GET /api/user/check-in returns:
+ *  {
+ *    latest_scan: { action: "check_in|check_out", timestamp: "ISO" },
+ *    recent_scans: [{ action, timestamp }, ... newest -> oldest]
+ *  }
+ *
+ * Your backend POST /api/user/check-in/scan returns:
+ *  { message: "...", record: { action, timestamp } }
+ */
 
-  // If backend returns an object (rare), try common fields
-  if (typeof value === "object") {
-    const v =
-      value.timestamp ||
-      value.time ||
-      value.scanned_at ||
-      value.created_at ||
-      value.updated_at ||
-      value.check_in_time ||
-      value.check_out_time ||
-      null;
-    return parseBackendDateTime(v);
-  }
-
-  // Normalize string formats:
-  // "2026-01-21 10:30:00" -> "2026-01-21T10:30:00"
-  const raw = String(value).trim();
+/* ---------------------------
+   Date helpers (robust)
+--------------------------- */
+function parseBackendDateTime(v) {
+  if (!v) return null;
+  const raw = String(v).trim();
+  // supports "YYYY-MM-DD HH:mm:ss" too, if ever returned
   const normalized = raw.includes("T") ? raw : raw.replace(" ", "T");
-
   const d = new Date(normalized);
   if (Number.isNaN(d.getTime())) return null;
   return d;
 }
 
-function formatTime(value) {
-  const d = parseBackendDateTime(value);
-  if (!d) return "—";
-  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-}
-
-function isSameDay(left, right) {
+function isSameDay(a, b) {
   return (
-    left.getFullYear() === right.getFullYear() &&
-    left.getMonth() === right.getMonth() &&
-    left.getDate() === right.getDate()
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
   );
 }
 
-function isToday(value) {
-  const d = parseBackendDateTime(value);
+function isToday(v) {
+  const d = parseBackendDateTime(v);
   if (!d) return false;
   return isSameDay(d, new Date());
 }
 
-/** --------------------------
- * Record helpers
- * -------------------------- */
-function getRecordAction(record) {
-  if (!record || typeof record !== "object") return null;
-  const raw = record.action ?? record.type ?? record.status ?? record.event ?? null;
-  if (!raw) return null;
-  return String(raw).toLowerCase().replace("-", "_");
+function formatTime(v) {
+  const d = parseBackendDateTime(v);
+  if (!d) return "—";
+  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-function getRecordTimestamp(record) {
-  if (!record || typeof record !== "object") return record ?? null;
-  return (
-    record.timestamp ||
-    record.time ||
-    record.scanned_at ||
-    record.created_at ||
-    record.updated_at ||
-    record.check_in_time ||
-    record.check_out_time ||
-    null
-  );
+/* ---------------------------
+   Action/timestamp helpers
+--------------------------- */
+function normalizeAction(a) {
+  if (!a) return null;
+  return String(a).toLowerCase().replace("-", "_");
 }
 
-function normalizeRecord(record) {
-  if (!record || typeof record !== "object") return record;
-  const action = getRecordAction(record);
-  if (!action || record.action) return record;
-  return { ...record, action };
+function getAction(obj) {
+  return normalizeAction(obj?.action ?? obj?.type ?? obj?.status ?? obj?.event ?? null);
 }
 
-function normalizeTimestamp(value) {
-  if (!value) return null;
-  if (typeof value === "string" || typeof value === "number") return value;
-  return getRecordTimestamp(value);
+function getTimestamp(obj) {
+  return obj?.timestamp ?? obj?.time ?? obj?.scanned_at ?? obj?.created_at ?? null;
 }
 
-function lastTimestampFromList(list, predicate) {
-  if (!Array.isArray(list) || list.length === 0) return null;
-  const filtered = predicate ? list.filter(predicate) : list;
-  if (filtered.length === 0) return null;
-  return normalizeTimestamp(filtered[filtered.length - 1]);
-}
+/* ---------------------------
+   Cache (so refresh won’t lose)
+--------------------------- */
+const STORAGE_KEY = "user_attendance_cache_v2";
 
-function lastRecordFromList(list) {
-  if (!Array.isArray(list) || list.length === 0) return null;
-  const filtered = list.filter(Boolean);
-  if (filtered.length === 0) return null;
-  return filtered[filtered.length - 1];
-}
-
-function pickFirstValue(source, keys) {
-  if (!source) return null;
-  for (const key of keys) {
-    const value = source?.[key];
-    if (value) return value;
-  }
-  return null;
-}
-
-/** --------------------------
- * localStorage persistence
- * -------------------------- */
-const STORAGE_KEY = "user_attendance_today_v1";
-
-function loadCachedAttendance() {
+function loadCache() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const data = JSON.parse(raw);
-
-    // Only keep today's cache
+    // Keep only if cached for today (based on cachedAt)
     if (!isToday(data?.cachedAt)) return null;
-
     return data;
   } catch {
     return null;
   }
 }
 
-function saveCachedAttendance({ latest, checkInTime, checkOutTime }) {
+function saveCache({ latest, checkInTime, checkOutTime }) {
   try {
     localStorage.setItem(
       STORAGE_KEY,
@@ -145,11 +94,11 @@ function saveCachedAttendance({ latest, checkInTime, checkOutTime }) {
       })
     );
   } catch {
-    // ignore storage errors
+    // ignore
   }
 }
 
-function clearCachedAttendance() {
+function clearCache() {
   try {
     localStorage.removeItem(STORAGE_KEY);
   } catch {
@@ -169,13 +118,13 @@ export default function UserAttendance() {
   const [checkOutTime, setCheckOutTime] = useState(null);
 
   const nextAction = useMemo(() => {
-    if (getRecordAction(latest) === "check_in") return "check_out";
-    return "check_in";
+    const a = getAction(latest);
+    return a === "check_in" ? "check_out" : "check_in";
   }, [latest]);
 
-  // 1) Load cached immediately (so refresh won't lose UI)
+  // 1) Load cache immediately (fast UI after refresh)
   useEffect(() => {
-    const cached = loadCachedAttendance();
+    const cached = loadCache();
     if (!cached) return;
 
     setLatest(cached.latest ?? null);
@@ -192,76 +141,34 @@ export default function UserAttendance() {
         const res = await axiosClient.get("/user/check-in");
         const payload = res?.data || {};
 
-        const latestScan = normalizeRecord(
-          payload.latest_scan ||
-            payload.latest ||
-            payload.last_scan ||
-            lastRecordFromList(payload.records) ||
-            lastRecordFromList(payload.history) ||
-            null
-        );
+        const latestScan = payload?.latest_scan ?? null;
+        const scans = Array.isArray(payload?.recent_scans) ? payload.recent_scans : [];
 
-        const lastIn =
-          pickFirstValue(payload, [
-            "last_check_in",
-            "last_checkin",
-            "lastCheckIn",
-            "check_in_time",
-            "checkin_time",
-            "checkInTime",
-            "last_check_in_time",
-          ]) ||
-          lastTimestampFromList(payload.check_ins) ||
-          lastTimestampFromList(payload.checkins) ||
-          lastTimestampFromList(payload.records, (record) =>
-            ["check_in", "in"].includes(getRecordAction(record))
-          ) ||
-          lastTimestampFromList(payload.history, (record) =>
-            ["check_in", "in"].includes(getRecordAction(record))
-          ) ||
-          null;
-
-        const lastOut =
-          pickFirstValue(payload, [
-            "last_check_out",
-            "last_checkout",
-            "lastCheckOut",
-            "check_out_time",
-            "checkout_time",
-            "checkOutTime",
-            "last_check_out_time",
-          ]) ||
-          lastTimestampFromList(payload.check_outs) ||
-          lastTimestampFromList(payload.checkouts) ||
-          lastTimestampFromList(payload.records, (record) =>
-            ["check_out", "out"].includes(getRecordAction(record))
-          ) ||
-          lastTimestampFromList(payload.history, (record) =>
-            ["check_out", "out"].includes(getRecordAction(record))
-          ) ||
-          null;
+        // newest -> oldest, so find() gives latest matching action
+        const lastIn = scans.find((s) => getAction(s) === "check_in")?.timestamp || null;
+        const lastOut = scans.find((s) => getAction(s) === "check_out")?.timestamp || null;
 
         if (!alive) return;
 
-        const latestTimestamp = getRecordTimestamp(latestScan);
-        const latestIsToday = isToday(latestTimestamp);
+        const latestTs = getTimestamp(latestScan);
+        const latestOk = latestTs && isToday(latestTs);
+        const inOk = lastIn && isToday(lastIn);
+        const outOk = lastOut && isToday(lastOut);
 
-        const nextLatest = latestIsToday ? latestScan : null;
-        const nextIn = isToday(lastIn) ? lastIn : null;
-        const nextOut = isToday(lastOut) ? lastOut : null;
+        // Set only if it is today; otherwise clear
+        const nextLatest = latestOk ? latestScan : null;
+        const nextIn = inOk ? lastIn : null;
+        const nextOut = outOk ? lastOut : null;
 
         setLatest(nextLatest);
         setCheckInTime(nextIn);
         setCheckOutTime(nextOut);
 
+        // Keep cache synced
         if (nextLatest || nextIn || nextOut) {
-          saveCachedAttendance({
-            latest: nextLatest,
-            checkInTime: nextIn,
-            checkOutTime: nextOut,
-          });
+          saveCache({ latest: nextLatest, checkInTime: nextIn, checkOutTime: nextOut });
         } else {
-          clearCachedAttendance();
+          clearCache();
         }
       } catch (e) {
         if (!alive) return;
@@ -291,79 +198,48 @@ export default function UserAttendance() {
     }
 
     try {
-      // Pause scanning while calling API (prevents double submission)
+      // prevent double scan while request is running
       setScannerActive(false);
 
       const res = await axiosClient.post("/user/check-in/scan", {
         token: parsed.token,
       });
 
-      const record = normalizeRecord(res?.data?.record || null);
-      const action =
-        getRecordAction(record) ||
-        getRecordAction(res?.data) ||
-        res?.data?.action ||
-        res?.data?.type ||
-        null;
+      const record = res?.data?.record ?? null;
+      const action = getAction(record);
+      const timestamp = getTimestamp(record);
 
-      const timestamp =
-        getRecordTimestamp(record) ||
-        res?.data?.timestamp ||
-        res?.data?.time ||
-        res?.data?.scanned_at ||
-        null;
+      if (!timestamp || !isToday(timestamp)) {
+        setStatusMsg({
+          type: "warning",
+          text: res?.data?.message || "Recorded, but timestamp is not today.",
+        });
+        // allow scanning again
+        setScannerActive(true);
+        return;
+      }
 
-      const latestRecord =
-        record || (action || timestamp ? { action, timestamp } : null);
-
-      const latestToday = isToday(timestamp) ? latestRecord : null;
-
-      setLatest(latestToday);
+      setLatest(record);
 
       if (action === "check_in") {
-        const inTime = isToday(timestamp) ? timestamp : null;
-        setCheckInTime(inTime);
+        setCheckInTime(timestamp);
         setCheckOutTime(null);
-        setStatusMsg({
-          type: "success",
-          text: res?.data?.message || "Check-in recorded.",
-        });
+        setStatusMsg({ type: "success", text: res?.data?.message || "Check-in recorded." });
 
-        saveCachedAttendance({
-          latest: latestToday,
-          checkInTime: inTime,
-          checkOutTime: null,
-        });
-
-        // allow second scan for check-out
+        saveCache({ latest: record, checkInTime: timestamp, checkOutTime: null });
         setScannerActive(true);
       } else if (action === "check_out") {
         setCheckOutTime(timestamp);
-        setStatusMsg({
-          type: "success",
-          text: res?.data?.message || "Check-out recorded.",
-        });
+        setStatusMsg({ type: "success", text: res?.data?.message || "Check-out recorded." });
 
-        saveCachedAttendance({
-          latest: latestToday,
-          checkInTime,
-          checkOutTime: timestamp,
-        });
+        saveCache({ latest: record, checkInTime, checkOutTime: timestamp });
 
-        // stop scanner after check-out
+        // optional: stop after check-out; if you want keep scanning, change to true
         setScannerActive(false);
       } else {
-        setStatusMsg({
-          type: "success",
-          text: res?.data?.message || "Recorded.",
-        });
-
-        saveCachedAttendance({
-          latest: latestToday,
-          checkInTime,
-          checkOutTime,
-        });
-
+        // unknown action, still store latest
+        setStatusMsg({ type: "success", text: res?.data?.message || "Recorded." });
+        saveCache({ latest: record, checkInTime, checkOutTime });
         setScannerActive(true);
       }
     } catch (e) {
@@ -375,7 +251,7 @@ export default function UserAttendance() {
     } finally {
       setTimeout(() => {
         busyRef.current = false;
-      }, 600);
+      }, 700);
     }
   };
 
@@ -392,7 +268,6 @@ export default function UserAttendance() {
 
   return (
     <div className="container py-3" style={{ maxWidth: 520 }}>
-      {/* Header card */}
       <div
         style={{
           background: "rgba(255,255,255,0.06)",
@@ -420,8 +295,7 @@ export default function UserAttendance() {
 
         <div className="d-flex justify-content-between mt-3">
           <div style={{ opacity: 0.9 }}>
-            Next action:{" "}
-            <b>{nextAction === "check_in" ? "CHECK-IN" : "CHECK-OUT"}</b>
+            Next action: <b>{nextAction === "check_in" ? "CHECK-IN" : "CHECK-OUT"}</b>
           </div>
 
           <div className="d-flex gap-2">
@@ -449,10 +323,8 @@ export default function UserAttendance() {
         </div>
       )}
 
-      {/* Scanner */}
       <QrScanner onDecode={handleScan} active={scannerActive} cooldownMs={1500} />
 
-      {/* Result card */}
       <div
         className="mt-3"
         style={{
@@ -465,7 +337,7 @@ export default function UserAttendance() {
       >
         <div className="d-flex justify-content-between">
           <span style={{ opacity: 0.85 }}>Last Action</span>
-          <b>{latest?.action ? latest.action.replace("_", "-") : "—"}</b>
+          <b>{latest?.action ? String(latest.action).replace("_", "-") : "—"}</b>
         </div>
 
         <div className="d-flex justify-content-between mt-2">
@@ -476,6 +348,28 @@ export default function UserAttendance() {
         <div className="d-flex justify-content-between mt-2">
           <span style={{ opacity: 0.85 }}>Check-out Time</span>
           <b>{formatTime(checkOutTime)}</b>
+        </div>
+
+        <div className="mt-3 d-flex gap-2">
+          <button
+            className="btn btn-sm btn-outline-light w-100"
+            onClick={() => {
+              clearCache();
+              setLatest(null);
+              setCheckInTime(null);
+              setCheckOutTime(null);
+              setStatusMsg({ type: "info", text: "Cleared local display (cache cleared)." });
+            }}
+          >
+            Clear Display
+          </button>
+
+          <button
+            className="btn btn-sm btn-outline-light w-100"
+            onClick={() => window.location.reload()}
+          >
+            Refresh
+          </button>
         </div>
       </div>
     </div>
