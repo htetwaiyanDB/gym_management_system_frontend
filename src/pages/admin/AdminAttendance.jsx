@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 import axiosClient from "../../api/axiosClient";
 
@@ -201,7 +201,7 @@ export default function AdminAttendance() {
     setMsg({ type: "danger", text });
   };
 
-    const printQr = (wrapperId, title, url) => {
+    const printQr = (wrapperId, title, url) => { 
     const wrapper = document.getElementById(wrapperId);
     const canvas = wrapper?.querySelector("canvas");
 
@@ -211,13 +211,14 @@ export default function AdminAttendance() {
     }
 
     const dataUrl = canvas.toDataURL("image/png");
-    const printWindow = window.open("", "_blank", "noopener,noreferrer");
+    const printWindow = window.open("", "_blank");
 
     if (!printWindow) {
       showError("Pop-up blocked. Please allow pop-ups to print the QR code.");
       return;
     }
 
+    printWindow.document.open();
     printWindow.document.write(`
       <!doctype html>
       <html>
@@ -235,18 +236,31 @@ export default function AdminAttendance() {
         <body>
           <div class="page">
             <h1>${title}</h1>
-            <img class="qr" src="${dataUrl}" alt="${title}" />
+             <img id="qr-image" class="qr" src="${dataUrl}" alt="${title}" />
             <div class="subtitle">${url || ""}</div>
           </div>
+          <script>
+            const img = document.getElementById("qr-image");
+            const triggerPrint = () => {
+              setTimeout(() => {
+                window.focus();
+                window.print();
+                window.close();
+              }, 250);
+            };
+            if (!img) {
+              triggerPrint();
+            } else if (img.complete) {
+              triggerPrint();
+            } else {
+              img.onload = triggerPrint;
+              img.onerror = triggerPrint;
+            }
+          </script>
         </body>
       </html>
     `);
     printWindow.document.close();
-    printWindow.focus();
-    window.setTimeout(() => {
-      printWindow.print();
-      printWindow.close();
-    }, 300);
   };
 
 
