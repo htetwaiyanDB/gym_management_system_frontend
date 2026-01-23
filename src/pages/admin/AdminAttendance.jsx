@@ -531,7 +531,7 @@ export default function AdminAttendance() {
                     <div style={mutedText}>Loading...</div>
                   ) : (
                     <>
-                      {renderQrFromUrl(qrLinks.user_qr)}
++                     {renderQrFromUrl(qrLinks.user_qr, "member-qr-code")}
                       <div className="small mt-3" style={bodyText}>
                         <div>
                           <b>Scan link:</b> <span style={mutedText}>{qrLinks.user_qr || "-"}</span>
