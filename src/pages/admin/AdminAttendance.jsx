@@ -122,10 +122,11 @@ const normalizeReportPayload = (resData) => {
  * { user_qr: "...", trainer_qr: "..." }
  * Generate QR codes on frontend from those URLs.
  */
-function renderQrFromUrl(url) {
+function renderQrFromUrl(url, id) {
   if (!url) return null;
   return (
     <div
+      id={id}
       style={{
         background: "#fff",
         padding: 12,
@@ -199,6 +200,55 @@ export default function AdminAttendance() {
   const showError = (text) => {
     setMsg({ type: "danger", text });
   };
+
+    const printQr = (wrapperId, title, url) => {
+    const wrapper = document.getElementById(wrapperId);
+    const canvas = wrapper?.querySelector("canvas");
+
+    if (!canvas) {
+      showError("QR code is not ready to print. Please refresh and try again.");
+      return;
+    }
+
+    const dataUrl = canvas.toDataURL("image/png");
+    const printWindow = window.open("", "_blank", "noopener,noreferrer");
+
+    if (!printWindow) {
+      showError("Pop-up blocked. Please allow pop-ups to print the QR code.");
+      return;
+    }
+
+    printWindow.document.write(`
+      <!doctype html>
+      <html>
+        <head>
+          <title>${title}</title>
+          <style>
+            @page { size: A4; margin: 24mm; }
+            body { font-family: Arial, sans-serif; color: #111; }
+            .page { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; }
+            .qr { width: 320px; height: 320px; object-fit: contain; margin: 24px 0; }
+            .subtitle { color: #444; font-size: 14px; text-align: center; word-break: break-all; }
+            h1 { font-size: 24px; margin-bottom: 8px; text-align: center; }
+          </style>
+        </head>
+        <body>
+          <div class="page">
+            <h1>${title}</h1>
+            <img class="qr" src="${dataUrl}" alt="${title}" />
+            <div class="subtitle">${url || ""}</div>
+          </div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    window.setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 300);
+  };
+
 
   // ---------------- API calls ----------------
 
@@ -461,9 +511,18 @@ export default function AdminAttendance() {
             <div className="col-12 col-lg-6">
               <div className="card h-100" style={cardGlass}>
                 <div className="card-body">
-                  <h6 className="mb-1" style={titleText}>
-                    Member QR Code
-                  </h6>
+                  <div className="d-flex align-items-center justify-content-between mb-1">
+                    <h6 className="mb-0" style={titleText}>
+                      Member QR Code
+                    </h6>
+                    <button
+                      className="btn btn-sm btn-outline-light"
+                      onClick={() => printQr("member-qr-code", "Member QR Code", qrLinks.user_qr)}
+                      disabled={qrLoading || !qrLinks.user_qr}
+                    >
+                      Print QR
+                    </button>
+                  </div>
                   <div className="mb-3" style={mutedText}>
                     Members scan this QR to check in and check out each day.
                   </div>
@@ -489,9 +548,18 @@ export default function AdminAttendance() {
             <div className="col-12 col-lg-6">
               <div className="card h-100" style={cardGlass}>
                 <div className="card-body">
-                  <h6 className="mb-1" style={titleText}>
-                    Trainer QR Code
-                  </h6>
+                  <div className="d-flex align-items-center justify-content-between mb-1">
+                    <h6 className="mb-0" style={titleText}>
+                      Trainer QR Code
+                    </h6>
+                    <button
+                      className="btn btn-sm btn-outline-light"
+                      onClick={() => printQr("trainer-qr-code", "Trainer QR Code", qrLinks.trainer_qr)}
+                      disabled={qrLoading || !qrLinks.trainer_qr}
+                    >
+                      Print QR
+                    </button>
+                  </div>
                   <div className="mb-3" style={mutedText}>
                     Trainers scan this QR for working day tracking and payroll.
                   </div>
@@ -500,7 +568,7 @@ export default function AdminAttendance() {
                     <div style={mutedText}>Loading...</div>
                   ) : (
                     <>
-                      {renderQrFromUrl(qrLinks.trainer_qr)}
+                      {renderQrFromUrl(qrLinks.trainer_qr, "trainer-qr-code")}
                       <div className="small mt-3" style={bodyText}>
                         <div>
                           <b>Scan link:</b> <span style={mutedText}>{qrLinks.trainer_qr || "-"}</span>
