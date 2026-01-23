@@ -78,9 +78,9 @@ export default function AdminLayout() {
 
         <hr style={{ borderColor: "rgba(255,255,255,0.15)" }} />
 
-        <button className="btn btn-outline-light w-100" onClick={logout}>
+        {/* <button className="btn btn-outline-light w-100" onClick={logout}>
           <i className="bi bi-box-arrow-right me-2"></i> Logout
-        </button>
+        </button> */}
       </aside>
 
       {/* Main */}
