@@ -34,20 +34,20 @@ export default function AdminSettings() {
     boxShadow: "0 12px 30px rgba(0,0,0,0.35)",
   };
 
-  const logoutBtn = {
-    width: "100%",
-    padding: "14px 12px",
-    borderRadius: 14,
-    border: "1px solid rgba(220,53,69,0.45)",
-    background: "rgba(220,53,69,0.25)",
-    color: "#fff",
-    fontWeight: 900,
-    fontSize: 15,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-  };
+  // const logoutBtn = {
+  //   width: "100%",
+  //   padding: "14px 12px",
+  //   borderRadius: 14,
+  //   border: "1px solid rgba(220,53,69,0.45)",
+  //   background: "rgba(220,53,69,0.25)",
+  //   color: "#fff",
+  //   fontWeight: 900,
+  //   fontSize: 15,
+  //   display: "flex",
+  //   alignItems: "center",
+  //   justifyContent: "center",
+  //   gap: 10,
+  // };
 
   const inputStyle = {
     background: "rgba(255,255,255,0.08)",
@@ -119,12 +119,18 @@ export default function AdminSettings() {
 
     setSaving(true);
     try {
-      const res = await updateUserProfile(storedUser.id, payload);
+      const res = await updateUserProfile(payload);
       const data = res?.data?.user || res?.data?.data || res?.data;
 
       if (data) {
         const merged = { ...(storedUser || {}), ...data };
-        localStorage.setItem("user", JSON.stringify(merged));
+        const serialized = JSON.stringify(merged);
+        if (localStorage.getItem("user")) {
+          localStorage.setItem("user", serialized);
+        }
+        if (sessionStorage.getItem("user")) {
+          sessionStorage.setItem("user", serialized);
+        }
       }
 
       setForm((prev) => ({
@@ -144,20 +150,20 @@ export default function AdminSettings() {
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      await axiosClient.post("/logout");
-    } catch {
-      // even if backend fails, continue logout locally
-    }
+  // const handleLogout = async () => {
+  //   try {
+  //     await axiosClient.post("/logout");
+  //   } catch {
+  //     // even if backend fails, continue logout locally
+  //   }
 
-    // clear auth data
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+  //   // clear auth data
+  //   localStorage.removeItem("token");
+  //   localStorage.removeItem("user");
 
-    // redirect to login
-    window.location.href = "/login";
-  };
+  //   // redirect to login
+  //   window.location.href = "/login";
+  // };
 
   return (
     <div className="container py-3" style={{ maxWidth: 520 }}>
