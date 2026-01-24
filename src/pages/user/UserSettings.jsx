@@ -119,12 +119,18 @@ export default function UserSettings() {
 
     setSaving(true);
     try {
-      const res = await updateUserProfile(storedUser.id, payload);
+      const res = await updateUserProfile(payload);
       const data = res?.data?.user || res?.data?.data || res?.data;
 
       if (data) {
         const merged = { ...(storedUser || {}), ...data };
-        localStorage.setItem("user", JSON.stringify(merged));
+        const serialized = JSON.stringify(merged);
+        if (localStorage.getItem("user")) {
+          localStorage.setItem("user", serialized);
+        }
+        if (sessionStorage.getItem("user")) {
+          sessionStorage.setItem("user", serialized);
+        }
       }
 
       setForm((prev) => ({

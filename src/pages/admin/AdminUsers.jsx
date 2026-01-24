@@ -138,7 +138,7 @@ export default function AdminUsers() {
     }
   };
 
-  // --------- Edit (needs PUT /api/users/{id} which you must add) ----------
+  // --------- Edit (needs PATCH /api/users/{id} which you must add) ----------
   const openEdit = (u) => {
     setMsg(null);
     setEditForm({
@@ -184,7 +184,7 @@ export default function AdminUsers() {
       }
 
       // ⚠️ This route does NOT exist yet in your API. Add backend in section (2).
-      await axiosClient.put(`/users/${editForm.id}`, payload);
+      await axiosClient.patch(`/users/${editForm.id}`, payload);
 
       setMsg({ type: "success", text: "User updated successfully." });
       setShowEdit(false);
@@ -194,7 +194,7 @@ export default function AdminUsers() {
         type: "danger",
         text:
           e?.response?.data?.message ||
-          `Update failed (status: ${e?.response?.status || "unknown"}). Add PUT API route.`,
+          `Update failed (status: ${e?.response?.status || "unknown"}). Add patch API route.`,
       });
     } finally {
       setSavingEdit(false);
