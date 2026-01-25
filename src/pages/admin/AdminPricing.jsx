@@ -26,17 +26,26 @@ export default function AdminPricing() {
     twelveMonths: "",
   });
 
-  const [trainers, setTrainers] = useState([]);
-  const [trainerInputs, setTrainerInputs] = useState({});
+  const [trainerPackages, setTrainerPackages] = useState([]);
+  const [packageInputs, setPackageInputs] = useState({});
   const [busyKey, setBusyKey] = useState(null);
+
+  const normalizeNumberInput = (value) => {
+    if (value === null || value === undefined || value === "") return null;
+    const n = Number(value);
+    return Number.isNaN(n) ? NaN : n;
+  };
 
   const load = async () => {
     setMsg(null);
     setLoading(true);
 
     try {
-      const res = await axiosClient.get("/pricing", { cache: false });
-      const p = res.data?.subscription_prices || {};
+      const [pricingRes, packagesRes] = await Promise.all([
+        axiosClient.get("/pricing", { cache: false }),
+        axiosClient.get("/trainer-packages", { cache: false }),
+      ]);
+      const p = pricingRes.data?.subscription_prices || {};
 
       const oneMonth = p.one_month ?? "";
       const threeMonths = p.three_months ?? "";
@@ -51,14 +60,28 @@ export default function AdminPricing() {
         twelveMonths: String(twelveMonths),
       });
 
-      const t = Array.isArray(res.data?.trainers) ? res.data.trainers : [];
-      setTrainers(t);
+      const list =
+        packagesRes.data?.packages ??
+        packagesRes.data?.trainer_packages ??
+        packagesRes.data?.data ??
+        packagesRes.data ??
+        [];
+      const normalized = Array.isArray(list) ? list : [];
+      setTrainerPackages(normalized);
 
-      const ti = {};
-      t.forEach((tr) => {
-        ti[tr.id] = String(tr.price_per_session ?? "");
+      const nextInputs = {};
+      normalized.forEach((pkg) => {
+        const id = pkg?.id ?? pkg?.package_id ?? pkg?.packageId;
+        if (id === null || id === undefined) return;
+        nextInputs[id] = {
+          name: pkg?.name ?? "",
+          package_type: pkg?.package_type ?? pkg?.type ?? "",
+          sessions_count: pkg?.sessions_count ?? pkg?.sessions ?? "",
+          duration_months: pkg?.duration_months ?? pkg?.duration ?? "",
+          price: pkg?.price ?? pkg?.price_per_session ?? "",
+        };
       });
-      setTrainerInputs(ti);
+      setPackageInputs(nextInputs);
     } catch (e) {
       setMsg({
         type: "danger",
@@ -124,28 +147,48 @@ export default function AdminPricing() {
     }
   };
 
-  const updateTrainer = async (trainerId) => {
+  const updatePackage = async (packageId) => {
     setMsg(null);
 
-    const value = Number(trainerInputs[trainerId]);
-    if (Number.isNaN(value) || value < 0) {
-      setMsg({ type: "danger", text: "Please enter a valid trainer session price." });
+    const current = packageInputs[packageId];
+    if (!current) return;
+
+    const price = normalizeNumberInput(current.price);
+    if (price === null || Number.isNaN(price) || price < 0) {
+      setMsg({ type: "danger", text: "Please enter a valid package price." });
       return;
     }
 
-    setBusyKey(`trainer-${trainerId}`);
-    try {
-      const res = await axiosClient.put(`/pricing/trainers/${trainerId}`, {
-        price_per_session: value,
-      });
+    const sessionsCount = normalizeNumberInput(current.sessions_count);
+    if (sessionsCount !== null && Number.isNaN(sessionsCount)) {
+      setMsg({ type: "danger", text: "Sessions count must be a valid number." });
+      return;
+    }
 
-      setMsg({ type: "success", text: res?.data?.message || "Trainer price updated." });
+    const durationMonths = normalizeNumberInput(current.duration_months);
+    if (durationMonths !== null && Number.isNaN(durationMonths)) {
+      setMsg({ type: "danger", text: "Duration months must be a valid number." });
+      return;
+    }
+
+    setBusyKey(`package-${packageId}`);
+    try {
+      const payload = {
+        name: current.name?.trim() || null,
+        package_type: current.package_type?.trim() || null,
+        sessions_count: sessionsCount,
+        duration_months: durationMonths,
+        price,
+      };
+      const res = await axiosClient.put(`/trainer-packages/${packageId}`, payload);
+
+      setMsg({ type: "success", text: res?.data?.message || "Package updated." });
       clearRequestCache();
       await load();
     } catch (e) {
       setMsg({
         type: "danger",
-        text: e?.response?.data?.message || "Failed to update trainer price.",
+        text: e?.response?.data?.message || "Failed to update package.",
       });
     } finally {
       setBusyKey(null);
@@ -157,7 +200,7 @@ export default function AdminPricing() {
       <div className="d-flex align-items-center justify-content-between mb-3">
         <div>
           <h4 className="mb-1">Pricing</h4>
-          <div className="admin-muted">Update subscription prices and trainer session pricing.</div>
+           <div className="admin-muted">Update subscription prices and trainer packages.</div>
         </div>
 
         <button className="btn btn-outline-light" onClick={load} disabled={loading}>
@@ -287,39 +330,110 @@ export default function AdminPricing() {
         </div>
       </div>
 
-      {/* ===== Trainer session pricing ===== */}
+      {/* ===== Trainer packages pricing ===== */}
       <div className="card bg-dark text-light border-secondary">
-        <div className="card-header border-secondary fw-semibold">Trainer Session Pricing</div>
+        <div className="card-header border-secondary fw-semibold">Trainer Packages</div>
 
         <div className="table-responsive">
           <table className="table table-dark table-hover align-middle mb-0">
             <thead>
               <tr>
-                <th>Trainer Name</th>
-                <th style={{ width: 260 }}>Price per Session (MMK)</th>
+                <th>Name</th>
+                <th>Package Type</th>
+                <th style={{ width: 160 }}>Sessions</th>
+                <th style={{ width: 160 }}>Duration (Months)</th>
+                <th style={{ width: 200 }}>Price (MMK)</th>
                 <th style={{ width: 140 }}>Action</th>
               </tr>
             </thead>
 
             <tbody>
-              {trainers.length === 0 ? (
+              {trainerPackages.length === 0 ? (
                 <tr>
-                  <td colSpan="3" className="text-center text-muted py-4">
-                    {loading ? "Loading..." : "No trainers found."}
+                   <td colSpan="6" className="text-center text-muted py-4">
+                    {loading ? "Loading..." : "No trainer packages found."}
                   </td>
                 </tr>
               ) : (
-                trainers.map((t) => (
-                  <tr key={t.id}>
-                    <td>{t.name}</td>
+                                trainerPackages.map((pkg) => {
+                  const id = pkg?.id ?? pkg?.package_id ?? pkg?.packageId;
+                  const input = packageInputs[id] || {};
+                  return (
+                  <tr key={id ?? pkg?.name}>
+                    <td>
+                      <input
+                        className="form-control"
+                        value={input.name ?? ""}
+                        onChange={(e) =>
+                          setPackageInputs((s) => ({
+                            ...s,
+                            [id]: {
+                              ...s[id],
+                              name: e.target.value,
+                            },
+                          }))
+                        }
+                      />
+                    </td>
+                    <td>
+                      <input
+                        className="form-control"
+                        value={input.package_type ?? ""}
+                        onChange={(e) =>
+                          setPackageInputs((s) => ({
+                            ...s,
+                            [id]: {
+                              ...s[id],
+                              package_type: e.target.value,
+                            },
+                          }))
+                        }
+                      />
+                    </td>
+                    <td>
+                      <input
+                        className="form-control"
+                        value={input.sessions_count ?? ""}
+                        onChange={(e) =>
+                          setPackageInputs((s) => ({
+                            ...s,
+                            [id]: {
+                              ...s[id],
+                              sessions_count: e.target.value,
+                            },
+                          }))
+                        }
+                      />
+                    </td>
+                    <td>
+                      <input
+                        className="form-control"
+                        value={input.duration_months ?? ""}
+                        onChange={(e) =>
+                          setPackageInputs((s) => ({
+                            ...s,
+                            [id]: {
+                              ...s[id],
+                              duration_months: e.target.value,
+                            },
+                          }))
+                        }
+                      />
+                    </td>
                     <td>
                       <div className="input-group">
                         <input
                           className="form-control"
-                          value={trainerInputs[t.id] ?? ""}
+                          value={input.price ?? ""}
                           onChange={(e) =>
-                            setTrainerInputs((s) => ({ ...s, [t.id]: e.target.value }))
-                          }
+                            setPackageInputs((s) => ({
+                              ...s,
+                              [id]: {
+                                ...s[id],
+                                price: e.target.value,
+                              },
+                            }))
+                          }                         
                         />
                         <span className="input-group-text">MMK</span>
                       </div>
@@ -327,14 +441,15 @@ export default function AdminPricing() {
                     <td>
                       <button
                         className="btn btn-sm btn-primary"
-                        disabled={busyKey === `trainer-${t.id}`}
-                        onClick={() => updateTrainer(t.id)}
+                        disabled={busyKey === `package-${id}` || id === undefined || id === null}
+                        onClick={() => updatePackage(id)}
                       >
-                        {busyKey === `trainer-${t.id}` ? "Updating..." : "Update"}
+                          {busyKey === `package-${id}` ? "Updating..." : "Update"}
                       </button>
                     </td>
                   </tr>
-                ))
+                 );
+                })
               )}
             </tbody>
           </table>
