@@ -169,7 +169,7 @@ export default function AdminPricing() {
       {/* ===== Subscription plan pricing ===== */}
       <div className="row g-3 mb-4">
                 {/* One Month */}
-        <div className="col-12 col-md-4">
+        <div className="col-12 col-md-3">
           <div className="card bg-dark text-light h-100 border-secondary">
             <div className="card-header border-secondary fw-semibold">One Month Plan</div>
             <div className="card-body">
@@ -198,7 +198,7 @@ export default function AdminPricing() {
         </div>
 
         {/* Three Months */}
-        <div className="col-12 col-md-4">
+        <div className="col-12 col-md-3">
           <div className="card bg-dark text-light h-100 border-secondary">
             <div className="card-header border-secondary fw-semibold">Three Months Plan</div>
             <div className="card-body">
@@ -227,7 +227,7 @@ export default function AdminPricing() {
         </div>
 
          {/* Six Months */}
-        <div className="col-12 col-md-4">
+        <div className="col-12 col-md-3">
           <div className="card bg-dark text-light h-100 border-secondary">
             <div className="card-header border-secondary fw-semibold">Six Months Plan</div>
             <div className="card-body">
@@ -256,7 +256,7 @@ export default function AdminPricing() {
         </div>
 
         {/* Twelve Months */}
-        <div className="col-12 col-md-4">
+        <div className="col-12 col-md-3">
           <div className="card bg-dark text-light h-100 border-secondary">
             <div className="card-header border-secondary fw-semibold">Twelve Months Plan</div>
             <div className="card-body">
