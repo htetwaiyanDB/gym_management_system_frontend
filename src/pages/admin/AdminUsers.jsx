@@ -10,6 +10,7 @@ function normalizeList(payload) {
 }
 
 const emptyCreate = {
+  user_id: "",
   name: "",
   email: "",
   phone: "",
@@ -56,6 +57,11 @@ export default function AdminUsers() {
   const [createForm, setCreateForm] = useState({ ...emptyCreate });
   const [editForm, setEditForm] = useState({ ...emptyEdit });
 
+  const handleCreateUserIdChange = (value) => {
+    const sanitized = value.replace(/\D/g, "").slice(0, 5);
+    setCreateForm((prev) => ({ ...prev, user_id: sanitized }));
+  };
+
   const load = async () => {
     setMsg(null);
     setLoading(true);
@@ -84,7 +90,7 @@ export default function AdminUsers() {
     const q = query.trim().toLowerCase();
     if (!q) return users;
     return users.filter((u) => {
-      const vals = [u?.name, u?.email, u?.phone, u?.role].map((v) =>
+      const vals = [u?.user_id, u?.name, u?.email, u?.phone, u?.role].map((v) =>
         (v || "").toString().toLowerCase()
       );
       return vals.some((v) => v.includes(q));
@@ -118,8 +124,14 @@ export default function AdminUsers() {
     setSavingCreate(true);
 
     try {
+       if (!createForm.user_id) {
+        setMsg({ type: "danger", text: "User ID is required." });
+        setSavingCreate(false);
+        return;
+      }
       // ✅ API route exists: POST /api/admin/register (administrator middleware)
       await axiosClient.post("/admin/register", {
+        user_id: createForm.user_id ? Number(createForm.user_id) : undefined,
         name: createForm.name,
         email: createForm.email,
         phone: createForm.phone,
@@ -299,7 +311,7 @@ export default function AdminUsers() {
         <table className="table table-dark table-hover align-middle mb-0">
           <thead>
             <tr>
-              <th style={{ width: 90 }}>ID</th>
+              <th style={{ width: 120 }}>ID</th>
               <th>Name</th>
               <th>Email</th>
               <th>Phone</th>
@@ -423,6 +435,19 @@ export default function AdminUsers() {
                 </div>
 
                 <div className="modal-body">
+                  <div className="mb-2">
+                    <label className="form-label fw-bold">User ID</label>
+                    <input
+                      className="form-control"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={5}
+                      value={createForm.user_id}
+                      onChange={(e) => handleCreateUserIdChange(e.target.value)}
+                      placeholder="Up to 5 digits"
+                      required
+                    />
+                  </div>
                   <div className="mb-2">
                     <label className="form- fw-bold">Name</label>
                     <input className="form-control" value={createForm.name}
