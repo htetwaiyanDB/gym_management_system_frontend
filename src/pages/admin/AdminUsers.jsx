@@ -21,6 +21,7 @@ const emptyCreate = {
 
 const emptyEdit = {
   id: null,
+  user_id: "",
   name: "",
   email: "",
   phone: "",
@@ -155,6 +156,7 @@ export default function AdminUsers() {
     setMsg(null);
     setEditForm({
       id: u?.id ?? null,
+      user_id: u?.user_id ?? "",
       name: u?.name || "",
       email: u?.email || "",
       phone: u?.phone || "",
@@ -518,6 +520,15 @@ export default function AdminUsers() {
                 </div>
 
                 <div className="modal-body">
+                  <div className="mb-2">
+                    <label className="form-label fw-bold">User ID</label>
+                    <input
+                      className="form-control"
+                      value={editForm.user_id || ""}
+                      disabled
+                      readOnly
+                    />
+                  </div>
                   <div className="mb-2">
                     <label className="form-label fw-bold">Name</label>
                     <input className="form-control" value={editForm.name}
