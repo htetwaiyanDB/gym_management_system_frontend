@@ -69,6 +69,7 @@ export default function AdminTrainerBookings() {
   const [memberId, setMemberId] = useState("");
   const [trainerId, setTrainerId] = useState("");
   const [packageType, setPackageType] = useState("");
+  const [packageGroup, setPackageGroup] = useState("");
   const [priceSource, setPriceSource] = useState("package"); // package | manual
   const [sessionsCount, setSessionsCount] = useState("1");
   const [pricePerSession, setPricePerSession] = useState("");
@@ -76,7 +77,10 @@ export default function AdminTrainerBookings() {
   const [paidStatus, setPaidStatus] = useState("unpaid");
   const [notes, setNotes] = useState("");
 
-  const packageKey = (pkg) => String(pkg?.type || pkg?.name || pkg?.id || "");
+ const packageKey = (pkg) =>
+    String(pkg?.id ?? pkg?.package_id ?? pkg?.packageId ?? pkg?.type ?? pkg?.name ?? "");
+
+  const normalizePackageType = (value) => String(value || "").toLowerCase();
 
   const findSelectedPackage = (list = trainerPackages, selected = packageType) =>
     list.find((pkg) => packageKey(pkg) === selected);
@@ -86,6 +90,7 @@ export default function AdminTrainerBookings() {
     setMemberId("");
     setTrainerId("");
     setPackageType("");
+    setPackageGroup("");
     setSessionsCount("1");
     setPricePerSession(""); // will set default on options load
     setPriceSource("package");
@@ -176,6 +181,7 @@ export default function AdminTrainerBookings() {
       setStatus("pending");
       setPaidStatus("unpaid");
       setPackageType("");
+      setPackageGroup("");
     } catch (e) {
       setMsg({
         type: "danger",
@@ -202,10 +208,15 @@ export default function AdminTrainerBookings() {
     setBusyKey("create");
     try {
   
+      const selectedPackage = findSelectedPackage();
       const payload = {
         member_id: Number(memberId),
         trainer_id: Number(trainerId),
-        package_type: packageType,
+        package_type:
+          selectedPackage?.package_type ??
+          selectedPackage?.type ??
+          selectedPackage?.packageType ??
+          packageType,
         sessions_count: sessions,
         price_per_session: price,
         status,
@@ -267,6 +278,53 @@ export default function AdminTrainerBookings() {
       setPricePerSession(String(selectedPrice));
     }
   }, [packageType, priceSource, trainerPackages]);
+
+    const packagesByType = useMemo(() => {
+    if (!Array.isArray(trainerPackages)) {
+      return { personal: [], monthly: [], duo: [] };
+    }
+    return {
+      personal: trainerPackages.filter(
+        (pkg) => normalizePackageType(pkg?.package_type ?? pkg?.type) === "personal"
+      ),
+      monthly: trainerPackages.filter(
+        (pkg) => normalizePackageType(pkg?.package_type ?? pkg?.type) === "monthly"
+      ),
+      duo: trainerPackages.filter(
+        (pkg) => normalizePackageType(pkg?.package_type ?? pkg?.type) === "duo"
+      ),
+    };
+  }, [trainerPackages]);
+
+  const handlePackageSelect = (group) => (event) => {
+    const value = event.target.value;
+    setPackageType(value);
+    setPackageGroup(value ? group : "");
+    setPriceSource("package");
+  };
+
+  const renderPackageOptions = (packages, fallbackLabel) =>
+    packages.length > 0 ? (
+      packages.map((pkg) => {
+        const key = packageKey(pkg);
+        const label =
+          pkg?.name ||
+          pkg?.title ||
+          (pkg?.sessions_count ? `${pkg.sessions_count} Sessions` : null) ||
+          (pkg?.duration_months ? `${pkg.duration_months} Months` : null) ||
+          (pkg?.id ? `Package #${pkg.id}` : "Package");
+        const priceLabel = moneyMMK(pkg?.price_per_session ?? pkg?.price ?? pkg?.amount);
+        return (
+          <option key={key} value={key}>
+            {label} {priceLabel !== "-" ? `- ${priceLabel}` : ""}
+          </option>
+        );
+      })
+    ) : (
+      <option value="" disabled>
+        No {fallbackLabel} packages
+      </option>
+    );
 
 
   const statusBadge = (s) => {
@@ -494,40 +552,78 @@ export default function AdminTrainerBookings() {
                     </select>
                   </div>
 
-                  <div className="col-12 col-md-6">
-                   <label className="form-label fw-bold">Package Type</label>
-                    <select
-                      className="form-select bg-dark"
-                      value={packageType}
-                        onChange={(e) => {
-                        setPackageType(e.target.value);
-                        setPriceSource("package");
-                      }}
-                      disabled={optionsLoading || packagesLoading}
-                   >
-                      <option value="" className="fw-bold text-white">Select package type</option>
-                        {trainerPackages.length > 0
-                        ? trainerPackages.map((pkg) => {
-                          const key = packageKey(pkg);
-                          const label =
-                            pkg?.name ||
-                            pkg?.type ||
-                            (pkg?.id ? `Package #${pkg.id}` : "Package");
-                          const priceLabel = moneyMMK(
-                            pkg?.price_per_session ?? pkg?.price ?? pkg?.amount
-                          );
-                          return (
-                            <option key={key} value={key}>
-                              {label} {priceLabel !== "-" ? `- ${priceLabel}` : ""}
-                            </option>
-                          );
-                        })
-                        : packageTypeOptions.map((type) => (
-                          <option key={type} value={type}>
-                            {type.charAt(0).toUpperCase() + type.slice(1)}
+                    <div className="col-12">
+                    <label className="form-label fw-bold">Package Type</label>
+                    <div className="row g-2">
+                      <div className="col-12 col-md-4">
+                        <label className="form-label admin-muted">Personal</label>
+                        <select
+                          className="form-select bg-dark"
+                          value={packageGroup === "personal" ? packageType : ""}
+                          onChange={handlePackageSelect("personal")}
+                          disabled={optionsLoading || packagesLoading}
+                        >
+                          <option value="" className="fw-bold text-white">
+                            Select personal package
                           </option>
-                        ))}
-                    </select>
+                    {trainerPackages.length > 0
+                            ? renderPackageOptions(packagesByType.personal, "personal")
+                            : packageTypeOptions
+                              .filter((type) => normalizePackageType(type) === "personal")
+                              .map((type) => (
+                                <option key={type} value={type}>
+                                  {type.charAt(0).toUpperCase() + type.slice(1)}
+                                </option>
+                              ))}
+                        </select>
+                      </div>
+
+                      <div className="col-12 col-md-4">
+                        <label className="form-label admin-muted">Monthly</label>
+                        <select
+                          className="form-select bg-dark"
+                          value={packageGroup === "monthly" ? packageType : ""}
+                          onChange={handlePackageSelect("monthly")}
+                          disabled={optionsLoading || packagesLoading}
+                        >
+                          <option value="" className="fw-bold text-white">
+                            Select monthly package
+                          </option>
+                          {trainerPackages.length > 0
+                            ? renderPackageOptions(packagesByType.monthly, "monthly")
+                            : packageTypeOptions
+                              .filter((type) => normalizePackageType(type) === "monthly")
+                              .map((type) => (
+                                <option key={type} value={type}>
+                                  {type.charAt(0).toUpperCase() + type.slice(1)}
+                                </option>
+                              ))}
+                        </select>
+                      </div>
+
+                      <div className="col-12 col-md-4">
+                        <label className="form-label admin-muted">Duo</label>
+                        <select
+                          className="form-select bg-dark"
+                          value={packageGroup === "duo" ? packageType : ""}
+                          onChange={handlePackageSelect("duo")}
+                          disabled={optionsLoading || packagesLoading}
+                        >
+                          <option value="" className="fw-bold text-white">
+                            Select duo package
+                          </option>
+                          {trainerPackages.length > 0
+                            ? renderPackageOptions(packagesByType.duo, "duo")
+                            : packageTypeOptions
+                              .filter((type) => normalizePackageType(type) === "duo")
+                              .map((type) => (
+                                <option key={type} value={type}>
+                                  {type.charAt(0).toUpperCase() + type.slice(1)}
+                                </option>
+                              ))}
+                        </select>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="col-12 col-md-6">
