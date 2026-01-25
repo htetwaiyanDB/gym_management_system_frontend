@@ -66,8 +66,11 @@ function getSessionProgress(booking) {
     booking?.sessions_used ?? booking?.sessions_completed ?? booking?.used_sessions
   );
 
+  if (remaining !== null) {
+    return { total: total ?? null, remaining: Math.max(0, remaining) };
+  }
+
   if (total === null) return { total: null, remaining: null };
-  if (remaining !== null) return { total, remaining: Math.max(0, remaining) };
   if (used !== null) return { total, remaining: Math.max(0, total - used) };
 
   if (isCompletedStatus(booking?.status) && total !== null) {
@@ -312,8 +315,7 @@ export default function TrainerBooking() {
             const bookingId = b?.id ?? i;
             const { total: totalSessions, remaining: remainingSessions } = getSessionProgress(b);
             const isCompleted =
-              (totalSessions !== null && remainingSessions === 0) ||
-              isCompletedStatus(b?.status);
+                remainingSessions === 0 || isCompletedStatus(b?.status);
             return (
             <div
               key={bookingId}
@@ -385,8 +387,10 @@ export default function TrainerBooking() {
                     </div>
                     <div className="d-flex justify-content-between">
                       <span style={{ opacity: 0.8 }}>Sessions</span>
-                        <span>
-                        {totalSessions === null
+                         <span>
+                        {totalSessions === null && remainingSessions !== null
+                          ? `${remainingSessions} / —`
+                          : totalSessions === null
                           ? b?.sessions_count ?? "—"
                           : `${remainingSessions ?? "—"} / ${totalSessions}`}
                       </span>
