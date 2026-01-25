@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axiosClient from "../../api/axiosClient";
+import axiosClient, { clearRequestCache } from "../../api/axiosClient";
 
 function moneyMMK(v) {
   if (v === null || v === undefined || v === "") return "-";
@@ -35,7 +35,7 @@ export default function AdminPricing() {
     setLoading(true);
 
     try {
-      const res = await axiosClient.get("/pricing");
+      const res = await axiosClient.get("/pricing", { cache: false });
       const p = res.data?.subscription_prices || {};
 
       const oneMonth = p.one_month ?? "";
@@ -112,6 +112,7 @@ export default function AdminPricing() {
         setMsg({ type: "success", text: res?.data?.message || "Twelve-month price updated." });
       }
 
+      clearRequestCache();
       await load();
     } catch (e) {
       setMsg({
@@ -139,6 +140,7 @@ export default function AdminPricing() {
       });
 
       setMsg({ type: "success", text: res?.data?.message || "Trainer price updated." });
+      clearRequestCache();
       await load();
     } catch (e) {
       setMsg({
