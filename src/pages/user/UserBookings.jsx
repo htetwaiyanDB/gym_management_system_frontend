@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import axiosClient from "../../api/axiosClient";
 
 /* ------------ helpers ------------ */
@@ -58,6 +58,26 @@ function fmtDateTime(v) {
   });
 }
 
+function toNumber(value) {
+  const n = Number(value);
+  return Number.isNaN(n) ? null : n;
+}
+
+function getSessionProgress(booking) {
+  const total = toNumber(pick(booking, ["sessions_count", "session_count", "sessions"]));
+  const remaining = toNumber(
+    pick(booking, ["sessions_remaining", "remaining_sessions", "sessions_left"])
+  );
+  const used = toNumber(pick(booking, ["sessions_used", "sessions_completed", "used_sessions"]));
+
+  if (total === null) return { total: null, remaining: null };
+
+  if (remaining !== null) return { total, remaining: Math.max(0, remaining) };
+  if (used !== null) return { total, remaining: Math.max(0, total - used) };
+
+  return { total, remaining: total };
+}
+
 
 function titleize(s) {
   return String(s || "")
@@ -94,47 +114,65 @@ export default function UserBookings() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [msg, setMsg] = useState(null);
+  const [busyKey, setBusyKey] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
 
   // Optional filter like TrainerBookings
   const [filter, setFilter] = useState("all");
 
-  useEffect(() => {
-    let alive = true;
+  const fetchBookings = useCallback(async () => {
+    setMsg(null);
+    setLoading(true);
+    setError("");
 
-    (async () => {
-      try {
-        setLoading(true);
-        setError("");
+    try {
+      const res = await axiosClient.get("/user/bookings");
+      console.log("GET /user/bookings RESPONSE:", res?.data);
 
-        const res = await axiosClient.get("/user/bookings");
-        console.log("GET /user/bookings RESPONSE:", res?.data);
+      const list = normalizeBookings(res?.data);
 
-        const list = normalizeBookings(res?.data);
+      const sorted = [...list].sort((a, b) => {
+        const da = new Date(
+          pick(a, ["created_at", "booking_date", "date", "start_time", "starts_at"]) || 0
+        ).getTime();
+        const db = new Date(
+          pick(b, ["created_at", "booking_date", "date", "start_time", "starts_at"]) || 0
+        ).getTime();
+        return db - da;
+      });
 
-        const sorted = [...list].sort((a, b) => {
-          const da = new Date(
-            pick(a, ["created_at", "booking_date", "date", "start_time", "starts_at"]) || 0
-          ).getTime();
-          const db = new Date(
-            pick(b, ["created_at", "booking_date", "date", "start_time", "starts_at"]) || 0
-          ).getTime();
-          return db - da;
-        });
-
-        if (alive) setItems(sorted);
-      } catch (e) {
-        console.log("GET /user/bookings ERROR:", e?.response?.data || e);
-        if (alive) setError(e?.response?.data?.message || "Failed to load bookings.");
-      } finally {
-        if (alive) setLoading(false);
-      }
-    })();
-
-    return () => {
-      alive = false;
-    };
+      setItems(sorted);
+    } catch (e) {
+      console.log("GET /user/bookings ERROR:", e?.response?.data || e);
+      setError(e?.response?.data?.message || "Failed to load bookings.");
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchBookings();
+  }, [fetchBookings]);
+
+  const confirmSession = async (bookingId) => {
+    if (!bookingId) return;
+    setMsg(null);
+    setBusyKey(`confirm-${bookingId}`);
+    try {
+      const res = await axiosClient.post(`/user/bookings/${bookingId}/confirm-session`);
+      setMsg({ type: "success", text: res?.data?.message || "Session confirmed." });
+      await fetchBookings();
+    } catch (e) {
+      setMsg({
+        type: "danger",
+        text: e?.response?.data?.message || "Failed to confirm session.",
+      });
+    } finally {
+      setBusyKey(null);
+    }
+  };
+
 
   const filtered = useMemo(() => {
     if (filter === "all") return items;
@@ -166,6 +204,8 @@ export default function UserBookings() {
       </div>
 
       {loading && <p>Loading bookings...</p>}
+
+      {msg && <div className={`alert alert-${msg.type}`}>{msg.text}</div>}
 
       {!loading && error && (
         <div className="alert alert-danger" style={{ fontWeight: 600 }}>
@@ -210,6 +250,8 @@ export default function UserBookings() {
               "starts_at",
             ]) || pick(b, ["booking_date", "date"]);
           const sessionsCount = pick(b, ["sessions_count", "session_count", "sessions"]);
+          const { total: totalSessions, remaining: remainingSessions } = getSessionProgress(b);
+          const isCompleted = totalSessions !== null && remainingSessions === 0;
 
           const note = pick(b, ["note", "remark", "message", "description"]);
 
@@ -283,7 +325,11 @@ export default function UserBookings() {
                 
                   <div className="d-flex justify-content-between" style={{ gap: 12 }}>
                      <span style={{ opacity: 0.8 }}>Sessions</span>
-                    <b style={{ textAlign: "right" }}>{toText(sessionsCount)}</b>
+                      <b style={{ textAlign: "right" }}>
+                      {totalSessions === null
+                        ? toText(sessionsCount)
+                        : `${remainingSessions ?? "—"} / ${totalSessions}`}
+                    </b>
                   </div>
            
 
@@ -291,6 +337,19 @@ export default function UserBookings() {
                   <div className="d-flex justify-content-between" style={{ gap: 12 }}>
                      <span style={{ opacity: 0.8 }}>Status</span>
                     <b style={{ textAlign: "right" }}>{toText(status)}</b>
+                  </div>
+
+                  
+                  <div className="d-flex justify-content-between align-items-center" style={{ gap: 12 }}>
+                    <span style={{ opacity: 0.8 }}>Session confirmation</span>
+                    <button
+                      className="btn btn-sm btn-outline-info"
+                      onClick={() => confirmSession(id)}
+                      disabled={isCompleted || busyKey === `confirm-${id}`}
+                      title={isCompleted ? "All sessions completed" : "Confirm this session"}
+                    >
+                      {busyKey === `confirm-${id}` ? "..." : "Confirm"}
+                    </button>
                   </div>
              
 

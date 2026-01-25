@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import axiosClient from "../../api/axiosClient";
 import { FaCalendar, FaClock, FaPhoneAlt, FaUser } from "react-icons/fa";
 
@@ -42,6 +42,29 @@ function pad2(n) {
 
 function formatISODate(d) {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+function toNumber(value) {
+  const n = Number(value);
+  return Number.isNaN(n) ? null : n;
+}
+
+function getSessionProgress(booking) {
+  const total = toNumber(
+    booking?.sessions_count ?? booking?.session_count ?? booking?.sessions
+  );
+  const remaining = toNumber(
+    booking?.sessions_remaining ?? booking?.remaining_sessions ?? booking?.sessions_left
+  );
+  const used = toNumber(
+    booking?.sessions_used ?? booking?.sessions_completed ?? booking?.used_sessions
+  );
+
+  if (total === null) return { total: null, remaining: null };
+  if (remaining !== null) return { total, remaining: Math.max(0, remaining) };
+  if (used !== null) return { total, remaining: Math.max(0, total - used) };
+
+  return { total, remaining: total };
 }
 
 /** ✅ UPDATED: supports session_datetime + more fallbacks */
@@ -99,6 +122,9 @@ export default function TrainerBooking() {
   const isMobile = useMemo(() => window.innerWidth < 768, []);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [msg, setMsg] = useState(null);
+  const [busyKey, setBusyKey] = useState(null);
+  
 
   const [bookings, setBookings] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
@@ -107,9 +133,10 @@ export default function TrainerBooking() {
   const [search, setSearch] = useState("");
   const [date, setDate] = useState("");
 
-  const fetchBookings = async () => {
+ const fetchBookings = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setMsg(null);
 
     try {
       // ✅ UPDATED ENDPOINT
@@ -120,11 +147,30 @@ export default function TrainerBooking() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchBookings();
-  }, []);
+ }, [fetchBookings]);
+
+  const confirmSession = async (bookingId) => {
+    if (!bookingId) return;
+    setMsg(null);
+    setBusyKey(`confirm-${bookingId}`);
+    try {
+      const res = await axiosClient.post(`/trainer/subscriptions/${bookingId}/confirm-session`);
+      setMsg({ type: "success", text: res?.data?.message || "Session confirmed." });
+      await fetchBookings();
+    } catch (e) {
+      setMsg({
+        type: "danger",
+        text: e?.response?.data?.message || "Failed to confirm session.",
+      });
+    } finally {
+      setBusyKey(null);
+    }
+  };
+
 
   const filtered = useMemo(() => {
     return bookings.filter((b) => {
@@ -242,6 +288,9 @@ export default function TrainerBooking() {
 
       {error && <div className="alert alert-danger">{error}</div>}
 
+      {msg && <div className={`alert alert-${msg.type}`}>{msg.text}</div>}
+
+
       {/* List */}
       {loading ? (
         <div style={cardStyle}>Loading bookings...</div>
@@ -251,6 +300,8 @@ export default function TrainerBooking() {
         <div className="d-flex flex-column gap-2">
           {filtered.map((b, i) => {
             const bookingId = b?.id ?? i;
+            const { total: totalSessions, remaining: remainingSessions } = getSessionProgress(b);
+            const isCompleted = totalSessions !== null && remainingSessions === 0;
             return (
             <div
               key={bookingId}
@@ -322,7 +373,11 @@ export default function TrainerBooking() {
                     </div>
                     <div className="d-flex justify-content-between">
                       <span style={{ opacity: 0.8 }}>Sessions</span>
-                      <span>{b?.sessions_count ?? "—"}</span>
+                        <span>
+                        {totalSessions === null
+                          ? b?.sessions_count ?? "—"
+                          : `${remainingSessions ?? "—"} / ${totalSessions}`}
+                      </span>
                     </div>
                     <div className="d-flex justify-content-between">
                       <span style={{ opacity: 0.8 }}>Duration</span>
@@ -331,6 +386,17 @@ export default function TrainerBooking() {
                     <div className="d-flex justify-content-between">
                       <span style={{ opacity: 0.8 }}>Status</span>
                       <span>{String(b?.status || "—")}</span>
+                    </div>
+                    <div className="d-flex justify-content-between align-items-center">
+                      <span style={{ opacity: 0.8 }}>Session confirmation</span>
+                      <button
+                        className="btn btn-sm btn-outline-info"
+                        onClick={() => confirmSession(bookingId)}
+                        disabled={isCompleted || busyKey === `confirm-${bookingId}`}
+                        title={isCompleted ? "All sessions completed" : "Confirm this session"}
+                      >
+                        {busyKey === `confirm-${bookingId}` ? "..." : "Confirm"}
+                      </button>
                     </div>
                   </div>
 
