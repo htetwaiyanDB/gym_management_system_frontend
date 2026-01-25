@@ -311,7 +311,7 @@ export default function AdminUsers() {
         <table className="table table-dark table-hover align-middle mb-0">
           <thead>
             <tr>
-              <th style={{ width: 120 }}>ID</th>
+              <th style={{ width: 120 }}>User ID</th>
               <th>Name</th>
               <th>Email</th>
               <th>Phone</th>
@@ -330,12 +330,14 @@ export default function AdminUsers() {
               </tr>
             ) : (
               pageItems.map((u) => {
-                const id = u?.id ?? u?.user_id;
+                const systemId = u?.id ?? null;
+                const userId = u?.user_id ?? "-";
+                const rowKey = systemId ?? userId ?? Math.random();
                 const isDeleted = !!u?.deleted_at;
 
                 return (
-                  <tr key={id ?? Math.random()}>
-                    <td>{id ?? "-"}</td>
+                   <tr key={rowKey}>
+                    <td>{userId}</td>
                     <td>{u?.name ?? "-"}</td>
                     <td className="text-break">{u?.email ?? "-"}</td>
                     <td>{u?.phone ?? "-"}</td>
@@ -376,7 +378,7 @@ export default function AdminUsers() {
     {isDeleted ? (
       <button
         className="btn btn-sm btn-outline-warning"
-        onClick={() => restore(id)}
+        onClick={() => restore(systemId ?? userId)}
         style={{ minWidth: 70 }}
       >
         Restore
@@ -384,7 +386,7 @@ export default function AdminUsers() {
     ) : (
       <button
         className="btn btn-sm btn-outline-danger"
-        onClick={() => destroy(id)}
+        onClick={() => destroy(systemId ?? userId)}
         style={{ minWidth: 70 }}
       >
         Delete
