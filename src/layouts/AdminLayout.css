@@ -2,6 +2,7 @@
 .admin-shell {
   min-height: 100vh;
   position: relative;
+  --admin-sidebar-width: 270px;
   background-image: url("https://images.unsplash.com/photo-1571902943202-507ec2618e8f");
   background-size: cover;
   background-position: center;
@@ -23,7 +24,9 @@
 .admin-sidebar {
   position: relative;
   z-index: 1;
-  width: 270px;
+  width: var(--admin-sidebar-width);
+  min-width: var(--admin-sidebar-width);
+  flex: 0 0 var(--admin-sidebar-width);
   background: rgba(18, 18, 20, 0.55);
   border-right: 1px solid rgba(255,255,255,0.12);
   backdrop-filter: blur(16px);
