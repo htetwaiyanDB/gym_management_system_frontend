@@ -329,6 +329,24 @@ export default function AdminTrainerBookings() {
     }
   };
 
+ const markHold = async (id) => {
+    setMsg(null);
+    setBusyKey(`hold-${id}`);
+    try {
+      const res = await axiosClient.patch(`/trainer-bookings/${id}/mark-hold`);
+      setMsg({ type: "success", text: res?.data?.message || "Moved to pending." });
+      await loadBookings();
+    } catch (e) {
+      setMsg({
+        type: "danger",
+        text: e?.response?.data?.message || "Failed to mark as pending.",
+      });
+    } finally {
+      setBusyKey(null);
+    }
+  };
+
+
   useEffect(() => {
     loadBookings();
   }, []);
@@ -409,6 +427,7 @@ export default function AdminTrainerBookings() {
 
   const statusBadge = (s) => {
     const v = String(s || "").toLowerCase();
+    if (v === "active") return <span className="badge bg-info text-dark">Active</span>;
     if (v === "confirmed") return <span className="badge bg-success">Confirmed</span>;
     if (v === "cancelled") return <span className="badge bg-secondary">Cancelled</span>;
     return <span className="badge bg-warning text-dark">Pending</span>;
@@ -542,6 +561,9 @@ export default function AdminTrainerBookings() {
                 const { total, remaining } = getSessionProgress(b);
                 const monthCount = getMonthCount(b);
                 const isCompleted = (total !== null && remaining === 0) || isCompletedStatus(b?.status);
+                const statusValue = String(b?.status || "").toLowerCase();
+                const isPending = statusValue === "pending";
+                const isActive = statusValue === "active";
                 const sessionDisplay =
                   monthCount !== null ? "-" : total === null ? "-" : `${remaining ?? "-"} / ${total}`;
 
@@ -562,14 +584,31 @@ export default function AdminTrainerBookings() {
                     <td>{paidBadge(b.paid_status)}</td>
 
                     <td>
-                       <button
-                        className="btn btn-sm btn-outline-info me-2"
-                        disabled={isCompleted || busyKey === `active-${b.id}`}
-                        onClick={() => markActive(b.id)}
-                        title={isCompleted ? "All sessions completed" : "Mark booking as active"}
-                      >
-                        {busyKey === `active-${b.id}` ? "..." : "Active"}
-                      </button>
+                      {isActive ? (
+                        <button
+                          className="btn btn-sm btn-outline-warning me-2"
+                          disabled={isCompleted || busyKey === `hold-${b.id}`}
+                          onClick={() => markHold(b.id)}
+                          title={isCompleted ? "All sessions completed" : "Move back to pending"}
+                        >
+                          {busyKey === `hold-${b.id}` ? "..." : "Hold"}
+                        </button>
+                      ) : (
+                        <button
+                          className="btn btn-sm btn-outline-info me-2"
+                          disabled={isCompleted || !isPending || busyKey === `active-${b.id}`}
+                          onClick={() => markActive(b.id)}
+                          title={
+                            isCompleted
+                              ? "All sessions completed"
+                              : isPending
+                                ? "Mark booking as active"
+                                : "Only pending bookings can be activated"
+                          }
+                        >
+                          {busyKey === `active-${b.id}` ? "..." : "Active"}
+                        </button>
+                      )}
                       <button
                         className="btn btn-sm btn-success"
                         disabled={isPaid || busyKey === `paid-${b.id}`}
