@@ -39,7 +39,7 @@ axiosClient.interceptors.request.use((config) => {
   if (token) config.headers.Authorization = `Bearer ${token}`;
 
   const method = config.method?.toLowerCase();
-  const cacheEnabled = method === "get" && config.cache !== false;
+  const cacheEnabled = method === "get" && config.cache;
   if (cacheEnabled) {
     const ttlMs =
       typeof config.cache === "object" && Number.isFinite(config.cache.ttlMs)
