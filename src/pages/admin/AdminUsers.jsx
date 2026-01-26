@@ -222,7 +222,7 @@ export default function AdminUsers() {
 
     setMsg(null);
     try {
-      await axiosClient.delete(`/users/${id}`);
+      await axiosClient.delete(`/users/${id}/force`);
       setMsg({ type: "success", text: "User deleted." });
       await load();
     } catch (e) {

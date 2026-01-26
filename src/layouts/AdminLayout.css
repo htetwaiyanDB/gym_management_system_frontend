@@ -23,17 +23,11 @@
 .admin-sidebar {
   position: relative;
   z-index: 1;
-  width: 76px;
+  width: 270px;
   background: rgba(18, 18, 20, 0.55);
   border-right: 1px solid rgba(255,255,255,0.12);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-   transition: width 0.25s ease;
-  overflow-x: hidden;
-}
-
-.admin-sidebar:hover {
-  width: 270px;
 }
 
 .admin-brand {
@@ -47,32 +41,6 @@
   font-size: 0.9rem;
 }
 
-.admin-brand,
-.admin-subtitle,
-.admin-link-text,
-.admin-logout-text {
-  white-space: nowrap;
-}
-
-.admin-sidebar .admin-brand,
-.admin-sidebar .admin-subtitle,
-.admin-sidebar .admin-link-text,
-.admin-sidebar .admin-logout-text {
-  opacity: 0;
-  width: 0;
-  overflow: hidden;
-  transition: opacity 0.2s ease, width 0.25s ease;
-}
-
-.admin-sidebar:hover .admin-brand,
-.admin-sidebar:hover .admin-subtitle,
-.admin-sidebar:hover .admin-link-text,
-.admin-sidebar:hover .admin-logout-text {
-  opacity: 1;
-  width: auto;
-}
-
-
 /* Sidebar links */
 .admin-link {
   display: flex;
@@ -83,11 +51,6 @@
   color: rgba(255,255,255,0.80);
   text-decoration: none;
   border: 1px solid transparent;
-  transition: justify-content 0.2s ease, background 0.2s ease;
-}
-
-.admin-sidebar:not(:hover) .admin-link {
-  justify-content: center;
 }
 
 .admin-link:hover {
@@ -100,11 +63,6 @@
   color: rgba(255,255,255,0.98);
   background: rgba(255,255,255,0.12);
   border-color: rgba(255,255,255,0.16);
-}
-
-.admin-sidebar:not(:hover) .admin-logout {
-  padding-left: 0.5rem;
-  padding-right: 0.5rem;
 }
 
 /* Main content glass panel */
