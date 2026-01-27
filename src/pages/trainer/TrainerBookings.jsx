@@ -91,9 +91,9 @@ function getSessionProgress(booking) {
 function getPackageType(booking) {
   return (
     pick(booking, ["package_type", "package_type_name", "package_category", "package_kind"]) ||
-    pick(booking?.package, ["type", "name", "title"]) ||
-    pick(booking?.trainer_package, ["type", "name", "title"]) ||
-    pick(booking?.package_detail, ["type", "name", "title"]) ||
+    pick(booking?.package, ["type", "package_type", "package_kind", "package_category"]) ||
+    pick(booking?.trainer_package, ["type", "package_type", "package_kind", "package_category"]) ||
+    pick(booking?.package_detail, ["type", "package_type", "package_kind", "package_category"]) ||
     "—"
   );
 }

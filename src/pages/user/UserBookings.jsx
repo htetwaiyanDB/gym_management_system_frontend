@@ -262,9 +262,9 @@ export default function UserBookings() {
 
           const packageType =
             pick(b, ["package_type", "package_type_name", "package_category", "package_kind"]) ||
-            pick(b?.package, ["type", "name", "title"]) ||
-            pick(b?.trainer_package, ["type", "name", "title"]) ||
-            pick(b?.package_detail, ["type", "name", "title"]) ||
+            pick(b?.package, ["type", "package_type", "package_kind", "package_category"]) ||
+            pick(b?.trainer_package, ["type", "package_type", "package_kind", "package_category"]) ||
+            pick(b?.package_detail, ["type", "package_type", "package_kind", "package_category"]) ||
             "—";
 
 
