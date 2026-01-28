@@ -93,6 +93,25 @@ function getMonthCount(booking) {
   return toNumber(monthValue);
 }
 
+function formatDateInputValue(date) {
+  if (!date) return "";
+  const y = date.getFullYear();
+  const m = pad2(date.getMonth() + 1);
+  const d = pad2(date.getDate());
+  return `${y}-${m}-${d}`;
+}
+
+function addMonthsToDate(baseDate, months) {
+  if (!baseDate || months === null || months === undefined) return null;
+  const date = new Date(baseDate.getTime());
+  const day = date.getDate();
+  date.setMonth(date.getMonth() + months);
+  if (date.getDate() < day) {
+    date.setDate(0);
+  }
+  return date;
+}
+
 
 export default function AdminTrainerBookings() {
   const [loading, setLoading] = useState(false);
@@ -135,6 +154,8 @@ export default function AdminTrainerBookings() {
   const [status, setStatus] = useState("pending");
   const [paidStatus, setPaidStatus] = useState("unpaid");
   const [notes, setNotes] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
  const packageKey = (pkg) =>
     String(pkg?.id ?? pkg?.package_id ?? pkg?.packageId ?? pkg?.type ?? pkg?.name ?? "");
@@ -161,6 +182,8 @@ export default function AdminTrainerBookings() {
     setStatus("pending");
     setPaidStatus("unpaid");
     setNotes("");
+    setStartDate("");
+    setEndDate("");
   };
 
   const total = useMemo(() => {
@@ -266,6 +289,8 @@ export default function AdminTrainerBookings() {
     if (!memberId) return setMsg({ type: "danger", text: "Please select a member." });
     if (!trainerId) return setMsg({ type: "danger", text: "Please select a trainer." });
     if (!packageType) return setMsg({ type: "danger", text: "Please select a package type." });
+    if (!startDate) return setMsg({ type: "danger", text: "Please select a start date." });
+    if (!endDate) return setMsg({ type: "danger", text: "Please select an end date." });
 
     const sessions = Number(sessionsCount);
     const price = Number(pricePerSession);
@@ -296,6 +321,8 @@ export default function AdminTrainerBookings() {
         status,
         paid_status: paidStatus,
         notes: notes || null,
+        start_date: startDate,
+        end_date: endDate,
       };
 
       const res = await axiosClient.post("/trainer-bookings", payload);
@@ -380,6 +407,16 @@ export default function AdminTrainerBookings() {
   const selectedPackageCount =
     selectedPackage?.duration_months ?? selectedPackage?.sessions_count ?? "";
   const countLabel = selectedPackage?.duration_months ? "Month Count" : "Session Count";
+  const durationMonths = useMemo(() => {
+    const value = toNumber(
+      selectedPackage?.duration_months ??
+        selectedPackage?.months_count ??
+        selectedPackage?.month_count
+    );
+    if (value !== null) return value;
+    const fallbackSessions = toNumber(selectedPackage?.sessions_count ?? sessionsCount);
+    return fallbackSessions !== null ? 1 : null;
+  }, [selectedPackage, sessionsCount]);
 
   useEffect(() => {
     if (!packageType) return;
@@ -390,10 +427,20 @@ export default function AdminTrainerBookings() {
     if (!Number.isNaN(selectedPrice)) {
       setPricePerSession(String(selectedPrice));
     }
-   if (selectedPackageCount) {
+    if (selectedPackageCount) {
       setSessionsCount(String(selectedPackageCount));
     }
   }, [packageType, priceSource, selectedPackage, selectedPackageCount]);
+
+  useEffect(() => {
+    if (!startDate) return;
+    if (durationMonths === null) return;
+    const baseDate = new Date(`${startDate}T00:00:00`);
+    if (Number.isNaN(baseDate.getTime())) return;
+    const nextDate = addMonthsToDate(baseDate, durationMonths);
+    if (!nextDate) return;
+    setEndDate(formatDateInputValue(nextDate));
+  }, [startDate, durationMonths]);
 
     const packagesByType = useMemo(() => {
     if (!Array.isArray(trainerPackages)) {
@@ -626,6 +673,8 @@ export default function AdminTrainerBookings() {
               <th>Trainer</th>
               <th>Trainer Phone</th>
               <th>Paid Time</th>
+              <th>Start Date</th>
+              <th>End Date</th>
               <th style={{ width: 100 }}>Sessions</th>
               <th style={{ width: 100 }}>Months</th>
               <th style={{ width: 120 }}>Total</th>
@@ -638,7 +687,7 @@ export default function AdminTrainerBookings() {
           <tbody>
             {filteredBookings.length === 0 ? (
               <tr>
-                <td colSpan="12" className="text-center text-muted py-4">
+                <td colSpan="14" className="text-center text-muted py-4">
                   {loading ? "Loading..." : "No bookings found."}
                 </td>
               </tr>
@@ -664,6 +713,8 @@ export default function AdminTrainerBookings() {
                     <td>{b.trainer_phone || "-"}</td>
 
                     <td>{b.paid_at ? formatDateTimeVideoStyle(b.paid_at) : "-"}</td>
+                    <td>{b.start_date ? formatDateTimeVideoStyle(b.start_date) : "-"}</td>
+                    <td>{b.end_date ? formatDateTimeVideoStyle(b.end_date) : "-"}</td>
 
                     <td>{sessionDisplay}</td>
                     <td>{monthCount === null ? "-" : monthCount}</td>
@@ -853,6 +904,33 @@ export default function AdminTrainerBookings() {
                       onChange={(e) => setSessionsCount(e.target.value)}
                       disabled={optionsLoading}
                     />
+                  </div>
+
+                  <div className="col-12 col-md-6">
+                    <label className="form-label fw-bold">Start Date</label>
+                    <input
+                      type="date"
+                      className="form-control"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      disabled={optionsLoading}
+                    />
+                  </div>
+
+                  <div className="col-12 col-md-6">
+                    <label className="form-label fw-bold">End Date</label>
+                    <input
+                      type="date"
+                      className="form-control"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      disabled={optionsLoading || durationMonths !== null}
+                    />
+                    <div className="admin-muted mt-1">
+                      {durationMonths !== null
+                        ? `Duration: ${durationMonths} month${durationMonths === 1 ? "" : "s"}`
+                        : "Set end date manually"}
+                    </div>
                   </div>
 
                   <div className="col-12 col-md-6">
