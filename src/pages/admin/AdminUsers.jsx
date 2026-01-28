@@ -132,7 +132,7 @@ export default function AdminUsers() {
       }
       // ✅ API route exists: POST /api/admin/register (administrator middleware)
       await axiosClient.post("/admin/register", {
-        user_id: createForm.user_id ? Number(createForm.user_id) : undefined,
+        user_id: createForm.user_id || undefined,
         name: createForm.name,
         email: createForm.email,
         phone: createForm.phone,
