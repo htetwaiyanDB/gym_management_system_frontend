@@ -42,6 +42,23 @@ function nowIsoLocal() {
   );
 }
 
+function formatDateTimeForApi(localValue) {
+  if (!localValue) return "";
+  const d = new Date(localValue);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n) => String(n).padStart(2, "0");
+  const offsetMinutes = -d.getTimezoneOffset();
+  const sign = offsetMinutes >= 0 ? "+" : "-";
+  const absMinutes = Math.abs(offsetMinutes);
+  const offsetHours = Math.floor(absMinutes / 60);
+  const offsetMins = absMinutes % 60;
+  return (
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
+    `T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}` +
+    `${sign}${pad(offsetHours)}:${pad(offsetMins)}`
+  );
+}
+
 function computeStatus(post) {
   // expected fields from admin API:
   // - published_at (nullable)
@@ -200,10 +217,11 @@ export default function AdminBlogs() {
       // - checkbox "Publish immediately"
       // - Publish Date (optional)
       form.append("publish_immediately", publishImmediately ? "1" : "0");
-     const effectivePublishDate = getPublishDateValue();
-      if (effectivePublishDate) {
+      const effectivePublishDate = getPublishDateValue();
+      const publishDateValue = formatDateTimeForApi(effectivePublishDate);
+      if (publishDateValue) {
         // send as ISO-ish string; backend can parse
-    form.append("publish_date", effectivePublishDate);
+        form.append("publish_date", publishDateValue);
       }
 
        if (coverFile) {
