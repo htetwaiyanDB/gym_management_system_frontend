@@ -917,7 +917,7 @@ export default function AdminTrainerBookings() {
                           </div>
                         </div>
                       </div>
-                      <div className="col-12">
+                      <div className="col-4">
                         <div className="fw-semibold">Sessions</div>
                         <div className="session-adjust mt-1">
                           <button
@@ -938,18 +938,18 @@ export default function AdminTrainerBookings() {
                             <i className="bi bi-plus-lg"></i>
                           </button>
                         </div>
+                        <div className="col-12 col-md-4">
+                          <div className="fw-semibold">Session Start Date</div>
+                          <div>{sessionStart}</div>
+                        </div>
+                        <div className="col-12 col-md-4">
+                          <div className="fw-semibold">Session End Date</div>
+                          <div>{sessionEnd}</div>
+                        </div>
+                          
                         <div className="admin-muted mt-1">
                           Default flow: 10 sessions/month. Adjust here when you need to extend sessions.
                         </div>
-                      </div>
-
-                      <div className="col-12 col-md-6">
-                        <div className="fw-semibold">Session Start Date</div>
-                        <div>{sessionStart}</div>
-                      </div>
-                      <div className="col-12 col-md-6">
-                        <div className="fw-semibold">Session End Date</div>
-                        <div>{sessionEnd}</div>
                       </div>
 
                       <div className="col-12 col-md-4">
