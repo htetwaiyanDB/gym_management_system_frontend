@@ -718,9 +718,9 @@ export default function AdminTrainerBookings() {
           <thead>
             <tr>
               <th style={{ width: 70 }}>ID</th>
-              <th>User Name</th>
+              <th style={{ width: 150 }}>User Name</th>
               <th>User Phone</th>
-              <th>Trainer Name</th>
+              <th style={{ width: 150 }}>Trainer Name</th>
               <th>Trainer Phone</th>
               <th>Paid Time</th>
               <th style={{ width: 120 }}>Total</th>
