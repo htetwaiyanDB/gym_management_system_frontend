@@ -117,6 +117,8 @@ export default function AdminTrainerBookings() {
   const [loading, setLoading] = useState(false);
   const [busyKey, setBusyKey] = useState(null);
   const [msg, setMsg] = useState(null);
+  const [selectedBooking, setSelectedBooking] = useState(null);
+  const [showDetails, setShowDetails] = useState(false);
 
   const [bookings, setBookings] = useState([]);
 
@@ -391,6 +393,38 @@ export default function AdminTrainerBookings() {
     }
   };
 
+  const updateSessionCount = async (booking, nextTotal) => {
+    if (!booking?.id) return;
+    const totalValue = Number(nextTotal);
+    if (Number.isNaN(totalValue) || totalValue <= 0) {
+      setMsg({ type: "danger", text: "Session count must be greater than 0." });
+      return;
+    }
+    setMsg(null);
+    setBusyKey(`sessions-${booking.id}`);
+    try {
+      const res = await axiosClient.patch(`/trainer-bookings/${booking.id}/sessions`, {
+        sessions_count: totalValue,
+      });
+      setMsg({ type: "success", text: res?.data?.message || "Sessions updated." });
+      await loadBookings();
+      setSelectedBooking((prev) => (prev?.id === booking.id ? { ...booking, sessions_count: totalValue } : prev));
+    } catch (e) {
+      setMsg({
+        type: "danger",
+        text: e?.response?.data?.message || "Failed to update sessions.",
+      });
+    } finally {
+      setBusyKey(null);
+    }
+  };
+
+  const openDetails = (booking) => {
+    setSelectedBooking(booking);
+    setShowDetails(true);
+  };
+
+
 
   useEffect(() => {
     loadBookings();
@@ -585,6 +619,22 @@ export default function AdminTrainerBookings() {
             color: #adb5bd;
             opacity: 1;
           }
+
+          .booking-actions {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            flex-wrap: wrap;
+          }
+          .icon-btn {
+            padding: 0.25rem 0.45rem;
+            border-radius: 0.4rem;
+          }
+          .session-adjust {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+          }
         `}
       </style>
       <div className="d-flex align-items-center justify-content-between mb-3">
@@ -668,26 +718,22 @@ export default function AdminTrainerBookings() {
           <thead>
             <tr>
               <th style={{ width: 70 }}>ID</th>
-              <th>User</th>
+              <th>User Name</th>
               <th>User Phone</th>
-              <th>Trainer</th>
+              <th>Trainer Name</th>
               <th>Trainer Phone</th>
               <th>Paid Time</th>
-              <th>Start Date</th>
-              <th>End Date</th>
-              <th style={{ width: 100 }}>Sessions</th>
-              <th style={{ width: 100 }}>Months</th>
               <th style={{ width: 120 }}>Total</th>
               <th style={{ width: 120 }}>Status</th>
               <th style={{ width: 100 }}>Paid</th>
-              <th style={{ width: 200 }}>Actions</th>
+              <th style={{ width: 220 }}>Actions</th>
             </tr>
           </thead>
 
           <tbody>
             {filteredBookings.length === 0 ? (
               <tr>
-                <td colSpan="14" className="text-center text-muted py-4">
+                <td colSpan="10" className="text-center text-muted py-4">
                   {loading ? "Loading..." : "No bookings found."}
                 </td>
               </tr>
@@ -701,8 +747,6 @@ export default function AdminTrainerBookings() {
                 const isPending = statusValue === "pending";
                 const isActive = statusValue === "active";
                 const isOnHold = statusValue === "on-hold";
-                const sessionDisplay =
-                  monthCount !== null ? "-" : total === null ? "-" : `${remaining ?? "-"} / ${total}`;
 
                 return (
                   <tr key={b.id}>
@@ -713,49 +757,54 @@ export default function AdminTrainerBookings() {
                     <td>{b.trainer_phone || "-"}</td>
 
                     <td>{b.paid_at ? formatDateTimeVideoStyle(b.paid_at) : "-"}</td>
-                    <td>{b.start_date ? formatDateTimeVideoStyle(b.start_date) : "-"}</td>
-                    <td>{b.end_date ? formatDateTimeVideoStyle(b.end_date) : "-"}</td>
-
-                    <td>{sessionDisplay}</td>
-                    <td>{monthCount === null ? "-" : monthCount}</td>
                     <td>{moneyMMK(b.total_price)}</td>
                     <td>{statusBadge(b.status)}</td>
                     <td>{paidBadge(b.paid_status)}</td>
 
                     <td>
-                      {isActive ? (
+                      <div className="booking-actions">
                         <button
-                          className="btn btn-sm btn-outline-warning me-2"
-                          disabled={isCompleted || busyKey === `hold-${b.id}`}
-                          onClick={() => markHold(b.id)}
-                          title={isCompleted ? "All sessions completed" : "Move to on-hold"}
+                          className="btn btn-sm btn-outline-light icon-btn"
+                          type="button"
+                          onClick={() => openDetails(b)}
+                          title="Booking details"
                         >
-                          {busyKey === `hold-${b.id}` ? "..." : "Hold"}
+                          <i className="bi bi-three-dots-vertical"></i>
                         </button>
-                      ) : (
+                                             {isActive ? (
+                          <button
+                            className="btn btn-sm btn-outline-warning"
+                            disabled={isCompleted || busyKey === `hold-${b.id}`}
+                            onClick={() => markHold(b.id)}
+                            title={isCompleted ? "All sessions completed" : "Move to on-hold"}
+                          >
+                            {busyKey === `hold-${b.id}` ? "..." : "Hold"}
+                          </button>
+                        ) : (
+                          <button
+                            className="btn btn-sm btn-outline-info"
+                            disabled={isCompleted || (!isPending && !isOnHold) || busyKey === `active-${b.id}`}
+                            onClick={() => markActive(b.id)}
+                            title={
+                              isCompleted
+                                ? "All sessions completed"
+                                : isPending || isOnHold
+                                  ? "Mark booking as active"
+                                  : "Only pending/on-hold bookings can be activated"
+                            }
+                          >
+                            {busyKey === `active-${b.id}` ? "..." : "Active"}
+                          </button>
+                        )}
                         <button
-                          className="btn btn-sm btn-outline-info me-2"
-                          disabled={isCompleted || (!isPending && !isOnHold) || busyKey === `active-${b.id}`}
-                          onClick={() => markActive(b.id)}
-                          title={
-                            isCompleted
-                              ? "All sessions completed"
-                              : isPending || isOnHold
-                                ? "Mark booking as active"
-                                : "Only pending/on-hold bookings can be activated"
-                          }
+                          className="btn btn-sm btn-success"
+                          disabled={isPaid || busyKey === `paid-${b.id}`}
+                          onClick={() => markPaid(b.id)}
+                          title={isPaid ? "Already paid" : "Mark as paid"}
                         >
-                          {busyKey === `active-${b.id}` ? "..." : "Active"}
+                           {busyKey === `paid-${b.id}` ? "..." : "Paid"}
                         </button>
-                      )}
-                      <button
-                        className="btn btn-sm btn-success"
-                        disabled={isPaid || busyKey === `paid-${b.id}`}
-                        onClick={() => markPaid(b.id)}
-                        title={isPaid ? "Already paid" : "Mark as paid"}
-                      >
-                        {busyKey === `paid-${b.id}` ? "..." : "Paid"}
-                      </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -764,6 +813,109 @@ export default function AdminTrainerBookings() {
           </tbody>
         </table>
       </div>
+
+            {/* ===== Booking Details Modal ===== */}
+      {showDetails && selectedBooking && (
+        <div
+          className="modal fade show"
+          style={{ display: "block", background: "rgba(0,0,0,0.6)" }}
+          tabIndex="-1"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="modal-dialog modal-dialog-centered" role="document">
+            <div className="modal-content bg-dark text-light admin-modal">
+              <div className="modal-header border-secondary">
+                <h5 className="modal-title">Booking Details</h5>
+                <button
+                  type="button"
+                  className="btn-close btn-close-white"
+                  onClick={() => setShowDetails(false)}
+                  aria-label="Close"
+                ></button>
+              </div>
+              <div className="modal-body">
+                {(() => {
+                  const { total } = getSessionProgress(selectedBooking);
+                  const monthCount = getMonthCount(selectedBooking);
+                  const sessionStart = selectedBooking?.start_date ? formatDateTimeVideoStyle(selectedBooking.start_date) : "-";
+                  const sessionEnd = selectedBooking?.end_date ? formatDateTimeVideoStyle(selectedBooking.end_date) : "-";
+                  const monthStart = selectedBooking?.start_date ? formatDateTimeVideoStyle(selectedBooking.start_date) : "-";
+                  const monthEndDate =
+                    selectedBooking?.start_date && monthCount !== null
+                      ? addMonthsToDate(new Date(`${selectedBooking.start_date}T00:00:00`), monthCount)
+                      : null;
+                  const monthEnd = monthEndDate
+                    ? formatDateTimeVideoStyle(formatDateInputValue(monthEndDate))
+                    : "-";
+                  return (
+                    <div className="row g-3">
+                      <div className="col-12">
+                        <div className="fw-semibold">Sessions</div>
+                        <div className="session-adjust mt-1">
+                          <button
+                            className="btn btn-sm btn-outline-light icon-btn"
+                            disabled={busyKey === `sessions-${selectedBooking.id}`}
+                            onClick={() => updateSessionCount(selectedBooking, (total ?? 0) - 1)}
+                            title="Decrease total sessions"
+                          >
+                            <i className="bi bi-dash-lg"></i>
+                          </button>
+                          <span className="fw-bold">{total ?? "-"}</span>
+                          <button
+                            className="btn btn-sm btn-outline-light icon-btn"
+                            disabled={busyKey === `sessions-${selectedBooking.id}`}
+                            onClick={() => updateSessionCount(selectedBooking, (total ?? 0) + 1)}
+                            title="Increase total sessions"
+                          >
+                            <i className="bi bi-plus-lg"></i>
+                          </button>
+                        </div>
+                        <div className="admin-muted mt-1">
+                          Default flow: 10 sessions/month. Adjust here when you need to extend sessions.
+                        </div>
+                      </div>
+
+                      <div className="col-12 col-md-6">
+                        <div className="fw-semibold">Session Start Date</div>
+                        <div>{sessionStart}</div>
+                      </div>
+                      <div className="col-12 col-md-6">
+                        <div className="fw-semibold">Session End Date</div>
+                        <div>{sessionEnd}</div>
+                      </div>
+
+                      <div className="col-12 col-md-4">
+                        <div className="fw-semibold">Month Count</div>
+                        <div>{monthCount ?? "-"}</div>
+                      </div>
+                      <div className="col-12 col-md-4">
+                        <div className="fw-semibold">Month Start Date</div>
+                        <div>{monthStart}</div>
+                      </div>
+                      <div className="col-12 col-md-4">
+                        <div className="fw-semibold">Month End Date</div>
+                        <div>{monthEnd}</div>
+                      </div>
+
+                      <div className="col-12">
+                        <div className="fw-semibold">Status</div>
+                        <div>{statusBadge(selectedBooking.status)}</div>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+              <div className="modal-footer border-secondary">
+                <button className="btn btn-outline-light" onClick={() => setShowDetails(false)}>
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
 
       {/* ===== Create Booking Modal ===== */}
       {showModal && (
