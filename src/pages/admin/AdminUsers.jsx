@@ -37,6 +37,10 @@ function roleBadge(roleRaw) {
   return <span className="badge bg-secondary">User</span>;
 }
 
+function getUserRecordId(user) {
+  return user?.id ?? user?.user_id ?? user?.user?.id ?? user?.member_id ?? null;
+}
+
 export default function AdminUsers() {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState(null);
@@ -154,8 +158,9 @@ export default function AdminUsers() {
   // --------- Edit (needs PATCH /api/users/{id} which you must add) ----------
   const openEdit = (u) => {
     setMsg(null);
+    const recordId = getUserRecordId(u);
     setEditForm({
-      id: u?.id ?? null,
+      id: recordId,
       user_id: u?.user_id ?? "",
       name: u?.name || "",
       email: u?.email || "",
@@ -177,6 +182,11 @@ export default function AdminUsers() {
     setSavingEdit(true);
 
     try {
+      if (!editForm.id) {
+        setMsg({ type: "danger", text: "Missing user id for this record." });
+        setSavingEdit(false);
+        return;
+      }
        if (
         editForm.password &&
         editForm.password !== editForm.password_confirmation
