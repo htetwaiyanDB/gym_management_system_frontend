@@ -38,7 +38,15 @@ function roleBadge(roleRaw) {
 }
 
 function getUserRecordId(user) {
-  return user?.id ?? user?.user_id ?? user?.user?.id ?? user?.member_id ?? null;
+  const directId = user?.id ?? user?.user?.id ?? user?.member_id ?? null;
+  if (directId !== null && directId !== undefined) {
+    return directId;
+  }
+  if (user?.user_id !== null && user?.user_id !== undefined) {
+    const parsed = Number(user.user_id);
+    return Number.isNaN(parsed) ? user.user_id : parsed;
+  }
+  return null;
 }
 
 export default function AdminUsers() {
@@ -205,6 +213,7 @@ export default function AdminUsers() {
 
       if (editForm.password) {
         payload.password = editForm.password;
+        payload.password_confirmation = editForm.password_confirmation;
       }
 
       // ⚠️ This route does NOT exist yet in your API. Add backend in section (2).
