@@ -463,7 +463,16 @@ export default function AdminTrainerBookings() {
     return <span className="badge bg-danger">Unpaid</span>;
   };
 
-  // ✅ filter + sort (exact ordering: session time newest first)
+  const getBookingPriority = (booking) => {
+    const statusValue = normalizeBookingStatus(booking?.status);
+    const { total, remaining } = getSessionProgress(booking);
+    const isCompleted = (total !== null && remaining === 0) || isCompletedStatus(booking?.status);
+    if (isCompleted || statusValue === "completed") return 2;
+    if (statusValue === "active") return 0;
+    return 1;
+  };
+
+  // ✅ filter + sort (active first, completed last)
   const filteredBookings = useMemo(() => {
     const paidF = String(filterPaid).toLowerCase();
     const statusF = String(filterStatus).toLowerCase();
@@ -491,8 +500,10 @@ export default function AdminTrainerBookings() {
       return true;
     });
 
-    // sort desc by session_datetime
+    // sort by status priority then session_datetime desc
     list.sort((a, b) => {
+      const priorityDiff = getBookingPriority(a) - getBookingPriority(b);
+      if (priorityDiff !== 0) return priorityDiff;
       const da = parseBackendDateTime(a?.session_datetime)?.getTime() ?? 0;
       const db = parseBackendDateTime(b?.session_datetime)?.getTime() ?? 0;
       return db - da;

@@ -16,6 +16,29 @@ function normalizeSubscriptions(payload) {
   return [];
 }
 
+function parseDateOnly(value) {
+  if (!value) return null;
+  const s = String(value).trim();
+  if (!s) return null;
+  const dateOnly = s.includes("T") ? s.split("T")[0] : s.split(" ")[0];
+  const parts = dateOnly.split("-").map((part) => Number(part));
+  if (parts.length !== 3) return null;
+  const [year, month, day] = parts;
+  if (!year || !month || !day) return null;
+  const parsed = new Date(year, month - 1, day);
+  if (Number.isNaN(parsed.getTime())) return null;
+  parsed.setHours(0, 0, 0, 0);
+  return parsed;
+}
+
+function isExpiredByDate(endDateValue) {
+  const endDate = parseDateOnly(endDateValue);
+  if (!endDate) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return today > endDate;
+}
+
 export default function AdminSubscriptions() {
   const [loading, setLoading] = useState(false);
   const [busyId, setBusyId] = useState(null);
@@ -166,6 +189,23 @@ export default function AdminSubscriptions() {
     return planMap.get(String(planId)) || null;
   }, [planId, planMap]);
 
+  const sortedSubscriptions = useMemo(() => {
+    const list = [...subs];
+    list.sort((a, b) => {
+      const statusA = String(a?.status || "").toLowerCase();
+      const statusB = String(b?.status || "").toLowerCase();
+      const expiredA = statusA === "expired" || isExpiredByDate(a?.end_date);
+      const expiredB = statusB === "expired" || isExpiredByDate(b?.end_date);
+      const activeA = statusA === "active" && !expiredA;
+      const activeB = statusB === "active" && !expiredB;
+      const rankA = activeA ? 0 : expiredA ? 2 : 1;
+      const rankB = activeB ? 0 : expiredB ? 2 : 1;
+      if (rankA !== rankB) return rankA - rankB;
+      return (b?.id ?? 0) - (a?.id ?? 0);
+    });
+    return list;
+  }, [subs]);
+
   return (
     <div className="admin-card p-4">
       <div className="d-flex align-items-center justify-content-between mb-3">
@@ -215,12 +255,12 @@ export default function AdminSubscriptions() {
                 </td>
               </tr>
             ) : (
-              subs.map((s) => {
-                const status = String(s?.status || "");
+              sortedSubscriptions.map((s) => {
+                const rawStatus = String(s?.status || "");
                 const isOnHold = !!s?.is_on_hold;
-
-                const isExpired = status.toLowerCase() === "expired";
-                const canHold = !isExpired && !isOnHold && status.toLowerCase() === "active";
+                const isExpired = rawStatus.toLowerCase() === "expired" || isExpiredByDate(s?.end_date);
+                const status = isExpired ? "Expired" : rawStatus || "-";
+                const canHold = !isExpired && !isOnHold && rawStatus.toLowerCase() === "active";
                 const canResume = !isExpired && isOnHold;
 
                 return (
@@ -236,12 +276,16 @@ export default function AdminSubscriptions() {
                     <td>{s.start_date || "-"}</td>
                     <td>{s.end_date || "-"}</td>
                     <td>
-                      {status === "Active" && <span className="badge bg-success">Active</span>}
-                      {status === "On Hold" && (
+                      {status.toLowerCase() === "active" && (
+                        <span className="badge bg-success">Active</span>
+                      )}
+                      {status.toLowerCase() === "on hold" && (
                         <span className="badge bg-warning text-dark">On Hold</span>
                       )}
-                      {status === "Expired" && <span className="badge bg-secondary">Expired</span>}
-                      {!["Active", "On Hold", "Expired"].includes(status) && (
+                      {status.toLowerCase() === "expired" && (
+                        <span className="badge bg-secondary">Expired</span>
+                      )}
+                      {!["active", "on hold", "expired"].includes(status.toLowerCase()) && (
                         <span className="badge bg-info text-dark">{status || "-"}</span>
                       )}
                     </td>
