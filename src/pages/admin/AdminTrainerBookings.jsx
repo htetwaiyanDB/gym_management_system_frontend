@@ -918,7 +918,7 @@ export default function AdminTrainerBookings() {
                         </div>
                       </div>
                       <div className="col-12">
-                        <div className="fw-semibold">Sessions</div>
+                        <div className="fw-semibold">Sessions Count</div>
                         <div className="session-adjust mt-1">
                           <button
                             className="btn btn-sm btn-outline-light icon-btn"
