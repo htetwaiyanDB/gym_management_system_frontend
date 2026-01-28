@@ -466,6 +466,7 @@ export default function AdminTrainerBookings() {
   const filteredBookings = useMemo(() => {
     const paidF = String(filterPaid).toLowerCase();
     const statusF = String(filterStatus).toLowerCase();
+    const searchValue = String(searchTerm || "").trim().toLowerCase();
 
     const list = bookings.filter((b) => {
       const paid = String(b?.paid_status || "").toLowerCase();
@@ -473,6 +474,19 @@ export default function AdminTrainerBookings() {
 
       if (paidF !== "all" && paid !== paidF) return false;
       if (statusF !== "all" && st !== statusF) return false;
+      if (searchValue) {
+        const fields = [
+          b?.member_name,
+          b?.member_phone,
+          b?.trainer_name,
+          b?.trainer_phone,
+        ]
+          .filter(Boolean)
+          .map((value) => String(value).toLowerCase());
+        if (!fields.some((value) => value.includes(searchValue))) {
+          return false;
+        }
+      }
       return true;
     });
 
@@ -484,10 +498,36 @@ export default function AdminTrainerBookings() {
     });
 
     return list;
-  }, [bookings, filterPaid, filterStatus]);
+  }, [bookings, filterPaid, filterStatus, searchTerm]);
 
   return (
     <div className="admin-card p-4">
+            <style>
+        {`
+          .admin-select-dark {
+            background-color: #212529;
+            color: #f8f9fa;
+            border-color: #495057;
+          }
+          .admin-select-dark:focus {
+            background-color: #212529;
+            color: #f8f9fa;
+            border-color: #6c757d;
+          }
+          .admin-select-dark option {
+            color: #212529;
+          }
+          .admin-search-input {
+            background-color: #212529;
+            color: #f8f9fa;
+            border-color: #495057;
+          }
+          .admin-search-input::placeholder {
+            color: #adb5bd;
+            opacity: 1;
+          }
+        `}
+      </style>
       <div className="d-flex align-items-center justify-content-between mb-3">
         <div>
           <h4 className="mb-1">Trainer Bookings</h4>
@@ -513,29 +553,39 @@ export default function AdminTrainerBookings() {
         <div style={{ minWidth: 180 }}>
           <label className="form-label mb-1">Paid Filter</label>
           <select
-            className="form-select bg-dark"
+            className="form-select admin-select-dark"
             value={filterPaid}
             onChange={(e) => setFilterPaid(e.target.value)}
           >
-            <option value="all" className="text-light fw-bold">All</option>
-            <option value="paid" className="text-light fw-bold">Paid</option>
-            <option value="unpaid" className="text-light fw-bold">Unpaid</option>
+            <option value="all" className="fw-bold">All</option>
+            <option value="paid" className="fw-bold">Paid</option>
+            <option value="unpaid" className="fw-bold">Unpaid</option>
           </select>
         </div>
 
         <div style={{ minWidth: 220 }}>
           <label className="form-label mb-1">Status Filter</label>
           <select
-            className="form-select bg-dark"
+            className="form-select admin-select-dark"
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
           >
-            <option value="all" className="fw-bold text-white">All</option>
-            <option value="pending" className="fw-bold text-white">Pending</option>
-            <option value="active" className="fw-bold text-white">Active</option>
-            <option value="on-hold" className="fw-bold text-white">On Hold</option>
-            <option value="completed" className="fw-bold text-white">Completed</option>
+            <option value="all" className="fw-bold">All</option>
+            <option value="pending" className="fw-bold">Pending</option>
+            <option value="active" className="fw-bold">Active</option>
+            <option value="on-hold" className="fw-bold">On Hold</option>
+            <option value="completed" className="fw-bold">Completed</option>
           </select>
+        </div>
+
+        <div style={{ minWidth: 260 }}>
+          <label className="form-label mb-1">Search</label>
+          <input
+            className="form-control admin-search-input"
+            placeholder="Search by user/trainer name or phone"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
 
         <button
@@ -543,6 +593,7 @@ export default function AdminTrainerBookings() {
           onClick={() => {
             setFilterPaid("all");
             setFilterStatus("all");
+            setSearchTerm("");
           }}
         >
           Clear Filters
@@ -677,12 +728,12 @@ export default function AdminTrainerBookings() {
                   <div className="col-12 col-md-6">
                     <label className="form-label fw-bold">Member</label>
                     <select
-                      className="form-select bg-dark"
+                      className="form-select admin-select-dark"
                       value={memberId}
                       onChange={(e) => setMemberId(e.target.value)}
                       disabled={optionsLoading}
                     >
-                      <option value="" className="fw-bold text-white">Select member</option>
+                      <option value="" className="fw-bold">Select member</option>
                       {members.map((m) => (
                         <option key={m.id} value={m.id}>
                           {m.name} {m.phone ? `- ${m.phone}` : ""}
@@ -694,12 +745,12 @@ export default function AdminTrainerBookings() {
                   <div className="col-12 col-md-6">
                     <label className="form-label fw-bold">Trainer</label>
                     <select
-                      className="form-select bg-dark"
+                      className="form-select admin-select-dark"
                       value={trainerId}
                       onChange={(e) => setTrainerId(e.target.value)}
                       disabled={optionsLoading}
                     >
-                      <option value="" className="fw-bold text-white">Select trainer</option>
+                       <option value="" className="fw-bold">Select trainer</option>
                       {trainers.map((t) => (
                         <option key={t.id} value={t.id}>
                           {t.name} {t.phone ? `- ${t.phone}` : ""}
@@ -714,12 +765,12 @@ export default function AdminTrainerBookings() {
                       <div className="col-12 col-md-4">
                         <label className="form-label admin-muted">Personal</label>
                         <select
-                          className="form-select bg-dark"
+                          className="form-select admin-select-dark"
                           value={packageGroup === "personal" ? packageType : ""}
                           onChange={handlePackageSelect("personal")}
                           disabled={optionsLoading || packagesLoading}
                         >
-                          <option value="" className="fw-bold text-white">
+                           <option value="" className="fw-bold">
                             Select personal package
                           </option>
                     {trainerPackages.length > 0
@@ -737,12 +788,12 @@ export default function AdminTrainerBookings() {
                       <div className="col-12 col-md-4">
                         <label className="form-label admin-muted">Monthly</label>
                         <select
-                          className="form-select bg-dark"
+                          className="form-select admin-select-dark"
                           value={packageGroup === "monthly" ? packageType : ""}
                           onChange={handlePackageSelect("monthly")}
                           disabled={optionsLoading || packagesLoading}
                         >
-                          <option value="" className="fw-bold text-white">
+                          <option value="" className="fw-bold">
                             Select monthly package
                           </option>
                           {trainerPackages.length > 0
@@ -760,12 +811,12 @@ export default function AdminTrainerBookings() {
                       <div className="col-12 col-md-4">
                         <label className="form-label admin-muted">Duo</label>
                         <select
-                          className="form-select bg-dark"
+                          className="form-select admin-select-dark"
                           value={packageGroup === "duo" ? packageType : ""}
                           onChange={handlePackageSelect("duo")}
                           disabled={optionsLoading || packagesLoading}
                         >
-                          <option value="" className="fw-bold text-white">
+                          <option value="" className="fw-bold">
                             Select duo package
                           </option>
                           {trainerPackages.length > 0
@@ -817,7 +868,7 @@ export default function AdminTrainerBookings() {
                   <div className="col-12 col-md-3">
                     <label className="form-label fw-bold">Status</label>
                     <select
-                      className="form-select bg-dark"
+                      className="form-select admin-select-dark"
                       value={status}
                       onChange={(e) => setStatus(e.target.value)}
                       disabled={optionsLoading}
@@ -833,7 +884,7 @@ export default function AdminTrainerBookings() {
                   <div className="col-12 col-md-3">
                     <label className="form-label fw-bold">Paid Status</label>
                     <select
-                      className="form-select bg-dark"
+                      className="form-select admin-select-dark"
                       value={paidStatus}
                       onChange={(e) => setPaidStatus(e.target.value)}
                       disabled={optionsLoading}
