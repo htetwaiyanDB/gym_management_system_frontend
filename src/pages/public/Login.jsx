@@ -165,12 +165,6 @@ export default function Login() {
           </button>
 
           <div className="text-center mt-3">
-             <Link to="/forgot-password" className="link-muted text-decoration-none">
-              Forgot password?
-            </Link>
-          </div>
-
-          <div className="text-center mt-2">
             <span className="link-muted">Don’t have an account?</span>{" "}
             <Link to="/register" className="link-muted text-decoration-none">
               Register

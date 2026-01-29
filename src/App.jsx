@@ -4,7 +4,6 @@ import { Routes, Route, Navigate } from "react-router-dom";
 const Login = lazy(() => import("./pages/public/Login"));
 const Register = lazy(() => import("./pages/public/Register"));
 const VerifyEmail = lazy(() => import("./pages/public/VerifyEmail"));
-const ForgotPassword = lazy(() => import("./pages/public/ForgotPassword"));
 
 /* Admin */
 const AdminLayout = lazy(() => import("./layouts/AdminLayout"));
@@ -19,7 +18,6 @@ const AdminAttendance = lazy(() => import("./pages/admin/AdminAttendance"));
 const AdminMessages = lazy(() => import("./pages/admin/AdminMessages"));
 const AdminBlogs = lazy(() => import("./pages/admin/AdminBlogs"));
 const AdminSettings = lazy(() => import("./pages/admin/AdminSettings"));
-const Notifications = lazy(() => import("./pages/shared/Notifications"));
 
 /* Trainer */
 const TrainerLayout = lazy(() => import("./layouts/TrainerLayout"));
@@ -90,7 +88,6 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
 
         {/* Admin */}
         <Route
@@ -112,7 +109,6 @@ export default function App() {
           <Route path="attendance" element={<AdminAttendance />} />
           <Route path="messages" element={<AdminMessages />} />
           <Route path="blogs" element={<AdminBlogs />} />
-          <Route path="notifications" element={<Notifications />} />
           <Route path="settings" element={<AdminSettings />} />
         </Route>
 
@@ -154,7 +150,6 @@ export default function App() {
           <Route path="scan" element={<TrainerScan />} />
           <Route path="messages" element={<TrainerMessages />} />
           <Route path="bookings" element={<TrainerBookings />} />
-          <Route path="notifications" element={<Notifications />} />
           <Route path="blogs/:id" element={<TrainerBlogDetails />} />
           <Route path="settings" element={<TrainerSettings />} />
         </Route>
