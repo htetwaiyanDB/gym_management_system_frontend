@@ -261,7 +261,7 @@ export default function AdminUsers() {
 
     setMsg(null);
     try {
-        try {
+       try {
         await axiosClient.delete(`/users/${id}`);
       } catch (softDeleteError) {
         if (softDeleteError?.response?.status !== 404) {
@@ -289,6 +289,7 @@ export default function AdminUsers() {
       setMsg({ type: "danger", text: e?.response?.data?.message || "Restore failed." });
     }
   };
+
 
   return (
     <div className="admin-card p-4">
@@ -424,7 +425,7 @@ export default function AdminUsers() {
       Update
     </button>
 
-    {isDeleted ? (
+        {isDeleted ? (
       <button
         className="btn btn-sm btn-outline-warning"
         onClick={() => restore(systemId ?? userId)}
@@ -441,6 +442,7 @@ export default function AdminUsers() {
         Delete
       </button>
     )}
+
   </div>
 </td>
 
@@ -632,10 +634,7 @@ export default function AdminUsers() {
                         })
                       }
                     />
-                  </div>
-
-
-                  
+                  </div> 
                 </div>
 
                 <div className="modal-footer">
@@ -653,3 +652,5 @@ export default function AdminUsers() {
     </div>
   );
 }
+
+
