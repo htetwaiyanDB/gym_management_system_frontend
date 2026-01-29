@@ -67,11 +67,6 @@ export default function AdminLayout() {
             <i className="bi bi-chat-dots"></i> Messages
           </NavLink>
 
-          <NavLink to="/admin/notifications" className={({isActive}) => `admin-link ${isActive ? "active" : ""}`}>
-            <i className="bi bi-bell"></i> Notifications
-          </NavLink>
-
-
           <NavLink to="/admin/blogs" className={({isActive}) => `admin-link ${isActive ? "active" : ""}`}>
             <i className="bi bi-journal-text"></i> Blogs
           </NavLink>
