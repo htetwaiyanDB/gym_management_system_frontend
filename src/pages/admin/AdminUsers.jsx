@@ -43,7 +43,8 @@ function getUserRecordId(user) {
     return directId;
   }
   if (user?.user_id !== null && user?.user_id !== undefined) {
-    return `${user.user_id}`.trim();
+    const parsed = Number(user.user_id);
+    return Number.isNaN(parsed) ? user.user_id : parsed;
   }
   return null;
 }
@@ -233,21 +234,42 @@ export default function AdminUsers() {
     }
   };
 
-  // --------- Force Delete ----------
-  const destroy = async (user) => {
-    const recordId = getUserRecordId(user);
-    if (!recordId) return;
+  // --------- Delete / Restore ----------
+  const destroy = async (id) => {
+    if (!id) return;
     if (!confirm("Delete this user?")) return;
 
     setMsg(null);
     try {
-      await axiosClient.delete(`/users/${recordId}/force`);
+       try {
+        await axiosClient.delete(`/users/${id}`);
+      } catch (softDeleteError) {
+        if (softDeleteError?.response?.status !== 404) {
+          console.warn("Soft delete failed, attempting force delete anyway.", softDeleteError);
+        }
+      }
+
+      await axiosClient.delete(`/users/${id}/force`);
       setMsg({ type: "success", text: "User deleted." });
       await load();
     } catch (e) {
       setMsg({ type: "danger", text: e?.response?.data?.message || "Delete failed." });
     }
   };
+
+  const restore = async (id) => {
+    if (!id) return;
+
+    setMsg(null);
+    try {
+      await axiosClient.post(`/users/${id}/restore`);
+      setMsg({ type: "success", text: "User restored." });
+      await load();
+    } catch (e) {
+      setMsg({ type: "danger", text: e?.response?.data?.message || "Restore failed." });
+    }
+  };
+
 
   return (
     <div className="admin-card p-4">
@@ -383,13 +405,24 @@ export default function AdminUsers() {
       Update
     </button>
 
-    <button
-      className="btn btn-sm btn-outline-danger"
-      onClick={() => destroy(u)}
-      style={{ minWidth: 70 }}
-    >
-      Delete
-    </button>
+        {isDeleted ? (
+      <button
+        className="btn btn-sm btn-outline-warning"
+        onClick={() => restore(systemId ?? userId)}
+        style={{ minWidth: 70 }}
+      >
+        Restore
+      </button>
+    ) : (
+      <button
+        className="btn btn-sm btn-outline-danger"
+        onClick={() => destroy(systemId ?? userId)}
+        style={{ minWidth: 70 }}
+      >
+        Delete
+      </button>
+    )}
+
   </div>
 </td>
 
