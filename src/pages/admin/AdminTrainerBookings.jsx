@@ -222,6 +222,11 @@ export default function AdminTrainerBookings() {
       const res = await axiosClient.get("/trainer-bookings");
       const list = Array.isArray(res.data?.bookings) ? res.data.bookings : [];
       setBookings(list);
+      setSelectedBooking((prev) => {
+        if (!prev?.id) return prev;
+        const updated = list.find((item) => item?.id === prev.id);
+        return updated ? { ...prev, ...updated } : prev;
+      });
     } catch (e) {
       setMsg({
         type: "danger",
@@ -445,11 +450,17 @@ export default function AdminTrainerBookings() {
     setOpenMenuId(null);
   };
 
-
-
   useEffect(() => {
     loadBookings();
   }, []);
+
+  useEffect(() => {
+    if (!showDetails) return undefined;
+    loadBookings();
+    const interval = setInterval(loadBookings, 15000);
+    return () => clearInterval(interval);
+  }, [showDetails]);
+
 
   useEffect(() => {
     if (!showModal) return undefined;
