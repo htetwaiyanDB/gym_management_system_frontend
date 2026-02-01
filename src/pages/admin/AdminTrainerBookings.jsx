@@ -112,6 +112,15 @@ function addMonthsToDate(baseDate, months) {
   return date;
 }
 
+function pickBookingField(booking, keys) {
+  for (const key of keys) {
+    const value = booking?.[key];
+    if (value !== undefined && value !== null && value !== "") {
+      return value;
+    }
+  }
+  return "";
+}
 
 export default function AdminTrainerBookings() {
   const [loading, setLoading] = useState(false);
@@ -119,6 +128,10 @@ export default function AdminTrainerBookings() {
   const [msg, setMsg] = useState(null);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
+  const [showDueDetail, setShowDueDetail] = useState(false);
+  const [dueDetailLoading, setDueDetailLoading] = useState(false);
+  const [dueDetailMsg, setDueDetailMsg] = useState(null);
+  const [dueDetailBooking, setDueDetailBooking] = useState(null);
   const [openMenuId, setOpenMenuId] = useState(null);
 
   const [bookings, setBookings] = useState([]);
@@ -159,6 +172,10 @@ export default function AdminTrainerBookings() {
   const [notes, setNotes] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+
+  const [dueAmount, setDueAmount] = useState("");
+  const [paidAmount, setPaidAmount] = useState("");
+  const [duePaidStatus, setDuePaidStatus] = useState("unpaid");
 
  const packageKey = (pkg) =>
     String(pkg?.id ?? pkg?.package_id ?? pkg?.packageId ?? pkg?.type ?? pkg?.name ?? "");
@@ -426,6 +443,86 @@ export default function AdminTrainerBookings() {
     setOpenMenuId(null);
   };
 
+  const openDueDetail = async (bookingId) => {
+    if (!bookingId) return;
+    setDueDetailMsg(null);
+    setShowDueDetail(true);
+    setOpenMenuId(null);
+    setDueDetailLoading(true);
+    try {
+      const res = await axiosClient.get(`/trainer-bookings/${bookingId}`);
+      const booking =
+        res?.data?.booking ??
+        res?.data?.data ??
+        res?.data ??
+        null;
+      if (!booking) {
+        throw new Error("No booking data found.");
+      }
+      setDueDetailBooking(booking);
+      setDueAmount(
+        String(
+          pickBookingField(booking, ["due_amount", "remaining_amount", "due", "remaining_balance"]) ??
+            ""
+        )
+      );
+      setPaidAmount(
+        String(
+          pickBookingField(booking, ["paid_amount", "amount_paid", "paid", "paid_total"]) ?? ""
+        )
+      );
+      setDuePaidStatus(
+        String(
+          pickBookingField(booking, ["paid_status", "payment_status", "status"]) ?? "unpaid"
+        ).toLowerCase()
+      );
+    } catch (e) {
+      setDueDetailMsg({
+        type: "danger",
+        text: e?.response?.data?.message || e?.message || "Failed to load due details.",
+      });
+    } finally {
+      setDueDetailLoading(false);
+    }
+  };
+
+  const saveDueDetail = async () => {
+    if (!dueDetailBooking?.id) return;
+    setDueDetailMsg(null);
+    setBusyKey(`due-${dueDetailBooking.id}`);
+    try {
+      const nextDue = toNumber(dueAmount);
+      const nextPaid = toNumber(paidAmount);
+      const payload = {
+        due_amount: dueAmount === "" || nextDue === null ? null : nextDue,
+        paid_amount: paidAmount === "" || nextPaid === null ? null : nextPaid,
+        paid_status: duePaidStatus || "unpaid",
+      };
+      const res = await axiosClient.patch(
+        `/trainer-bookings/${dueDetailBooking.id}/payment`,
+        payload
+      );
+      setDueDetailMsg({
+        type: "success",
+        text: res?.data?.message || "Payment details updated.",
+      });
+      await loadBookings();
+    } catch (e) {
+      setDueDetailMsg({
+        type: "danger",
+        text: e?.response?.data?.message || "Failed to update payment details.",
+      });
+    } finally {
+      setBusyKey(null);
+    }
+  };
+
+  const closeDueDetail = () => {
+    setShowDueDetail(false);
+    setDueDetailBooking(null);
+    setDueDetailMsg(null);
+    setDueDetailLoading(false);
+  };
 
 
   useEffect(() => {
@@ -801,6 +898,13 @@ export default function AdminTrainerBookings() {
                               >
                                 View details
                               </button>
+                              <button
+                                className="btn btn-sm btn-outline-light mt-2"
+                                type="button"
+                                onClick={() => openDueDetail(b.id)}
+                              >
+                                Due Detail
+                              </button>
                             </div>
                           )}
                         </div>
@@ -871,14 +975,40 @@ export default function AdminTrainerBookings() {
                 {(() => {
                   const { total } = getSessionProgress(selectedBooking);
                   const monthCount = getMonthCount(selectedBooking);
-                  const sessionStart = selectedBooking?.start_date ? formatDateTimeVideoStyle(selectedBooking.start_date) : "-";
-                  const sessionEnd = selectedBooking?.end_date ? formatDateTimeVideoStyle(selectedBooking.end_date) : "-";
-                  const monthStart = selectedBooking?.start_date ? formatDateTimeVideoStyle(selectedBooking.start_date) : "-";
+                  const sessionStartRaw = pickBookingField(selectedBooking, [
+                    "sessions_start_date",
+                    "session_start_date",
+                    "start_date",
+                  ]);
+                  const sessionEndRaw = pickBookingField(selectedBooking, [
+                    "sessions_end_date",
+                    "session_end_date",
+                    "end_date",
+                  ]);
+                  const sessionStart = sessionStartRaw
+                    ? formatDateTimeVideoStyle(sessionStartRaw)
+                    : "-";
+                  const sessionEnd = sessionEndRaw ? formatDateTimeVideoStyle(sessionEndRaw) : "-";
+                  const monthStartRaw = pickBookingField(selectedBooking, [
+                    "month_start_date",
+                    "monthStartDate",
+                    "start_date",
+                  ]);
+                  const monthEndRaw = pickBookingField(selectedBooking, [
+                    "month_end_date",
+                    "monthEndDate",
+                    "end_date",
+                  ]);
+                  const monthStart = monthStartRaw ? formatDateTimeVideoStyle(monthStartRaw) : "-";
+                  const monthEnd =
+                    monthEndRaw && monthEndRaw !== monthStartRaw
+                      ? formatDateTimeVideoStyle(monthEndRaw)
+                      : "-";
                   const monthEndDate =
-                    selectedBooking?.start_date && monthCount !== null
-                      ? addMonthsToDate(new Date(`${selectedBooking.start_date}T00:00:00`), monthCount)
+                    monthStartRaw && !monthEndRaw && monthCount !== null
+                      ? addMonthsToDate(new Date(`${monthStartRaw}T00:00:00`), monthCount)
                       : null;
-                  const monthEnd = monthEndDate
+                  const monthEndFallback = monthEndDate
                     ? formatDateTimeVideoStyle(formatDateInputValue(monthEndDate))
                     : "-";
                   return (
@@ -962,7 +1092,7 @@ export default function AdminTrainerBookings() {
                       </div>
                       <div className="col-12 col-md-4">
                         <div className="fw-semibold">Month End Date</div>
-                        <div>{monthEnd}</div>
+                        <div>{monthEnd !== "-" ? monthEnd : monthEndFallback}</div>
                       </div>
 
                       <div className="col-12">
@@ -989,6 +1119,127 @@ export default function AdminTrainerBookings() {
         </div>
       )}
 
+      {/* ===== Due Detail Modal ===== */}
+      {showDueDetail && (
+        <div
+          className="modal fade show"
+          style={{ display: "block", background: "rgba(0,0,0,0.6)" }}
+          tabIndex="-1"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="modal-dialog modal-dialog-centered" role="document">
+            <div className="modal-content bg-dark text-light admin-modal">
+              <div className="modal-header border-secondary">
+                <h5 className="modal-title">Due Detail</h5>
+                <button
+                  type="button"
+                  className="btn-close btn-close-white"
+                  onClick={closeDueDetail}
+                  aria-label="Close"
+                ></button>
+              </div>
+              <div className="modal-body">
+                {dueDetailMsg && <div className={`alert alert-${dueDetailMsg.type}`}>{dueDetailMsg.text}</div>}
+                {dueDetailLoading && <div className="text-muted">Loading booking details...</div>}
+                {!dueDetailLoading && dueDetailBooking && (
+                  <div className="row g-3">
+                    <div className="col-12">
+                      <div className="fw-semibold">Booking Dates</div>
+                      <div className="admin-muted">
+                        Dates are read-only and sourced directly from the backend.
+                      </div>
+                    </div>
+                    <div className="col-12 col-md-6">
+                      <label className="form-label fw-bold">Start Date</label>
+                      <input
+                        className="form-control"
+                        readOnly
+                        value={formatDateTimeVideoStyle(
+                          pickBookingField(dueDetailBooking, [
+                            "start_date",
+                            "sessions_start_date",
+                            "session_start_date",
+                          ])
+                        )}
+                      />
+                    </div>
+                    <div className="col-12 col-md-6">
+                      <label className="form-label fw-bold">End Date</label>
+                      <input
+                        className="form-control"
+                        readOnly
+                        value={formatDateTimeVideoStyle(
+                          pickBookingField(dueDetailBooking, [
+                            "end_date",
+                            "sessions_end_date",
+                            "session_end_date",
+                          ])
+                        )}
+                      />
+                    </div>
+
+                    <div className="col-12">
+                      <div className="fw-semibold">Payment Details</div>
+                      <div className="admin-muted">
+                        Only payment fields can be edited from this form.
+                      </div>
+                    </div>
+                    <div className="col-12 col-md-4">
+                      <label className="form-label fw-bold">Due Amount (MMK)</label>
+                      <input
+                        type="number"
+                        className="form-control"
+                        value={dueAmount}
+                        onChange={(e) => setDueAmount(e.target.value)}
+                      />
+                    </div>
+                    <div className="col-12 col-md-4">
+                      <label className="form-label fw-bold">Paid Amount (MMK)</label>
+                      <input
+                        type="number"
+                        className="form-control"
+                        value={paidAmount}
+                        onChange={(e) => setPaidAmount(e.target.value)}
+                      />
+                    </div>
+                    <div className="col-12 col-md-4">
+                      <label className="form-label fw-bold">Payment Status</label>
+                      <select
+                        className="form-select admin-select-dark"
+                        value={duePaidStatus}
+                        onChange={(e) => setDuePaidStatus(e.target.value)}
+                      >
+                        {(paidOptions?.length ? paidOptions : ["unpaid", "paid"]).map((option) => (
+                          <option key={option} value={option}>
+                            {option.charAt(0).toUpperCase() + option.slice(1)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="modal-footer border-secondary">
+                <button className="btn btn-outline-light" onClick={closeDueDetail}>
+                  Close
+                </button>
+                <button
+                  className="btn btn-primary"
+                  onClick={saveDueDetail}
+                  disabled={
+                    dueDetailLoading ||
+                    !dueDetailBooking ||
+                    busyKey === `due-${dueDetailBooking?.id}`
+                  }
+                >
+                  {busyKey === `due-${dueDetailBooking?.id}` ? "Saving..." : "Save"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ===== Create Booking Modal ===== */}
       {showModal && (
