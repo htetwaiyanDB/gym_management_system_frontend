@@ -11,9 +11,8 @@ const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
 const AdminUsers = lazy(() => import("./pages/admin/AdminUsers"));
 const AdminSubscriptions = lazy(() => import("./pages/admin/AdminSubscriptions"));
 const AdminPricing = lazy(() => import("./pages/admin/AdminPricing"));
-const AdminTrainerBookings = lazy(() =>
-  import("./pages/admin/AdminTrainerBookings")
-);
+const AdminTrainerBookings = lazy(() =>import("./pages/admin/AdminTrainerBookings"));
+const AdminBoxingBookings = lazy(() =>import("./pages/admin/AdminBoxingBookings"));
 const AdminAttendance = lazy(() => import("./pages/admin/AdminAttendance"));
 const AdminMessages = lazy(() => import("./pages/admin/AdminMessages"));
 const AdminBlogs = lazy(() => import("./pages/admin/AdminBlogs"));
@@ -106,6 +105,7 @@ export default function App() {
           <Route path="subscriptions" element={<AdminSubscriptions />} />
           <Route path="pricing" element={<AdminPricing />} />
           <Route path="trainer-bookings" element={<AdminTrainerBookings />} />
+          <Route path="boxing-bookings" element={<AdminBoxingBookings />} />
           <Route path="attendance" element={<AdminAttendance />} />
           <Route path="messages" element={<AdminMessages />} />
           <Route path="blogs" element={<AdminBlogs />} />

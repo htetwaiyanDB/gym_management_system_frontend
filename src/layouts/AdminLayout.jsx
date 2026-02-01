@@ -58,6 +58,10 @@ export default function AdminLayout() {
           <NavLink to="/admin/trainer-bookings" className={({isActive}) => `admin-link ${isActive ? "active" : ""}`}>
             <i className="bi bi-calendar-check"></i> Trainer Bookings
           </NavLink>
+          
+          <NavLink to="/admin/boxing-bookings" className={({isActive}) => `admin-link ${isActive ? "active" : ""}`}>
+            <i className="bi bi-lightning-charge"></i> Boxing Bookings
+          </NavLink>
 
           <NavLink to="/admin/attendance" className={({isActive}) => `admin-link ${isActive ? "active" : ""}`}>
             <i className="bi bi-qr-code-scan"></i> Attendance
