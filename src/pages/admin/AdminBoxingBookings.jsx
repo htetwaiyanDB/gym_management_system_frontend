@@ -929,7 +929,7 @@ export default function AdminBoxingBookings() {
         </table>
       </div>
 
-            {/* ===== Booking Details Modal ===== */}
+      {/* ===== Booking Details Modal ===== */}
       {showDetails && selectedBooking && (
         <div
           className="modal fade show"
