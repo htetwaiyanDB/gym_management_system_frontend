@@ -14,6 +14,7 @@ const AdminPricing = lazy(() => import("./pages/admin/AdminPricing"));
 const AdminTrainerBookings = lazy(() =>import("./pages/admin/AdminTrainerBookings"));
 const AdminBoxingBookings = lazy(() =>import("./pages/admin/AdminBoxingBookings"));
 const AdminAttendance = lazy(() => import("./pages/admin/AdminAttendance"));
+const AdminRfidRegister = lazy(() => import("./pages/admin/RfidRegister"));
 const AdminMessages = lazy(() => import("./pages/admin/AdminMessages"));
 const AdminBlogs = lazy(() => import("./pages/admin/AdminBlogs"));
 const AdminSettings = lazy(() => import("./pages/admin/AdminSettings"));
@@ -107,6 +108,7 @@ export default function App() {
           <Route path="trainer-bookings" element={<AdminTrainerBookings />} />
           <Route path="boxing-bookings" element={<AdminBoxingBookings />} />
           <Route path="attendance" element={<AdminAttendance />} />
+          <Route path="attendance/rfid-register" element={<AdminRfidRegister />} />
           <Route path="messages" element={<AdminMessages />} />
           <Route path="blogs" element={<AdminBlogs />} />
           <Route path="settings" element={<AdminSettings />} />

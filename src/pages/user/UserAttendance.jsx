@@ -1,8 +1,12 @@
 // UserAttendance.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import axiosClient from "../../api/axiosClient";
+import { scanRfidAttendance } from "../../api/attendanceApi";
+import RfidInputListener from "../../components/RfidInputListener";
 import QrScanner from "../common/QrScanner";
+import { isCardNotRegisteredError, normalizeCardId } from "../../utils/rfid";
 import { parseTokenFromQrText } from "../../utils/qr";
+import { useNavigate } from "react-router-dom";
 
 /**
  * Your backend GET /api/user/check-in returns:
@@ -109,10 +113,13 @@ function clearCache() {
 export default function UserAttendance() {
   const isMobile = useMemo(() => window.innerWidth < 768, []);
   const busyRef = useRef(false);
+  const nav = useNavigate();
 
   const [scannerActive, setScannerActive] = useState(true);
 
   const [statusMsg, setStatusMsg] = useState(null);
+  const [rfidWarning, setRfidWarning] = useState(false);
+  const [pendingCardId, setPendingCardId] = useState("");
   const [latest, setLatest] = useState(null);
   const [checkInTime, setCheckInTime] = useState(null);
   const [checkOutTime, setCheckOutTime] = useState(null);
@@ -184,15 +191,16 @@ export default function UserAttendance() {
     };
   }, []);
 
-  const handleScan = async (decodedText) => {
+  const handleRfidScan = async (rawCardId) => {
     if (busyRef.current) return;
     busyRef.current = true;
 
     setStatusMsg(null);
+    setRfidWarning(false);
 
-    const parsed = parseTokenFromQrText(decodedText);
-    if (!parsed?.token) {
-      setStatusMsg({ type: "danger", text: "Invalid QR code format." });
+    const cardId = normalizeCardId(rawCardId);
+    if (!cardId) {
+      setStatusMsg({ type: "danger", text: "Invalid RFID card ID." });
       busyRef.current = false;
       return;
     }
@@ -201,11 +209,9 @@ export default function UserAttendance() {
       // prevent double scan while request is running
       setScannerActive(false);
 
-      const res = await axiosClient.post("/user/check-in/scan", {
-        token: parsed.token,
-      });
+      const res = await scanRfidAttendance(cardId);
 
-      const record = res?.data?.record ?? null;
+      const record = res?.data?.record ?? res?.data ?? null;
       const action = getAction(record);
       const timestamp = getTimestamp(record);
 
@@ -215,6 +221,82 @@ export default function UserAttendance() {
           text: res?.data?.message || "Recorded, but timestamp is not today.",
         });
         // allow scanning again
+        setScannerActive(true);
+        return;
+      }
+
+      setLatest(record);
+
+      if (action === "check_in") {
+        setCheckInTime(timestamp);
+        setCheckOutTime(null);
+        setStatusMsg({ type: "success", text: "Checked in successfully" });
+
+        saveCache({ latest: record, checkInTime: timestamp, checkOutTime: null });
+        setScannerActive(true);
+      } else if (action === "check_out") {
+        setCheckOutTime(timestamp);
+        setStatusMsg({ type: "success", text: "Checked out successfully" });
+
+        saveCache({ latest: record, checkInTime, checkOutTime: timestamp });
+
+        // optional: stop after check-out; if you want keep scanning, change to true
+        setScannerActive(false);
+      } else {
+        // unknown action, still store latest
+        setStatusMsg({ type: "success", text: res?.data?.message || "Recorded." });
+        saveCache({ latest: record, checkInTime, checkOutTime });
+        setScannerActive(true);
+      }
+    } catch (e) {
+      const message = e?.response?.data?.message || "Scan failed.";
+      if (isCardNotRegisteredError(message)) {
+        setPendingCardId(cardId);
+        localStorage.setItem("rfid_pending_card_id", cardId);
+        setRfidWarning(true);
+        setScannerActive(false);
+        const user = JSON.parse(localStorage.getItem("user") || "null");
+        if (String(user?.role || "").toLowerCase() === "administrator") {
+          nav("/admin/attendance/rfid-register");
+        }
+      } else {
+        setStatusMsg({
+          type: "danger",
+          text: message,
+        });
+        setScannerActive(true);
+      }
+    } finally {
+      setTimeout(() => {
+        busyRef.current = false;
+      }, 700);
+    }
+  };
+
+  const handleQrScan = async (decodedText) => {
+    const parsed = parseTokenFromQrText(decodedText);
+    if (!parsed?.token) {
+      setStatusMsg({ type: "danger", text: "Invalid QR code format." });
+      return;
+    }
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setStatusMsg(null);
+    setRfidWarning(false);
+    try {
+      setScannerActive(false);
+      const res = await axiosClient.post("/user/check-in/scan", {
+        token: parsed.token,
+      });
+      const record = res?.data?.record ?? null;
+      const action = getAction(record);
+      const timestamp = getTimestamp(record);
+
+      if (!timestamp || !isToday(timestamp)) {
+        setStatusMsg({
+          type: "warning",
+          text: res?.data?.message || "Recorded, but timestamp is not today.",
+        });
         setScannerActive(true);
         return;
       }
@@ -234,10 +316,8 @@ export default function UserAttendance() {
 
         saveCache({ latest: record, checkInTime, checkOutTime: timestamp });
 
-        // optional: stop after check-out; if you want keep scanning, change to true
         setScannerActive(false);
       } else {
-        // unknown action, still store latest
         setStatusMsg({ type: "success", text: res?.data?.message || "Recorded." });
         saveCache({ latest: record, checkInTime, checkOutTime });
         setScannerActive(true);
@@ -323,7 +403,34 @@ export default function UserAttendance() {
         </div>
       )}
 
-      <QrScanner onDecode={handleScan} active={scannerActive} cooldownMs={1500} />
+      {rfidWarning && (
+        <div className="modal d-block" tabIndex="-1" role="dialog">
+          <div className="modal-dialog modal-dialog-centered" role="document">
+            <div className="modal-content bg-dark text-white">
+              <div className="modal-header">
+                <h5 className="modal-title">RFID Card Not Registered</h5>
+                <button type="button" className="btn-close btn-close-white" onClick={() => setRfidWarning(false)} />
+              </div>
+              <div className="modal-body">
+                <p className="mb-0">
+                  This card ID is not registered. Please contact an administrator to register the card.
+                </p>
+                {pendingCardId && (
+                  <div className="mt-2 small text-muted">Card ID: {pendingCardId}</div>
+                )}
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-outline-light" onClick={() => setRfidWarning(false)}>
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <RfidInputListener active={scannerActive} onScan={handleRfidScan} />
+      <QrScanner onDecode={handleQrScan} active={scannerActive} cooldownMs={1500} />
 
       <div
         className="mt-3"
