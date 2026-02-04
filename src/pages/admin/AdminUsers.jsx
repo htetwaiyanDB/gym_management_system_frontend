@@ -11,6 +11,7 @@ function normalizeList(payload) {
 
 const emptyCreate = {
   user_id: "",
+  card_id: "",
   name: "",
   email: "",
   phone: "",
@@ -145,6 +146,7 @@ export default function AdminUsers() {
       // ✅ API route exists: POST /api/admin/register (administrator middleware)
       await axiosClient.post("/admin/register", {
         user_id: createForm.user_id || undefined,
+        card_id: createForm.card_id || undefined,
         name: createForm.name,
         email: createForm.email,
         phone: createForm.phone,
@@ -507,6 +509,16 @@ export default function AdminUsers() {
                   </div>
 
                   <div className="mb-2">
+                    <label className="form-label fw-bold">Card ID</label>
+                    <input
+                      className="form-control"
+                      value={createForm.card_id}
+                      onChange={(e) => setCreateForm({ ...createForm, card_id: e.target.value })}
+                      placeholder="RFID card ID (optional)"
+                    />
+                  </div>
+
+                  <div className="mb-2">
                     <label className="form-label fw-bold">Email</label>
                     <input className="form-control" value={createForm.email}
                       onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })} />
@@ -651,4 +663,3 @@ export default function AdminUsers() {
     </div>
   );
 }
-
