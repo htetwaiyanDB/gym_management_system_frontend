@@ -2,9 +2,7 @@ import { NavLink, Outlet } from "react-router-dom";
 import { useEffect, useState } from "react";
 import {
   FiHome,
-  FiCheckSquare,
   FiRepeat,
-  FiBell,
   FiCalendar,
   FiMessageCircle,
   FiSettings,
@@ -68,14 +66,6 @@ export default function UserLayout() {
         </NavLink>
 
         <NavLink
-          to="/user/attendance"
-          className={({ isActive }) => "user-nav-item" + (isActive ? " active" : "")}
-        >
-          <FiCheckSquare className="user-nav-icon" />
-          <span className="user-nav-label">Attendance</span>
-        </NavLink>
-
-        <NavLink
           to="/user/subscriptions"
           className={({ isActive }) => "user-nav-item" + (isActive ? " active" : "")}
         >
@@ -98,15 +88,6 @@ export default function UserLayout() {
           <FiMessageCircle className="user-nav-icon" />
           <span className="user-nav-label">Messages</span>
         </NavLink>
-
-         <NavLink
-          to="/user/notifications"
-          className={({ isActive }) => "user-nav-item" + (isActive ? " active" : "")}
-        >
-          <FiBell className="user-nav-icon" />
-          <span className="user-nav-label">Alerts</span>
-        </NavLink>
-
 
         <NavLink
           to="/user/settings"

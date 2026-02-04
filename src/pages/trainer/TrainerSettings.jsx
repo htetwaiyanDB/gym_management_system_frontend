@@ -1,8 +1,53 @@
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { FaLongArrowAltRight } from "react-icons/fa";
 import axiosClient from "../../api/axiosClient";
+import { scanRfidAttendance } from "../../api/attendanceApi";
+import RfidInputListener from "../../components/RfidInputListener";
 import { getUserProfile, updateUserProfile } from "../../api/userApi";
+import { isCardNotRegisteredError, normalizeCardId } from "../../utils/rfid";
+
+function parseBackendDateTime(value) {
+  if (!value) return null;
+  const raw = String(value).trim();
+  const normalized = raw.includes("T") ? raw : raw.replace(" ", "T");
+  const date = new Date(normalized);
+  if (Number.isNaN(date.getTime())) return null;
+  return date;
+}
+
+function isSameDay(a, b) {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
+function isToday(value) {
+  const date = parseBackendDateTime(value);
+  if (!date) return false;
+  return isSameDay(date, new Date());
+}
+
+function formatTime(value) {
+  const date = parseBackendDateTime(value);
+  if (!date) return "—";
+  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function normalizeAction(action) {
+  if (!action) return null;
+  return String(action).toLowerCase().replace("-", "_");
+}
+
+function getAction(obj) {
+  return normalizeAction(obj?.action ?? obj?.type ?? obj?.status ?? obj?.event ?? null);
+}
+
+function getTimestamp(obj) {
+  return obj?.timestamp ?? obj?.time ?? obj?.scanned_at ?? obj?.created_at ?? null;
+}
 
 export default function TrainerSettings() {
   const storedUser = useMemo(() => {
@@ -13,6 +58,7 @@ export default function TrainerSettings() {
       return null;
     }
   }, []);
+  const busyRef = useRef(false);
 
   const [form, setForm] = useState({
     name: storedUser?.name || "",
@@ -24,6 +70,10 @@ export default function TrainerSettings() {
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
+  const [attendanceMsg, setAttendanceMsg] = useState(null);
+  const [latestAction, setLatestAction] = useState(null);
+  const [checkInTime, setCheckInTime] = useState(null);
+  const [checkOutTime, setCheckOutTime] = useState(null);
 
   const card = {
     borderRadius: 16,
@@ -84,6 +134,43 @@ export default function TrainerSettings() {
   useEffect(() => {
     loadProfile();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+
+    (async () => {
+      try {
+        const res = await axiosClient.get("/trainer/check-in");
+        const payload = res?.data || {};
+        const latestScan = payload?.latest_scan ?? null;
+        const scans = Array.isArray(payload?.recent_scans) ? payload.recent_scans : [];
+
+        const lastIn = scans.find((scan) => getAction(scan) === "check_in")?.timestamp || null;
+        const lastOut = scans.find((scan) => getAction(scan) === "check_out")?.timestamp || null;
+
+        if (!alive) return;
+
+        const latestTs = getTimestamp(latestScan);
+        const nextLatest = latestTs && isToday(latestTs) ? latestScan : null;
+        const nextIn = lastIn && isToday(lastIn) ? lastIn : null;
+        const nextOut = lastOut && isToday(lastOut) ? lastOut : null;
+
+        setLatestAction(getAction(nextLatest));
+        setCheckInTime(nextIn);
+        setCheckOutTime(nextOut);
+      } catch (e) {
+        if (!alive) return;
+        setAttendanceMsg({
+          type: "warning",
+          text: e?.response?.data?.message || "Unable to load attendance status.",
+        });
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
   }, []);
 
   const handleChange = (field) => (event) => {
@@ -166,8 +253,85 @@ export default function TrainerSettings() {
     window.location.href = "/login";
   };
 
+  const handleRfidScan = async (rawCardId) => {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setAttendanceMsg(null);
+
+    const cardId = normalizeCardId(rawCardId);
+    if (!cardId) {
+      setAttendanceMsg({ type: "danger", text: "Invalid RFID card ID." });
+      busyRef.current = false;
+      return;
+    }
+
+    try {
+      const res = await scanRfidAttendance(cardId);
+      const record = res?.data?.record ?? res?.data ?? null;
+      const action = getAction(record);
+      const timestamp = getTimestamp(record);
+
+      if (!timestamp || !isToday(timestamp)) {
+        setAttendanceMsg({
+          type: "warning",
+          text: res?.data?.message || "Recorded, but timestamp is not today.",
+        });
+        return;
+      }
+
+      setLatestAction(action);
+
+      if (action === "check_in") {
+        setCheckInTime(timestamp);
+        setCheckOutTime(null);
+        setAttendanceMsg({ type: "success", text: "Check-in successful." });
+      } else if (action === "check_out") {
+        setCheckOutTime(timestamp);
+        setAttendanceMsg({ type: "success", text: "Check-out successful." });
+      } else {
+        setAttendanceMsg({ type: "success", text: res?.data?.message || "Recorded." });
+      }
+    } catch (e) {
+      const errorMessage = e?.response?.data?.message || "Scan failed.";
+      setAttendanceMsg({
+        type: isCardNotRegisteredError(errorMessage) ? "warning" : "danger",
+        text: isCardNotRegisteredError(errorMessage)
+          ? "RFID card not registered. Please contact an administrator."
+          : errorMessage,
+      });
+    } finally {
+      setTimeout(() => {
+        busyRef.current = false;
+      }, 700);
+    }
+  };
+
   return (
     <div className="container py-3" style={{ maxWidth: 520 }}>
+      <RfidInputListener active onScan={handleRfidScan} />
+      <div style={card} className="mb-3">
+        <div style={{ fontSize: 16, fontWeight: 800 }}>Attendance Today</div>
+        <div className="small" style={{ opacity: 0.9, marginTop: 6 }}>
+          Scan your RFID card to check in and check out.
+        </div>
+        {attendanceMsg ? (
+          <div className={`alert alert-${attendanceMsg.type} py-2 mt-3`} role="alert">
+            {attendanceMsg.text}
+          </div>
+        ) : null}
+        <div className="d-flex justify-content-between mt-3">
+          <span style={{ opacity: 0.85 }}>Last Action</span>
+          <b>{latestAction ? latestAction.replace("_", "-") : "—"}</b>
+        </div>
+        <div className="d-flex justify-content-between mt-2">
+          <span style={{ opacity: 0.85 }}>Check-in Time</span>
+          <b>{formatTime(checkInTime)}</b>
+        </div>
+        <div className="d-flex justify-content-between mt-2">
+          <span style={{ opacity: 0.85 }}>Check-out Time</span>
+          <b>{formatTime(checkOutTime)}</b>
+        </div>
+      </div>
       {/* Header */}
       <div style={card} className="mb-3">
         <div style={{ fontSize: 18, fontWeight: 900 }}>Settings</div>

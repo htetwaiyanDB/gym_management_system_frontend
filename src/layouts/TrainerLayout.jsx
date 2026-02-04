@@ -1,13 +1,6 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { useEffect, useState } from "react";
-import {
-  FiHome,
-  FiLogIn,
-  FiBell,
-  FiMessageCircle,
-  FiCalendar,
-  FiSettings,
-} from "react-icons/fi";
+import { FiHome, FiMessageCircle, FiCalendar, FiSettings } from "react-icons/fi";
 import "./TrainerLayout.css";
 
 export default function TrainerLayout() {
@@ -67,14 +60,6 @@ export default function TrainerLayout() {
         </NavLink>
 
         <NavLink
-          to="/trainer/scan"
-          className={({ isActive }) => "nav-item" + (isActive ? " active" : "")}
-        >
-          <FiLogIn className="nav-icon" />
-          <span className="nav-label">Check In</span>
-        </NavLink>
-
-        <NavLink
           to="/trainer/messages"
           className={({ isActive }) => "nav-item" + (isActive ? " active" : "")}
         >
@@ -89,15 +74,6 @@ export default function TrainerLayout() {
           <FiCalendar className="nav-icon" />
           <span className="nav-label">Bookings</span>
         </NavLink>
-
-         <NavLink
-          to="/trainer/notifications"
-          className={({ isActive }) => "nav-item" + (isActive ? " active" : "")}
-        >
-          <FiBell className="nav-icon" />
-          <span className="nav-label">Alerts</span>
-        </NavLink>
-
 
         <NavLink
           to="/trainer/settings"

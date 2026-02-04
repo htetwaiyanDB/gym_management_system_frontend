@@ -22,7 +22,6 @@ const AdminSettings = lazy(() => import("./pages/admin/AdminSettings"));
 /* Trainer */
 const TrainerLayout = lazy(() => import("./layouts/TrainerLayout"));
 const TrainerHome = lazy(() => import("./pages/trainer/TrainerHome"));
-const TrainerScan = lazy(() => import("./pages/trainer/TrainerScan"));
 const TrainerMessages = lazy(() => import("./pages/trainer/TrainerMessages"));
 const TrainerBookings = lazy(() => import("./pages/trainer/TrainerBookings"));
 const TrainerBlogDetails = lazy(() =>
@@ -33,9 +32,7 @@ const TrainerSettings = lazy(() => import("./pages/trainer/TrainerSettings"));
 /* User */
 const UserLayout = lazy(() => import("./layouts/UserLayout"));
 const UserHome = lazy(() => import("./pages/user/UserHome"));
-const UserScan = lazy(() => import("./pages/user/UserScan"));
 const UserBlogDetails = lazy(() => import("./pages/user/UserBlogDetails"));
-const UserAttendance = lazy(() => import("./pages/user/UserAttendance"));
 const UserSubscriptions = lazy(() => import("./pages/user/UserSubscriptions"));
 const UserBookings = lazy(() => import("./pages/user/UserBookings"));
 const UserMessages = lazy(() => import("./pages/user/UserMessages"));
@@ -127,9 +124,7 @@ export default function App() {
         >
           <Route index element={<Navigate to="/user/home" replace />} />
           <Route path="home" element={<UserHome />} />
-          <Route path="scan" element={<UserScan />} />
           <Route path="blogs/:id" element={<UserBlogDetails />} />
-          <Route path="attendance" element={<UserAttendance />} />
           <Route path="subscriptions" element={<UserSubscriptions />} />
           <Route path="bookings" element={<UserBookings />} />
           <Route path="messages" element={<UserMessages />} />
@@ -149,7 +144,6 @@ export default function App() {
         >
           <Route index element={<Navigate to="/trainer/home" replace />} />
           <Route path="home" element={<TrainerHome />} />
-          <Route path="scan" element={<TrainerScan />} />
           <Route path="messages" element={<TrainerMessages />} />
           <Route path="bookings" element={<TrainerBookings />} />
           <Route path="blogs/:id" element={<TrainerBlogDetails />} />
