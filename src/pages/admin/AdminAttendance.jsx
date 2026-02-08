@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { QRCodeCanvas } from "qrcode.react";
 import axiosClient from "../../api/axiosClient";
 import { scanMemberCardAttendance } from "../../api/attendanceApi";
 import { isCardNotRegisteredError, normalizeCardId } from "../../utils/rfid";
@@ -158,29 +157,6 @@ const normalizeReportPayload = (resData) => {
 
 
 /**
- * Backend returns scan URLs only:
- * { user_qr: "...", trainer_qr: "..." }
- * Generate QR codes on frontend from those URLs.
- */
-function renderQrFromUrl(url, id) {
-  if (!url) return null;
-  return (
-    <div
-      id={id}
-      style={{
-        background: "#fff",
-        padding: 12,
-        borderRadius: 12,
-        width: 240,
-        margin: "0 auto",
-      }}
-    >
-      <QRCodeCanvas value={url} size={216} level="H" includeMargin={false} />
-    </div>
-  );
-}
-
-/**
  * Inline styles only (no global CSS changes)
  */
 const cardGlass = {
@@ -200,9 +176,8 @@ const glassSelectStyle = {
 };
 
 export default function AdminAttendance() {
-  const [activeTab, setActiveTab] = useState("qr"); // records | qr | checked
+  const [activeTab, setActiveTab] = useState("records"); // records | checked
   const [msg, setMsg] = useState(null);
-  const [busyKey, setBusyKey] = useState(null);
   const scanInputRef = useRef(null);
   const scanTimeoutRef = useRef(null);
 
@@ -212,172 +187,45 @@ export default function AdminAttendance() {
   const [recordRoleFilter, setRecordRoleFilter] = useState("all");
   const [recordTypeFilter, setRecordTypeFilter] = useState("all");
 
-  // QR (backend provides links only)
-  const [qrLoading, setQrLoading] = useState(false);
-  const [qrLinks, setQrLinks] = useState({
-    user_qr: null,
-    trainer_qr: null,
-  });
-
-  // Override form
-  const [overrideLoading, setOverrideLoading] = useState(false);
-  const [overrideUsers, setOverrideUsers] = useState([]);
-  const [overrideQrType, setOverrideQrType] = useState("user"); // user | trainer
-  const [overrideUserId, setOverrideUserId] = useState("");
-
   // Member card scan panel
-    const [scanValue, setScanValue] = useState("");
-    const [scanLoading, setScanLoading] = useState(false);
-    const [scanError, setScanError] = useState(null);
-    const [scanResult, setScanResult] = useState(null);
+  const [scanValue, setScanValue] = useState("");
+  const [scanLoading, setScanLoading] = useState(false);
+  const [scanError, setScanError] = useState(null);
+  const [scanResult, setScanResult] = useState(null);
 
   // Checked-in
   const [checkedLoading, setCheckedLoading] = useState(false);
   const [checkedSummary, setCheckedSummary] = useState({ total_members: 0, active_checkins: 0 });
   const [checkedUsers, setCheckedUsers] = useState([]);
   const [activeCheckinsLoading, setActiveCheckinsLoading] = useState(false);
-
-  // small helper: show success and optionally auto-hide
-  const showSuccess = (text) => {
-    setMsg({ type: "success", text });
-    // auto-hide after 3 seconds (optional)
-    window.clearTimeout(showSuccess._t);
-    showSuccess._t = window.setTimeout(() => setMsg(null), 3000);
-  };
+  const [memberCountLoading, setMemberCountLoading] = useState(false);
 
   const showError = (text) => {
     setMsg({ type: "danger", text });
   };
 
-    const printQr = (wrapperId, title, url) => { 
-    const wrapper = document.getElementById(wrapperId);
-    const canvas = wrapper?.querySelector("canvas");
-
-    if (!canvas) {
-      showError("QR code is not ready to print. Please refresh and try again.");
-      return;
-    }
-
-    const dataUrl = canvas.toDataURL("image/png");
-    const printWindow = window.open("", "_blank");
-
-    if (!printWindow) {
-      showError("Pop-up blocked. Please allow pop-ups to print the QR code.");
-      return;
-    }
-
-    printWindow.document.open();
-    printWindow.document.write(`
-      <!doctype html>
-      <html>
-        <head>
-          <title>${title}</title>
-          <style>
-            @page { size: A4; margin: 24mm; }
-            body { font-family: Arial, sans-serif; color: #111; }
-            .page { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; }
-            .qr { width: 320px; height: 320px; object-fit: contain; margin: 24px 0; }
-            .subtitle { color: #444; font-size: 14px; text-align: center; word-break: break-all; }
-            h1 { font-size: 24px; margin-bottom: 8px; text-align: center; }
-          </style>
-        </head>
-        <body>
-          <div class="page">
-            <h1>${title}</h1>
-             <img id="qr-image" class="qr" src="${dataUrl}" alt="${title}" />
-            <div class="subtitle">${url || ""}</div>
-          </div>
-          <script>
-            const img = document.getElementById("qr-image");
-            const triggerPrint = () => {
-              setTimeout(() => {
-                window.focus();
-                window.print();
-                window.close();
-              }, 250);
-            };
-            if (!img) {
-              triggerPrint();
-            } else if (img.complete) {
-              triggerPrint();
-            } else {
-              img.onload = triggerPrint;
-              img.onerror = triggerPrint;
-            }
-          </script>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
-  };
-
-
   // ---------------- API calls ----------------
 
-  const loadQr = async () => {
-    setQrLoading(true);
-    try {
-      const res = await axiosClient.get("/attendance/qr");
-      const d = res.data || {};
-      setQrLinks({
-        user_qr: d.user_qr || null,
-        trainer_qr: d.trainer_qr || null,
-      });
-    } catch (e) {
-      showError(e?.response?.data?.message || "Failed to load QR codes.");
-    } finally {
-      setQrLoading(false);
-    }
-  };
-
-  const refreshQr = async () => {
-    setBusyKey("refreshQr");
-    try {
-      await axiosClient.post("/attendance/qr/refresh");
-      await loadQr();
-      showSuccess("QR codes refreshed successfully.");
-    } catch (e) {
-      showError(e?.response?.data?.message || "Failed to refresh QR codes.");
-    } finally {
-      setBusyKey(null);
-    }
-  };
-
-  const loadOverrideUsers = async () => {
-    setOverrideLoading(true);
+  const loadMemberCount = async (clearMsg = false) => {
+    if (clearMsg) setMsg(null);
+    setMemberCountLoading(true);
     try {
       const res = await axiosClient.get("/attendance/users");
       const list = res.data?.users || res.data?.data || (Array.isArray(res.data) ? res.data : []);
-      setOverrideUsers(Array.isArray(list) ? list : []);
-    } catch {
-      setOverrideUsers([]);
-    } finally {
-      setOverrideLoading(false);
-    }
-  };
+      const users = Array.isArray(list) ? list : [];
+      const totalMembers = users.filter((u) => String(u?.role || "").toLowerCase() === "user").length;
 
-  const recordOverrideScan = async () => {
-    if (!overrideUserId) {
-      showError("Please select a user.");
-      return;
-    }
-
-    setBusyKey("recordScan");
-    try {
-      // ✅ FIX: backend expects qr_type not type
-      const payload = { qr_type: overrideQrType, user_id: Number(overrideUserId) };
-      const res = await axiosClient.post("/attendance/scan", payload);
-
-      showSuccess(res?.data?.message || "Scan recorded successfully.");
-
-      // ✅ refresh tables but DO NOT clear msg inside loaders
-      await Promise.all([loadRecords(false), loadCheckedIn(false), loadActiveCheckins(false)]);
+      setCheckedSummary((prev) => ({
+        ...prev,
+        total_members: totalMembers,
+      }));
     } catch (e) {
-      showError(e?.response?.data?.message || "Failed to record scan.");
+      showError(e?.response?.data?.message || "Failed to load member count.");
     } finally {
-      setBusyKey(null);
+      setMemberCountLoading(false);
     }
   };
+
 
   const loadActiveCheckins = async (clearMsg = false) => {
     if (clearMsg) setMsg(null);
@@ -432,7 +280,6 @@ export default function AdminAttendance() {
 
       setCheckedSummary((prev) => ({
         ...prev,
-        total_members: uniqueKeys.size,
       }));
       setCheckedUsers(activeUsers);
     } catch (e) {
@@ -460,11 +307,6 @@ export default function AdminAttendance() {
   // ---------------- effects ----------------
 
   useEffect(() => {
-    loadQr();
-    loadOverrideUsers();
-  }, []);
-
-  useEffect(() => {
     if (!scanResult && scanInputRef.current) {
       scanInputRef.current.focus();
     }
@@ -483,10 +325,7 @@ export default function AdminAttendance() {
     if (activeTab === "checked") {
       loadCheckedIn(true);
       loadActiveCheckins(false);
-    }
-    if (activeTab === "qr") {
-      loadQr();
-      loadOverrideUsers();
+      loadMemberCount(false);
     }
   }, [activeTab]);
 
@@ -495,17 +334,13 @@ export default function AdminAttendance() {
     const intervalId = window.setInterval(() => {
       loadCheckedIn(false);
       loadActiveCheckins(false);
+      loadMemberCount(false);
     }, 10000);
 
     return () => window.clearInterval(intervalId);
   }, [activeTab]);
 
   // ---------------- computed ----------------
-
-  const filteredOverrideUsers = useMemo(() => {
-    const t = String(overrideQrType).toLowerCase();
-    return (overrideUsers || []).filter((u) => String(u?.role || "").toLowerCase() === t);
-  }, [overrideUsers, overrideQrType]);
 
   const filteredRecords = useMemo(() => {
     const roleF = String(recordRoleFilter).toLowerCase();
@@ -574,6 +409,7 @@ export default function AdminAttendance() {
         attendance,
         message: message || "Scan recorded successfully.",
       });
+      await Promise.all([loadRecords(false), loadCheckedIn(false), loadActiveCheckins(false), loadMemberCount(false)]);
       setScanValue(cardId);
     } catch (e) {
       const message = e?.response?.data?.message || "Unable to scan member card.";
@@ -627,11 +463,11 @@ export default function AdminAttendance() {
           Attendance Center
         </h4>
         <div className="admin-muted" style={mutedText}>
-          Track trainer attendance, scan QR codes, and monitor active gym users.
+          Track attendance by RFID scan and monitor active gym users.
         </div>
       </div>
 
-            {!scanResult && (
+      {!scanResult && (
         <div className="mb-4" style={{ ...cardGlass, borderRadius: 16, padding: 18 }}>
           <div className="d-flex align-items-start justify-content-between mb-2">
             <div>
@@ -687,6 +523,14 @@ export default function AdminAttendance() {
 
           <div className="mt-3">
             <div className="d-flex justify-content-between mb-2" style={bodyText}>
+              <span>Username</span>
+              <strong>{scanResult.user?.username || scanResult.user?.name || "—"}</strong>
+            </div>
+            <div className="d-flex justify-content-between mb-2" style={bodyText}>
+              <span>Role</span>
+              <strong>{normalizeRole(scanResult.user?.role || scanResult.attendance?.role)}</strong>
+            </div>
+            <div className="d-flex justify-content-between mb-2" style={bodyText}>
               <span>Member Name</span>
               <strong>
                 {scanResult.user?.name ||
@@ -729,7 +573,6 @@ export default function AdminAttendance() {
         </div>
       )}
 
-
       {msg && <div className={`alert alert-${msg.type}`}>{msg.text}</div>}
 
       {/* Tabs */}
@@ -740,176 +583,11 @@ export default function AdminAttendance() {
           </button>
         </li>
         <li className="nav-item">
-          <button className={`nav-link ${activeTab === "qr" ? "active" : ""}`} onClick={() => setActiveTab("qr")}>
-            QR Codes
-          </button>
-        </li>
-        <li className="nav-item">
           <button className={`nav-link ${activeTab === "checked" ? "active" : ""}`} onClick={() => setActiveTab("checked")}>
             Checked-in Users
           </button>
         </li>
       </ul>
-
-      {/* ================= QR TAB ================= */}
-      {activeTab === "qr" && (
-        <div>
-          <div className="d-flex align-items-start justify-content-between mb-3">
-            <div>
-              <h5 className="mb-1" style={titleText}>
-                Gym QR Codes
-              </h5>
-              <div className="admin-muted" style={mutedText}>
-                Share these codes for members and trainers to scan on entry or exit.
-              </div>
-            </div>
-
-            <button className="btn btn-dark" onClick={refreshQr} disabled={qrLoading || busyKey === "refreshQr"}>
-              {busyKey === "refreshQr" ? "Refreshing..." : "Refresh QR Codes"}
-            </button>
-          </div>
-
-          <div className="row g-3 mb-4">
-            {/* Member */}
-            <div className="col-12 col-lg-6">
-              <div className="card h-100" style={cardGlass}>
-                <div className="card-body">
-                  <div className="d-flex align-items-center justify-content-between mb-1">
-                    <h6 className="mb-0" style={titleText}>
-                      Member QR Code
-                    </h6>
-                    <button
-                      className="btn btn-sm btn-outline-light"
-                      onClick={() => printQr("member-qr-code", "Member QR Code", qrLinks.user_qr)}
-                      disabled={qrLoading || !qrLinks.user_qr}
-                    >
-                      Print QR
-                    </button>
-                  </div>
-                  <div className="mb-3" style={mutedText}>
-                    Members scan this QR to check in and check out each day.
-                  </div>
-
-                  {qrLoading ? (
-                    <div style={mutedText}>Loading...</div>
-                  ) : (
-                    <>
-                     {renderQrFromUrl(qrLinks.user_qr, "member-qr-code")}
-                      <div className="small mt-3" style={bodyText}>
-                        <div>
-                          <b>Scan link:</b> <span style={mutedText}>{qrLinks.user_qr || "-"}</span>
-                        </div>
-                        <div style={mutedText}>Scan twice daily (in/out) to record attendance.</div>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Trainer */}
-            <div className="col-12 col-lg-6">
-              <div className="card h-100" style={cardGlass}>
-                <div className="card-body">
-                  <div className="d-flex align-items-center justify-content-between mb-1">
-                    <h6 className="mb-0" style={titleText}>
-                      Trainer QR Code
-                    </h6>
-                    <button
-                      className="btn btn-sm btn-outline-light"
-                      onClick={() => printQr("trainer-qr-code", "Trainer QR Code", qrLinks.trainer_qr)}
-                      disabled={qrLoading || !qrLinks.trainer_qr}
-                    >
-                      Print QR
-                    </button>
-                  </div>
-                  <div className="mb-3" style={mutedText}>
-                    Trainers scan this QR for working day tracking and payroll. 
-                  </div>
-                  
-                  {qrLoading ? (
-                    <div style={mutedText}>Loading...</div>
-                  ) : (
-                    <>
-                      {renderQrFromUrl(qrLinks.trainer_qr, "trainer-qr-code")}
-                      <div className="small mt-3" style={bodyText}>
-                        <div>
-                          <b>Scan link:</b> <span style={mutedText}>{qrLinks.trainer_qr || "-"}</span>
-                        </div>
-                        <div style={mutedText}>A working day is counted when two scans are recorded.</div>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Admin Scan Override */}
-          <div className="card" style={cardGlass}>
-            <div className="card-body">
-              <div className="d-flex align-items-center gap-2 mb-1">
-                <span className="badge bg-warning text-dark">Admin</span>
-                <h6 className="mb-0" style={titleText}>
-                  Scan Override
-                </h6>
-              </div>
-
-              <div className="small mb-3" style={mutedText}>
-                Use this form only if someone cannot scan the QR. It will record a scan automatically.
-              </div>
-
-              <div className="row g-3 align-items-end">
-                <div className="col-12 col-md-4">
-                  <label className="form-label fw-bold" style={bodyText}>
-                   Select QR Type
-                  </label>
-                  <select
-                    className="form-select bg-dark"
-                    style={glassSelectStyle}
-                    value={overrideQrType}
-                    onChange={(e) => {
-                      setOverrideQrType(e.target.value);
-                      setOverrideUserId("");
-                    }}
-                    disabled={overrideLoading}
-                  >
-                    <option value="user" className="fw-bold text-light">Member</option>
-                    <option value="trainer" className="fw-bold text-light">Trainer</option>
-                  </select>
-                </div>
-
-                <div className="col-12 col-md-5">
-                  <label className="form-label fw-bold" style={bodyText}>
-                    User
-                  </label>
-                  <select
-                    className="form-select bg-dark"
-                    style={glassSelectStyle}
-                    value={overrideUserId}
-                    onChange={(e) => setOverrideUserId(e.target.value)}
-                    disabled={overrideLoading}
-                  >
-                    <option value="" className="fw-bold text-light">{overrideLoading ? "Loading users..." : "Select user"}</option>
-                    {filteredOverrideUsers.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.name} ({normalizeRole(u.role)})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="col-12 col-md-3">
-                  <button className="btn btn-success w-100" onClick={recordOverrideScan} disabled={busyKey === "recordScan"}>
-                    {busyKey === "recordScan" ? "Recording..." : "Record Scan"}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       
       {activeTab === "checked" && (
         <div>
@@ -936,7 +614,7 @@ export default function AdminAttendance() {
           <div className="card mb-3" style={cardGlass}>
             <div className="card-body">
               <span className="badge rounded-pill text-bg-light me-2">
-                Total members: <b>{checkedSummary.total_members}</b>
+                Total members: <b>{memberCountLoading ? "..." : checkedSummary.total_members}</b>
               </span>
               <span className="badge rounded-pill text-bg-light me-2">
                 Active check-ins: <b>{activeCheckinsLoading ? "..." : checkedSummary.active_checkins}</b>
@@ -987,7 +665,7 @@ export default function AdminAttendance() {
               <h5 className="mb-1" style={titleText}>
                 Attendance Records
               </h5>
-              <div style={mutedText}>All scans recorded by QR or admin override.</div>
+              <div style={mutedText}>All RFID scan records recorded for members.</div>
             </div>
 
             <button className="btn btn-outline-light" onClick={() => loadRecords(true)} disabled={recordsLoading}>
