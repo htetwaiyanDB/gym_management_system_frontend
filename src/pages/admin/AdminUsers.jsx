@@ -169,6 +169,10 @@ export default function AdminUsers() {
   const openEdit = (u) => {
     setMsg(null);
     const recordId = getUserRecordId(u);
+    if (!recordId) {
+      setMsg({ type: "danger", text: "This user is missing a server ID. Please refresh the list." });
+      return;
+    }
     const next = {
       id: recordId,
       user_id: u?.user_id ?? "",
@@ -244,6 +248,15 @@ export default function AdminUsers() {
       setShowEdit(false);
       await load();
     } catch (e) {
+      if (e?.response?.status === 404) {
+        setMsg({
+          type: "danger",
+          text: "This user no longer exists. Please refresh the list.",
+        });
+        setShowEdit(false);
+        await load();
+        return;
+      }
       setMsg({
         type: "danger",
         text:
@@ -257,7 +270,10 @@ export default function AdminUsers() {
 
   // --------- Delete / Restore ----------
   const destroy = async (id) => {
-    if (!id) return;
+    if (!id) {
+      setMsg({ type: "danger", text: "This user is missing a server ID. Please refresh the list." });
+      return;
+    }
     if (!confirm("Delete this user?")) return;
 
     setMsg(null);
@@ -279,7 +295,10 @@ export default function AdminUsers() {
   };
 
   const restore = async (id) => {
-    if (!id) return;
+    if (!id) {
+      setMsg({ type: "danger", text: "This user is missing a server ID. Please refresh the list." });
+      return;
+    }
 
     setMsg(null);
     try {
@@ -322,6 +341,8 @@ export default function AdminUsers() {
             className="form-control admin-search"
             placeholder="Search name / email / phone / role"
             value={query}
+            autoComplete="off"
+            name="admin-user-search"
             onChange={(e) => setQuery(e.target.value)}
           />
           <style>
@@ -426,10 +447,10 @@ export default function AdminUsers() {
       Update
     </button>
 
-        {isDeleted ? (
+      {isDeleted ? (
       <button
         className="btn btn-sm btn-outline-warning"
-        onClick={() => restore(recordId ?? userId)}
+        onClick={() => restore(recordId)}
         style={{ minWidth: 70 }}
       >
         Restore
@@ -437,7 +458,7 @@ export default function AdminUsers() {
     ) : (
       <button
         className="btn btn-sm btn-outline-danger"
-        onClick={() => destroy(recordId ?? userId)}
+        onClick={() => destroy(recordId)}
         style={{ minWidth: 70 }}
       >
         Delete
