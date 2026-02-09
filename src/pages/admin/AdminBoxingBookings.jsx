@@ -827,7 +827,7 @@ export default function AdminBoxingBookings() {
               <th style={{ width: 140 }}>Package Type</th>
               <th style={{ width: 120 }}>Status</th>
               <th style={{ width: 100 }}>Paid</th>
-              <th style={{ width: 230 }}>Actions</th>
+              <th style={{ width: 240 }}>Actions</th>
             </tr>
           </thead>
 
