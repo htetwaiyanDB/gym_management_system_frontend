@@ -158,6 +158,7 @@ export default function AdminDashboard() {
   const [usersGrowthData, setUsersGrowthData] = useState([]);
   const [subscriptionsData, setSubscriptionsData] = useState([]);
   const [trainerBookingsData, setTrainerBookingsData] = useState([]);
+  const [boxingBookingsData, setBoxingBookingsData] = useState([]);
 
   // prevent StrictMode double-fetch in dev
   const didInitRef = useRef(false);
@@ -209,6 +210,11 @@ export default function AdminDashboard() {
       const usersArr = Array.isArray(payload.users) ? payload.users : [];
       const subsArr = Array.isArray(payload.subscriptions) ? payload.subscriptions : [];
       const bookingsArr = Array.isArray(payload.trainer_bookings) ? payload.trainer_bookings : [];
+      const boxingArr = Array.isArray(payload.boxing_bookings)
+        ? payload.boxing_bookings
+        : Array.isArray(payload.boxingBookings)
+          ? payload.boxingBookings
+          : [];
 
       const toSeries = (vals) =>
         labels.map((lbl, i) => ({
@@ -219,6 +225,7 @@ export default function AdminDashboard() {
       setUsersGrowthData(toSeries(usersArr));
       setSubscriptionsData(toSeries(subsArr));
       setTrainerBookingsData(toSeries(bookingsArr));
+      setBoxingBookingsData(toSeries(boxingArr));
     } catch (e) {
       if (e?.name === "CanceledError" || e?.code === "ERR_CANCELED") return;
 
@@ -519,7 +526,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Left: 3 growth graphs + Right: Attendance bar */}
+      {/* Left: 2 growth graphs + Right: Attendance bar */}
       <div className="row g-3 mb-3">
         <div className="col-12 col-lg-5">
           <MetricAreaChart
@@ -534,12 +541,6 @@ export default function AdminDashboard() {
             stroke="#34d399"
             fill="rgba(52,211,153,0.20)"
           />
-          <MetricAreaChart
-            title="Trainer Bookings"
-            data={trainerBookingsData}
-            stroke="#fb923c"
-            fill="rgba(251,146,60,0.20)"
-          />
         </div>
 
         <div className="col-12 col-lg-7">
@@ -553,7 +554,7 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <div style={{ width: "100%", height: 420 }}>
+            <div style={{ width: "100%", height: 280 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={attendanceBarData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
@@ -577,6 +578,25 @@ export default function AdminDashboard() {
               * Attendance bars come from API: <code>labels/check_ins/check_outs</code>.
             </div>
           </div>
+        </div>
+      </div>
+
+      <div className="row g-3 mb-3">
+        <div className="col-12">
+          <MetricAreaChart
+            title="Trainer Bookings"
+            data={trainerBookingsData}
+            stroke="#fb923c"
+            fill="rgba(251,146,60,0.20)"
+          />
+        </div>
+        <div className="col-12">
+          <MetricAreaChart
+            title="Boxing Bookings"
+            data={boxingBookingsData}
+            stroke="#a78bfa"
+            fill="rgba(167,139,250,0.22)"
+          />
         </div>
       </div>
 
