@@ -9,13 +9,6 @@ function moneyMMK(v) {
   return n.toLocaleString("en-US") + " MMK";
 }
 
-function normalizeList(payload, fallbackKey) {
-  if (Array.isArray(payload?.[fallbackKey])) return payload[fallbackKey];
-  if (Array.isArray(payload?.data)) return payload.data;
-  if (Array.isArray(payload)) return payload;
-  return [];
-}
-
 function pickFirstValue(source, keys) {
   for (const key of keys) {
     const value = source?.[key];
@@ -23,22 +16,6 @@ function pickFirstValue(source, keys) {
       return value;
     }
   }
-  return null;
-}
-
-function getRecordUserId(record) {
-  const direct = pickFirstValue(record, [
-    "member_id",
-    "memberId",
-    "user_id",
-    "userId",
-    "member_id_fk",
-  ]);
-  if (direct) return direct;
-  const memberId = record?.member?.id ?? record?.member?.user_id;
-  if (memberId) return memberId;
-  const userId = record?.user?.id ?? record?.user?.user_id;
-  if (userId) return userId;
   return null;
 }
 
@@ -60,6 +37,24 @@ function statusBadge(status) {
   return <span className="badge bg-info text-dark">{normalized}</span>;
 }
 
+const emptyRecords = {
+  user: null,
+  subscriptions: [],
+  trainerBookings: [],
+  boxingBookings: [],
+};
+
+function normalizeArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function buildErrorMessage(error) {
+  const status = error?.response?.status;
+  if (status === 404) return "User not found.";
+  if (status === 500) return "Server error. Please try again.";
+  return error?.response?.data?.message || "Failed to load user records.";
+}
+
 export default function AdminUserHistory() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -67,15 +62,11 @@ export default function AdminUserHistory() {
   const userFromState = location.state?.user ?? null;
 
   const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState(null);
-  const [busyKey, setBusyKey] = useState(null);
-
-  const [subscriptions, setSubscriptions] = useState([]);
-  const [trainerBookings, setTrainerBookings] = useState([]);
-  const [boxingBookings, setBoxingBookings] = useState([]);
+  const [error, setError] = useState(null);
+  const [records, setRecords] = useState(emptyRecords);
 
   const candidateUserIds = useMemo(() => {
-    const values = [
+    return [
       id,
       userFromState?.id,
       userFromState?.user_id,
@@ -87,131 +78,86 @@ export default function AdminUserHistory() {
     ]
       .filter((value) => value !== null && value !== undefined && value !== "")
       .map((value) => String(value));
-    return new Set(values);
   }, [id, userFromState]);
 
-  const filterByUser = (list) => {
-    if (candidateUserIds.size === 0) return list;
-    return list.filter((record) => {
-      const recordUserId = getRecordUserId(record);
-      if (!recordUserId) return false;
-      return candidateUserIds.has(String(recordUserId));
-    });
-  };
+  const recordId = candidateUserIds[0] || null;
 
-  const loadHistory = async () => {
-    setMsg(null);
+  const loadRecords = async () => {
+    if (!recordId) {
+      setRecords(emptyRecords);
+      setError("Missing user id for this record.");
+      return;
+    }
+    setError(null);
     setLoading(true);
     try {
-      const [subsRes, trainerRes, boxingRes] = await Promise.allSettled([
-        axiosClient.get("/subscriptions"),
-        axiosClient.get("/trainer-bookings"),
-        axiosClient.get("/boxing-bookings"),
-      ]);
-
-      if (subsRes.status === "fulfilled") {
-        const list = normalizeList(subsRes.value.data, "subscriptions");
-        setSubscriptions(filterByUser(list));
-      } else {
-        setSubscriptions([]);
-        setMsg({
-          type: "danger",
-          text: subsRes.reason?.response?.data?.message || "Failed to load subscriptions.",
-        });
-      }
-
-      if (trainerRes.status === "fulfilled") {
-        const list = normalizeList(trainerRes.value.data, "bookings");
-        setTrainerBookings(filterByUser(list));
-      } else {
-        setTrainerBookings([]);
-        setMsg({
-          type: "danger",
-          text: trainerRes.reason?.response?.data?.message || "Failed to load trainer bookings.",
-        });
-      }
-
-      if (boxingRes.status === "fulfilled") {
-        const list = normalizeList(boxingRes.value.data, "bookings");
-        setBoxingBookings(filterByUser(list));
-      } else {
-        setBoxingBookings([]);
-        setMsg({
-          type: "danger",
-          text: boxingRes.reason?.response?.data?.message || "Failed to load boxing bookings.",
-        });
-      }
+      const res = await axiosClient.get(`/users/${recordId}/records`);
+      const payload = res?.data || {};
+      setRecords({
+        user: payload.user ?? null,
+        subscriptions: normalizeArray(payload.subscriptions),
+        trainerBookings: normalizeArray(payload.trainerbookings),
+        boxingBookings: normalizeArray(payload.boxingbookings),
+      });
+    } catch (err) {
+      setRecords(emptyRecords);
+      setError(buildErrorMessage(err));
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadHistory();
-  }, [id]);
+    loadRecords();
+  }, [recordId]);
 
-  const resumeSubscription = async (subscriptionId) => {
-    setMsg(null);
-    setBusyKey(`subscription-${subscriptionId}`);
-    try {
-      const res = await axiosClient.post(`/subscriptions/${subscriptionId}/resume`);
-      setMsg({ type: "success", text: res?.data?.message || "Subscription activated." });
-      await loadHistory();
-    } catch (e) {
-      setMsg({
-        type: "danger",
-        text: e?.response?.data?.message || "Failed to activate subscription.",
-      });
-    } finally {
-      setBusyKey(null);
-    }
-  };
+  const headerUser = records.user ?? userFromState;
+  const headerName = headerUser?.name || headerUser?.username || "User";
+  const headerEmail = headerUser?.email || null;
+  const headerPhone = headerUser?.phone || null;
+  const headerRole = headerUser?.role || headerUser?.user_role || null;
+  const headerId =
+    headerUser?.user_id || headerUser?.id || headerUser?.member_id || recordId || "-";
 
-  const activateTrainerBooking = async (bookingId) => {
-    setMsg(null);
-    setBusyKey(`trainer-${bookingId}`);
-    try {
-      const res = await axiosClient.patch(`/trainer-bookings/${bookingId}/mark-active`);
-      setMsg({ type: "success", text: res?.data?.message || "Trainer booking activated." });
-      await loadHistory();
-    } catch (e) {
-      setMsg({
-        type: "danger",
-        text: e?.response?.data?.message || "Failed to activate trainer booking.",
-      });
-    } finally {
-      setBusyKey(null);
-    }
-  };
-
-  const activateBoxingBooking = async (bookingId) => {
-    setMsg(null);
-    setBusyKey(`boxing-${bookingId}`);
-    try {
-      const res = await axiosClient.patch(`/boxing-bookings/${bookingId}/mark-active`);
-      setMsg({ type: "success", text: res?.data?.message || "Boxing booking activated." });
-      await loadHistory();
-    } catch (e) {
-      setMsg({
-        type: "danger",
-        text: e?.response?.data?.message || "Failed to activate boxing booking.",
-      });
-    } finally {
-      setBusyKey(null);
-    }
-  };
-
-  const headerName = userFromState?.name || userFromState?.username || "User";
-  const headerEmail = userFromState?.email || null;
-  const headerPhone = userFromState?.phone || null;
+  const headerTitle = pickFirstValue(userFromState, ["name", "username"]) || headerName;
 
   return (
+    <UserRecordsDetail
+      variant="page"
+      headerTitle={headerTitle}
+      headerUser={headerUser}
+      headerId={headerId}
+      loading={loading}
+      error={error}
+      records={records}
+      onClose={() => navigate("/admin/users")}
+      onRefresh={loadRecords}
+    />
+  );
+}
+
+function UserRecordsDetail({
+  variant = "page",
+  headerTitle,
+  headerUser,
+  headerId,
+  loading,
+  error,
+  records,
+  onClose,
+  onRefresh,
+}) {
+  const headerName = headerUser?.name || headerUser?.username || "User";
+  const headerEmail = headerUser?.email || null;
+  const headerPhone = headerUser?.phone || null;
+  const headerRole = headerUser?.role || headerUser?.user_role || null;
+  const container = (
     <div className="admin-card p-4">
       <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
         <div>
           <h4 className="mb-1">User History</h4>
           <div className="admin-muted">
-            View subscriptions and bookings for <strong>{headerName}</strong>.
+            View subscriptions and bookings for <strong>{headerTitle}</strong>.
           </div>
           <div className="text-muted small">
             {headerEmail && <span className="me-2">{headerEmail}</span>}
@@ -219,193 +165,162 @@ export default function AdminUserHistory() {
           </div>
         </div>
         <div className="d-flex gap-2">
-          <button className="btn btn-outline-light" onClick={() => navigate("/admin/users")}>
-            Back to Users
-          </button>
-          <button className="btn btn-outline-light" onClick={loadHistory} disabled={loading}>
+          {onClose && (
+            <button className="btn btn-outline-light" onClick={onClose}>
+              {variant === "modal" ? "Close" : "Back to Users"}
+            </button>
+          )}
+          <button className="btn btn-outline-light" onClick={onRefresh} disabled={loading}>
             {loading ? "Loading..." : "Refresh"}
           </button>
         </div>
       </div>
 
-      {msg && <div className={`alert alert-${msg.type}`}>{msg.text}</div>}
+      {error && <div className="alert alert-danger">{error}</div>}
+
+      <div className="card bg-dark text-white border-secondary mb-4">
+        <div className="card-body">
+          <div className="d-flex flex-wrap justify-content-between gap-3">
+            <div>
+              <div className="text-muted small">User</div>
+              <div className="fw-bold fs-5">{headerName}</div>
+              <div className="text-muted small">ID: {headerId}</div>
+            </div>
+            <div>
+              <div className="text-muted small">Contact</div>
+              <div>{headerEmail || "-"}</div>
+              <div>{headerPhone || "-"}</div>
+            </div>
+            <div>
+              <div className="text-muted small">Role</div>
+              <div>{headerRole || "-"}</div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div className="mb-4">
         <h5 className="mb-3">Subscriptions</h5>
-        {subscriptions.length === 0 ? (
-          <div className="text-center text-muted py-4">
-            {loading ? "Loading..." : "No subscriptions found."}
-          </div>
+        {records.subscriptions.length === 0 ? (
+          <div className="text-center text-muted py-4">{loading ? "Loading..." : "No records found."}</div>
         ) : (
-          <div className="row g-3">
-            {subscriptions.map((subscription) => {
-              const status = normalizeStatus(subscription?.status);
-              const canActivate =
-                status === "on-hold" || status === "pending" || status === "inactive";
-              return (
-                <div className="col-12 col-lg-6 col-xxl-4" key={subscription?.id ?? Math.random()}>
-                  <div className="card bg-dark text-white border-secondary h-100 shadow-sm">
-                    <div className="card-body d-flex flex-column gap-3">
-                      <div className="d-flex justify-content-between align-items-start gap-2">
-                        <div>
-                          <div className="text-muted small">Subscription ID</div>
-                          <div className="fw-bold">{subscription?.id ?? "-"}</div>
-                        </div>
-                        {statusBadge(subscription?.status)}
-                      </div>
-                      <div className="d-flex flex-wrap gap-2">
-                        <span className="badge bg-primary">{subscription?.plan_name || "-"}</span>
-                        <span className="badge bg-secondary">{moneyMMK(subscription?.price)}</span>
-                      </div>
-                      <div className="d-grid gap-2 small">
-                        <div className="d-flex justify-content-between">
-                          <span className="text-muted">Start</span>
-                          <span>{subscription?.start_date || "-"}</span>
-                        </div>
-                        <div className="d-flex justify-content-between">
-                          <span className="text-muted">End</span>
-                          <span>{subscription?.end_date || "-"}</span>
-                        </div>
-                      </div>
-                      <div className="mt-auto">
-                        <button
-                          className="btn btn-sm btn-success w-100"
-                          disabled={!canActivate || busyKey === `subscription-${subscription?.id}`}
-                          onClick={() => resumeSubscription(subscription?.id)}
-                        >
-                          {busyKey === `subscription-${subscription?.id}` ? "..." : "Activate"}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+          <div className="table-responsive">
+            <table className="table table-dark table-striped align-middle">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Plan</th>
+                  <th>Status</th>
+                  <th>Start</th>
+                  <th>End</th>
+                  <th>Price</th>
+                </tr>
+              </thead>
+              <tbody>
+                {records.subscriptions.map((subscription) => (
+                  <tr key={subscription?.id ?? Math.random()}>
+                    <td>{subscription?.id ?? "-"}</td>
+                    <td>{subscription?.plan_name || subscription?.package_name || "-"}</td>
+                    <td>{statusBadge(subscription?.status)}</td>
+                    <td>{subscription?.start_date || "-"}</td>
+                    <td>{subscription?.end_date || "-"}</td>
+                    <td>{moneyMMK(subscription?.price ?? subscription?.total_price)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
 
       <div className="mb-4">
         <h5 className="mb-3">Trainer Bookings</h5>
-        {trainerBookings.length === 0 ? (
-          <div className="text-center text-muted py-4">
-            {loading ? "Loading..." : "No trainer bookings found."}
-          </div>
+        {records.trainerBookings.length === 0 ? (
+          <div className="text-center text-muted py-4">{loading ? "Loading..." : "No records found."}</div>
         ) : (
-          <div className="row g-3">
-            {trainerBookings.map((booking) => {
-              const status = normalizeStatus(booking?.status);
-              const canActivate = status === "pending" || status === "on-hold";
-              return (
-                <div className="col-12 col-lg-6 col-xxl-4" key={booking?.id ?? Math.random()}>
-                  <div className="card bg-dark text-white border-secondary h-100 shadow-sm">
-                    <div className="card-body d-flex flex-column gap-3">
-                      <div className="d-flex justify-content-between align-items-start gap-2">
-                        <div>
-                          <div className="text-muted small">Booking ID</div>
-                          <div className="fw-bold">{booking?.id ?? "-"}</div>
-                        </div>
-                        {statusBadge(booking?.status)}
-                      </div>
-                      <div className="d-flex flex-wrap gap-2">
-                        <span className="badge bg-info text-dark">
-                          {booking?.trainer_name || booking?.trainer?.name || "-"}
-                        </span>
-                        <span className="badge bg-primary">
-                          {booking?.package_name || booking?.trainer_package?.name || "-"}
-                        </span>
-                        <span className="badge bg-secondary">
-                          {moneyMMK(booking?.total_price ?? booking?.price)}
-                        </span>
-                      </div>
-                      <div className="d-grid gap-2 small">
-                        <div className="d-flex justify-content-between">
-                          <span className="text-muted">Start</span>
-                          <span>{booking?.start_date || "-"}</span>
-                        </div>
-                        <div className="d-flex justify-content-between">
-                          <span className="text-muted">End</span>
-                          <span>{booking?.end_date || "-"}</span>
-                        </div>
-                      </div>
-                      <div className="mt-auto">
-                        <button
-                          className="btn btn-sm btn-success w-100"
-                          disabled={!canActivate || busyKey === `trainer-${booking?.id}`}
-                          onClick={() => activateTrainerBooking(booking?.id)}
-                        >
-                          {busyKey === `trainer-${booking?.id}` ? "..." : "Activate"}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+          <div className="table-responsive">
+            <table className="table table-dark table-striped align-middle">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Trainer</th>
+                  <th>Package</th>
+                  <th>Status</th>
+                  <th>Start</th>
+                  <th>End</th>
+                  <th>Price</th>
+                </tr>
+              </thead>
+              <tbody>
+                {records.trainerBookings.map((booking) => (
+                  <tr key={booking?.id ?? Math.random()}>
+                    <td>{booking?.id ?? "-"}</td>
+                    <td>{booking?.trainer_name || booking?.trainer?.name || "-"}</td>
+                    <td>{booking?.package_name || booking?.trainer_package?.name || "-"}</td>
+                    <td>{statusBadge(booking?.status)}</td>
+                    <td>{booking?.start_date || "-"}</td>
+                    <td>{booking?.end_date || "-"}</td>
+                    <td>{moneyMMK(booking?.total_price ?? booking?.price)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
 
       <div>
         <h5 className="mb-3">Boxing Bookings</h5>
-        {boxingBookings.length === 0 ? (
-          <div className="text-center text-muted py-4">
-            {loading ? "Loading..." : "No boxing bookings found."}
-          </div>
+        {records.boxingBookings.length === 0 ? (
+          <div className="text-center text-muted py-4">{loading ? "Loading..." : "No records found."}</div>
         ) : (
-          <div className="row g-3">
-            {boxingBookings.map((booking) => {
-              const status = normalizeStatus(booking?.status);
-              const canActivate = status === "pending" || status === "on-hold";
-              return (
-                <div className="col-12 col-lg-6 col-xxl-4" key={booking?.id ?? Math.random()}>
-                  <div className="card bg-dark text-white border-secondary h-100 shadow-sm">
-                    <div className="card-body d-flex flex-column gap-3">
-                      <div className="d-flex justify-content-between align-items-start gap-2">
-                        <div>
-                          <div className="text-muted small">Booking ID</div>
-                          <div className="fw-bold">{booking?.id ?? "-"}</div>
-                        </div>
-                        {statusBadge(booking?.status)}
-                      </div>
-                      <div className="d-flex flex-wrap gap-2">
-                        <span className="badge bg-info text-dark">
-                          {booking?.coach_name || booking?.coach?.name || "-"}
-                        </span>
-                        <span className="badge bg-primary">
-                          {booking?.package_name || booking?.boxing_package?.name || "-"}
-                        </span>
-                        <span className="badge bg-secondary">
-                          {moneyMMK(booking?.total_price ?? booking?.price)}
-                        </span>
-                      </div>
-                      <div className="d-grid gap-2 small">
-                        <div className="d-flex justify-content-between">
-                          <span className="text-muted">Start</span>
-                          <span>{booking?.start_date || "-"}</span>
-                        </div>
-                        <div className="d-flex justify-content-between">
-                          <span className="text-muted">End</span>
-                          <span>{booking?.end_date || "-"}</span>
-                        </div>
-                      </div>
-                      <div className="mt-auto">
-                        <button
-                          className="btn btn-sm btn-success w-100"
-                          disabled={!canActivate || busyKey === `boxing-${booking?.id}`}
-                          onClick={() => activateBoxingBooking(booking?.id)}
-                        >
-                          {busyKey === `boxing-${booking?.id}` ? "..." : "Activate"}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+          <div className="table-responsive">
+            <table className="table table-dark table-striped align-middle">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Coach</th>
+                  <th>Package</th>
+                  <th>Status</th>
+                  <th>Start</th>
+                  <th>End</th>
+                  <th>Price</th>
+                </tr>
+              </thead>
+              <tbody>
+                {records.boxingBookings.map((booking) => (
+                  <tr key={booking?.id ?? Math.random()}>
+                    <td>{booking?.id ?? "-"}</td>
+                    <td>{booking?.coach_name || booking?.coach?.name || "-"}</td>
+                    <td>{booking?.package_name || booking?.boxing_package?.name || "-"}</td>
+                    <td>{statusBadge(booking?.status)}</td>
+                    <td>{booking?.start_date || "-"}</td>
+                    <td>{booking?.end_date || "-"}</td>
+                    <td>{moneyMMK(booking?.total_price ?? booking?.price)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
     </div>
   );
+
+  if (variant === "modal") {
+    return (
+      <>
+        <div className="modal fade show d-block" tabIndex="-1">
+          <div className="modal-dialog modal-xl modal-dialog-scrollable">
+            <div className="modal-content bg-dark text-white">
+              <div className="modal-body">{container}</div>
+            </div>
+          </div>
+        </div>
+        <div className="modal-backdrop fade show"></div>
+      </>
+    );
+  }
+
+  return container;
 }
