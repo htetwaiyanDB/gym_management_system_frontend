@@ -18,6 +18,7 @@ const AdminRfidRegister = lazy(() => import("./pages/admin/RfidRegister"));
 const AdminMessages = lazy(() => import("./pages/admin/AdminMessages"));
 const AdminBlogs = lazy(() => import("./pages/admin/AdminBlogs"));
 const AdminSettings = lazy(() => import("./pages/admin/AdminSettings"));
+const AdminUserHistory = lazy(() => import("./pages/admin/AdminUserHistory"));
 
 /* Trainer */
 const TrainerLayout = lazy(() => import("./layouts/TrainerLayout"));
@@ -103,6 +104,7 @@ export default function App() {
           <Route index element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="users" element={<AdminUsers />} />
+          <Route path="users/:id/history" element={<AdminUserHistory />} />
           <Route path="subscriptions" element={<AdminSubscriptions />} />
           <Route path="pricing" element={<AdminPricing />} />
           <Route path="trainer-bookings" element={<AdminTrainerBookings />} />

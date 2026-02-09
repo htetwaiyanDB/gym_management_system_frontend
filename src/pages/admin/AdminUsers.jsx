@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import axiosClient from "../../api/axiosClient";
 
 function normalizeList(payload) {
@@ -50,6 +51,7 @@ function getUserRecordId(user) {
 }
 
 export default function AdminUsers() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState(null);
 
@@ -310,6 +312,15 @@ export default function AdminUsers() {
     }
   };
 
+  const openHistory = (u) => {
+    const recordId = getUserRecordId(u) ?? u?.user_id;
+    if (!recordId) {
+      setMsg({ type: "danger", text: "This user is missing a server ID. Please refresh the list." });
+      return;
+    }
+    navigate(`/admin/users/${recordId}/history`, { state: { user: u } });
+  };
+
 
   return (
     <div className="admin-card p-4">
@@ -388,7 +399,7 @@ export default function AdminUsers() {
               <th>Phone</th>
               <th style={{ width: 140 }}>Role</th>
               <th style={{ width: 140 }}>Status</th>
-              <th style={{ width: 240 }}>Actions</th>
+              <th style={{ width: 300 }}>Actions</th>
             </tr>
           </thead>
 
@@ -428,14 +439,21 @@ export default function AdminUsers() {
   <div
     style={{
       display: "flex",
-      alignItems: "center",     // vertical centering
-      justifyContent: "center", // horizontal alignment
+      alignItems: "center",
+      justifyContent: "center",
       gap: "8px",
-      flexWrap: "nowrap",       //  prevents buttons from wrapping
-      whiteSpace: "nowrap",     //  keeps buttons in one line
+      flexWrap: "nowrap",
+      whiteSpace: "nowrap",
       minHeight: "100%",
     }}
   >
+    <button
+      className="btn btn-sm btn-outline-light"
+      onClick={() => openHistory(u)}
+      style={{ minWidth: 70 }}
+    >
+      History
+    </button>
     <button
       className="btn btn-sm btn-outline-info"
       onClick={() => openEdit(u)}
