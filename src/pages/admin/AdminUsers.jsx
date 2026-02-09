@@ -399,7 +399,7 @@ export default function AdminUsers() {
               <th>Phone</th>
               <th style={{ width: 140 }}>Role</th>
               <th style={{ width: 140 }}>Status</th>
-              <th style={{ width: 300 }}>Actions</th>
+              <th style={{ width: 130 }}>Actions</th>
             </tr>
           </thead>
 
