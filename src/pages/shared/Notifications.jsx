@@ -26,6 +26,11 @@ function resolveBlogTitle(notification) {
   );
 }
 
+function shouldShowAlertDot(notification) {
+  const type = getNotificationType(notification);
+  return type.includes("blog") || type.includes("message") || Boolean(resolveBlogTitle(notification));
+}
+
 function formatNotificationBody(notification) {
   if (!notification) return "No details provided.";
 
@@ -131,6 +136,7 @@ export default function Notifications() {
               ? new Date(item.created_at).toLocaleString()
               : "Just now";
             const isRead = Boolean(item?.read_at);
+            const showAlertDot = !isRead && shouldShowAlertDot(item);
             return (
               <div
                 key={item?.id || body}
@@ -139,7 +145,15 @@ export default function Notifications() {
                 }`}
               >
                 <div className="me-3">
-                  <div className="fw-semibold">{body}</div>
+                  <div className="fw-semibold d-flex align-items-center gap-2">
+                    {showAlertDot && (
+                      <span
+                        className="d-inline-block"
+                        style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: "#dc3545" }}
+                      ></span>
+                    )}
+                    <span>{body}</span>
+                  </div>
                   <div className="small text-muted">{createdAt}</div>
                 </div>
                 <button
