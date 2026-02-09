@@ -38,10 +38,11 @@ function statusBadge(status) {
 }
 
 const emptyRecords = {
-  user: null,
-  subscriptions: [],
-  trainerBookings: [],
-  boxingBookings: [],
+  subscriptions: {
+    active: [],
+    past: [],
+    upcoming: [],
+  },
 };
 
 function normalizeArray(value) {
@@ -53,6 +54,69 @@ function buildErrorMessage(error) {
   if (status === 404) return "User not found.";
   if (status === 500) return "Server error. Please try again.";
   return error?.response?.data?.message || "Failed to load user records.";
+}
+
+function parseDate(value) {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function buildSubscriptionEntry(source, typeLabel, nameSource) {
+  const name =
+    typeof nameSource === "string"
+      ? nameSource
+      : Array.isArray(nameSource)
+        ? pickFirstValue(source, nameSource) || "-"
+        : "-";
+  return {
+    id: source?.id ?? "-",
+    type: typeLabel,
+    name,
+    status: source?.status ?? "pending",
+    startDate: source?.start_date ?? source?.startDate ?? null,
+    endDate: source?.end_date ?? source?.endDate ?? null,
+    price: source?.price ?? source?.total_price ?? null,
+  };
+}
+
+function groupSubscriptions(entries) {
+  const grouped = {
+    active: [],
+    past: [],
+    upcoming: [],
+  };
+  const now = new Date();
+
+  entries.forEach((entry) => {
+    const normalized = normalizeStatus(entry.status);
+    const startDate = parseDate(entry.startDate);
+    const endDate = parseDate(entry.endDate);
+
+    if (normalized === "expired" || normalized === "completed") {
+      grouped.past.push(entry);
+      return;
+    }
+
+    if (normalized === "upcoming" || normalized === "pending") {
+      grouped.upcoming.push(entry);
+      return;
+    }
+
+    if (startDate && startDate > now) {
+      grouped.upcoming.push(entry);
+      return;
+    }
+
+    if (endDate && endDate < now) {
+      grouped.past.push(entry);
+      return;
+    }
+
+    grouped.active.push(entry);
+  });
+
+  return grouped;
 }
 
 export default function AdminUserHistory() {
@@ -97,11 +161,30 @@ export default function AdminUserHistory() {
       const res = await axiosClient.get(`/users/${recordId}/records`);
       const payload = res?.data || {};
       if (requestId === requestRef.current) {
+        const subscriptions = normalizeArray(payload.subscriptions);
+        const trainerBookings = normalizeArray(payload.trainer_bookings ?? payload.trainerbookings);
+        const boxingBookings = normalizeArray(payload.boxing_bookings ?? payload.boxingbookings);
+        const entries = [
+          ...subscriptions.map((item) =>
+            buildSubscriptionEntry(item, "Subscription", ["plan_name", "package_name", "name"]),
+          ),
+          ...trainerBookings.map((item) =>
+            buildSubscriptionEntry(
+              item,
+              "Trainer Package",
+              item?.package_name || item?.trainer_package?.name || item?.name,
+            ),
+          ),
+          ...boxingBookings.map((item) =>
+            buildSubscriptionEntry(
+              item,
+              "Boxing Package",
+              item?.package_name || item?.boxing_package?.name || item?.name,
+            ),
+          ),
+        ];
         setRecords({
-          user: payload.user ?? null,
-          subscriptions: normalizeArray(payload.subscriptions),
-          trainerBookings: normalizeArray(payload.trainerbookings),
-          boxingBookings: normalizeArray(payload.boxingbookings),
+          subscriptions: groupSubscriptions(entries),
         });
       }
     } catch (err) {
@@ -121,22 +204,9 @@ export default function AdminUserHistory() {
     loadRecords();
   }, [recordId]);
 
-  const headerUser = records.user ?? userFromState;
-  const headerName = headerUser?.name || headerUser?.username || "User";
-  const headerEmail = headerUser?.email || null;
-  const headerPhone = headerUser?.phone || null;
-  const headerRole = headerUser?.role || headerUser?.user_role || null;
-  const headerId =
-    headerUser?.user_id || headerUser?.id || headerUser?.member_id || recordId || "-";
-
-  const headerTitle = pickFirstValue(userFromState, ["name", "username"]) || headerName;
-
   return (
     <UserRecordsDetail
       variant="page"
-      headerTitle={headerTitle}
-      headerUser={headerUser}
-      headerId={headerId}
       loading={loading}
       error={error}
       records={records}
@@ -148,31 +218,57 @@ export default function AdminUserHistory() {
 
 function UserRecordsDetail({
   variant = "page",
-  headerTitle,
-  headerUser,
-  headerId,
   loading,
   error,
   records,
   onClose,
   onRefresh,
 }) {
-  const headerName = headerUser?.name || headerUser?.username || "User";
-  const headerEmail = headerUser?.email || null;
-  const headerPhone = headerUser?.phone || null;
-  const headerRole = headerUser?.role || headerUser?.user_role || null;
+  const subscriptionGroups = records?.subscriptions ?? emptyRecords.subscriptions;
+  const renderTable = (items) => {
+    if (items.length === 0) {
+      return <div className="text-center text-muted py-4">No subscriptions found for this category.</div>;
+    }
+
+    return (
+      <div className="table-responsive">
+        <table className="table table-dark table-striped align-middle">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Type</th>
+              <th>Plan / Package</th>
+              <th>Status</th>
+              <th>Start</th>
+              <th>End</th>
+              <th>Price</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((subscription) => (
+              <tr key={subscription?.id ?? Math.random()}>
+                <td>{subscription?.id ?? "-"}</td>
+                <td>{subscription?.type ?? "-"}</td>
+                <td>{subscription?.name ?? "-"}</td>
+                <td>{statusBadge(subscription?.status)}</td>
+                <td>{subscription?.startDate || "-"}</td>
+                <td>{subscription?.endDate || "-"}</td>
+                <td>{moneyMMK(subscription?.price)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
   const container = (
     <div className="admin-card p-4">
       <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
         <div>
           <h4 className="mb-1">User History</h4>
-          <div className="admin-muted">
-            View subscriptions and bookings for <strong>{headerTitle}</strong>.
-          </div>
-          <div className="text-muted small">
-            {headerEmail && <span className="me-2">{headerEmail}</span>}
-            {headerPhone && <span>{headerPhone}</span>}
-          </div>
+          <div className="admin-muted">View subscription and package history.</div>
+          {loading && <div className="text-muted small">Loading subscriptions...</div>}
         </div>
         <div className="d-flex gap-2">
           {onClose && (
@@ -192,126 +288,41 @@ function UserRecordsDetail({
         <div className="card-body">
           <div className="d-flex flex-wrap justify-content-between gap-3">
             <div>
-              <div className="text-muted small">User</div>
-              <div className="fw-bold fs-5">{headerName}</div>
-              <div className="text-muted small">ID: {headerId}</div>
-            </div>
-            <div>
-              <div className="text-muted small">Contact</div>
-              <div>{headerEmail || "-"}</div>
-              <div>{headerPhone || "-"}</div>
-            </div>
-            <div>
-              <div className="text-muted small">Role</div>
-              <div>{headerRole || "-"}</div>
+              <div className="text-muted small">Summary</div>
+              <div className="fw-bold fs-5">Subscription & Package Records</div>
+              <div className="text-muted small">
+                Active: {subscriptionGroups.active.length} · Upcoming:{" "}
+                {subscriptionGroups.upcoming.length} · Past: {subscriptionGroups.past.length}
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       <div className="mb-4">
-        <h5 className="mb-3">Subscriptions</h5>
-        {records.subscriptions.length === 0 ? (
-          <div className="text-center text-muted py-4">{loading ? "Loading..." : "No records found."}</div>
+        <h5 className="mb-3">Active Subscriptions</h5>
+        {loading && subscriptionGroups.active.length === 0 ? (
+          <div className="text-center text-muted py-4">Loading...</div>
         ) : (
-          <div className="table-responsive">
-            <table className="table table-dark table-striped align-middle">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Plan</th>
-                  <th>Status</th>
-                  <th>Start</th>
-                  <th>End</th>
-                  <th>Price</th>
-                </tr>
-              </thead>
-              <tbody>
-                {records.subscriptions.map((subscription) => (
-                  <tr key={subscription?.id ?? Math.random()}>
-                    <td>{subscription?.id ?? "-"}</td>
-                    <td>{subscription?.plan_name || subscription?.package_name || "-"}</td>
-                    <td>{statusBadge(subscription?.status)}</td>
-                    <td>{subscription?.start_date || "-"}</td>
-                    <td>{subscription?.end_date || "-"}</td>
-                    <td>{moneyMMK(subscription?.price ?? subscription?.total_price)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          renderTable(subscriptionGroups.active)
         )}
       </div>
 
       <div className="mb-4">
-        <h5 className="mb-3">Trainer Bookings</h5>
-        {records.trainerBookings.length === 0 ? (
-          <div className="text-center text-muted py-4">{loading ? "Loading..." : "No records found."}</div>
+        <h5 className="mb-3">Expired / Past Subscriptions</h5>
+        {loading && subscriptionGroups.past.length === 0 ? (
+          <div className="text-center text-muted py-4">Loading...</div>
         ) : (
-          <div className="table-responsive">
-            <table className="table table-dark table-striped align-middle">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Trainer</th>
-                  <th>Package</th>
-                  <th>Status</th>
-                  <th>Start</th>
-                  <th>End</th>
-                  <th>Price</th>
-                </tr>
-              </thead>
-              <tbody>
-                {records.trainerBookings.map((booking) => (
-                  <tr key={booking?.id ?? Math.random()}>
-                    <td>{booking?.id ?? "-"}</td>
-                    <td>{booking?.trainer_name || booking?.trainer?.name || "-"}</td>
-                    <td>{booking?.package_name || booking?.trainer_package?.name || "-"}</td>
-                    <td>{statusBadge(booking?.status)}</td>
-                    <td>{booking?.start_date || "-"}</td>
-                    <td>{booking?.end_date || "-"}</td>
-                    <td>{moneyMMK(booking?.total_price ?? booking?.price)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          renderTable(subscriptionGroups.past)
         )}
       </div>
 
       <div>
-        <h5 className="mb-3">Boxing Bookings</h5>
-        {records.boxingBookings.length === 0 ? (
-          <div className="text-center text-muted py-4">{loading ? "Loading..." : "No records found."}</div>
+        <h5 className="mb-3">Upcoming / Pre-purchased Subscriptions</h5>
+        {loading && subscriptionGroups.upcoming.length === 0 ? (
+          <div className="text-center text-muted py-4">Loading...</div>
         ) : (
-          <div className="table-responsive">
-            <table className="table table-dark table-striped align-middle">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Coach</th>
-                  <th>Package</th>
-                  <th>Status</th>
-                  <th>Start</th>
-                  <th>End</th>
-                  <th>Price</th>
-                </tr>
-              </thead>
-              <tbody>
-                {records.boxingBookings.map((booking) => (
-                  <tr key={booking?.id ?? Math.random()}>
-                    <td>{booking?.id ?? "-"}</td>
-                    <td>{booking?.coach_name || booking?.coach?.name || "-"}</td>
-                    <td>{booking?.package_name || booking?.boxing_package?.name || "-"}</td>
-                    <td>{statusBadge(booking?.status)}</td>
-                    <td>{booking?.start_date || "-"}</td>
-                    <td>{booking?.end_date || "-"}</td>
-                    <td>{moneyMMK(booking?.total_price ?? booking?.price)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          renderTable(subscriptionGroups.upcoming)
         )}
       </div>
     </div>
