@@ -29,6 +29,7 @@ const TrainerBlogDetails = lazy(() =>
   import("./pages/trainer/TrainerBlogDetails")
 );
 const TrainerSettings = lazy(() => import("./pages/trainer/TrainerSettings"));
+const Notifications = lazy(() => import("./pages/shared/Notifications"));
 
 /* User */
 const UserLayout = lazy(() => import("./layouts/UserLayout"));
@@ -36,8 +37,7 @@ const UserHome = lazy(() => import("./pages/user/UserHome"));
 const UserScan = lazy(() => import("./pages/user/UserScan"));
 const UserBlogDetails = lazy(() => import("./pages/user/UserBlogDetails"));
 const UserAttendance = lazy(() => import("./pages/user/UserAttendance"));
-const UserSubscriptions = lazy(() => import("./pages/user/UserSubscriptions"));
-const UserBookings = lazy(() => import("./pages/user/UserBookings"));
+const UserSubsBookings = lazy(() => import("./pages/user/UserSubsBookings"));
 const UserMessages = lazy(() => import("./pages/user/UserMessages"));
 const UserSettings = lazy(() => import("./pages/user/UserSettings"));
 
@@ -130,8 +130,10 @@ export default function App() {
           <Route path="scan" element={<UserScan />} />
           <Route path="blogs/:id" element={<UserBlogDetails />} />
           <Route path="attendance" element={<UserAttendance />} />
-          <Route path="subscriptions" element={<UserSubscriptions />} />
-          <Route path="bookings" element={<UserBookings />} />
+          <Route path="subs-books" element={<UserSubsBookings />} />
+          <Route path="subscriptions" element={<Navigate to="/user/subs-books" replace />} />
+          <Route path="bookings" element={<Navigate to="/user/subs-books" replace />} />
+          <Route path="notifications" element={<Notifications />} />
           <Route path="messages" element={<UserMessages />} />
           <Route path="settings" element={<UserSettings />} />
         </Route>
@@ -153,6 +155,7 @@ export default function App() {
           <Route path="messages" element={<TrainerMessages />} />
           <Route path="bookings" element={<TrainerBookings />} />
           <Route path="blogs/:id" element={<TrainerBlogDetails />} />
+          <Route path="notifications" element={<Notifications />} />
           <Route path="settings" element={<TrainerSettings />} />
         </Route>
 
