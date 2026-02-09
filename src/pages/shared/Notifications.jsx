@@ -1,8 +1,46 @@
 import React, { useEffect, useState } from "react";
 import axiosClient from "../../api/axiosClient";
 
+function getNotificationType(notification) {
+  if (!notification) return "";
+  const rawTypeParts = [
+    notification?.type,
+    notification?.category,
+    notification?.data?.type,
+    notification?.data?.category,
+    notification?.data?.notification_type,
+    notification?.data?.event,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  return String(rawTypeParts).toLowerCase();
+}
+
+function resolveBlogTitle(notification) {
+  return (
+    notification?.data?.blog_title ||
+    notification?.data?.blog?.title ||
+    notification?.blog_title ||
+    notification?.blog?.title ||
+    ""
+  );
+}
+
 function formatNotificationBody(notification) {
   if (!notification) return "No details provided.";
+
+  const type = getNotificationType(notification);
+  const blogTitle = resolveBlogTitle(notification);
+  const blogFallbackTitle = notification?.data?.title || notification?.title || "";
+
+  if (type.includes("blog") || blogTitle) {
+    return blogTitle || blogFallbackTitle || "New blog post";
+  }
+
+  if (type.includes("message")) {
+    return "Admin sent message to you";
+  }
+
   if (notification.message) return notification.message;
   if (notification.title) return notification.title;
   if (notification.data?.message) return notification.data.message;
