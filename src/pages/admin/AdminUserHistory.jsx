@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import axiosClient from "../../api/axiosClient";
 
@@ -60,6 +60,7 @@ export default function AdminUserHistory() {
   const navigate = useNavigate();
   const location = useLocation();
   const userFromState = location.state?.user ?? null;
+  const requestRef = useRef(0);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -90,24 +91,33 @@ export default function AdminUserHistory() {
     }
     setError(null);
     setLoading(true);
+    requestRef.current += 1;
+    const requestId = requestRef.current;
     try {
       const res = await axiosClient.get(`/users/${recordId}/records`);
       const payload = res?.data || {};
-      setRecords({
-        user: payload.user ?? null,
-        subscriptions: normalizeArray(payload.subscriptions),
-        trainerBookings: normalizeArray(payload.trainerbookings),
-        boxingBookings: normalizeArray(payload.boxingbookings),
-      });
+      if (requestId === requestRef.current) {
+        setRecords({
+          user: payload.user ?? null,
+          subscriptions: normalizeArray(payload.subscriptions),
+          trainerBookings: normalizeArray(payload.trainerbookings),
+          boxingBookings: normalizeArray(payload.boxingbookings),
+        });
+      }
     } catch (err) {
-      setRecords(emptyRecords);
-      setError(buildErrorMessage(err));
+      if (requestId === requestRef.current) {
+        setRecords(emptyRecords);
+        setError(buildErrorMessage(err));
+      }
     } finally {
-      setLoading(false);
+      if (requestId === requestRef.current) {
+        setLoading(false);
+      }
     }
   };
 
   useEffect(() => {
+    setRecords(emptyRecords);
     loadRecords();
   }, [recordId]);
 
