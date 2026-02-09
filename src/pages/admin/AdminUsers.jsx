@@ -313,7 +313,7 @@ export default function AdminUsers() {
   };
 
   const openHistory = (u) => {
-    const recordId = getUserRecordId(u) ?? u?.user_id;
+    const recordId = u?.user_id ?? getUserRecordId(u);
     if (!recordId) {
       setMsg({ type: "danger", text: "This user is missing a server ID. Please refresh the list." });
       return;
