@@ -418,7 +418,12 @@ export default function AdminUsers() {
                 const isDeleted = !!u?.deleted_at;
 
                 return (
-                   <tr key={rowKey}>
+                   <tr
+                     key={rowKey}
+                     onClick={() => openHistory(u)}
+                     style={{ cursor: "pointer" }}
+                     title="Click to view user history"
+                   >
                     <td>{userId}</td>
                     <td>{u?.name ?? "-"}</td>
                     <td className="text-break">{u?.email ?? "-"}</td>
@@ -448,15 +453,11 @@ export default function AdminUsers() {
     }}
   >
     <button
-      className="btn btn-sm btn-outline-light"
-      onClick={() => openHistory(u)}
-      style={{ minWidth: 70 }}
-    >
-      History
-    </button>
-    <button
       className="btn btn-sm btn-outline-info"
-      onClick={() => openEdit(u)}
+      onClick={(event) => {
+        event.stopPropagation();
+        openEdit(u);
+      }}
       disabled={isDeleted}
       title={isDeleted ? "Restore user first to update" : "Update"}
       style={{ minWidth: 70 }}
@@ -467,7 +468,10 @@ export default function AdminUsers() {
         {isDeleted ? (
       <button
         className="btn btn-sm btn-outline-warning"
-        onClick={() => restore(recordId ?? userId)}
+        onClick={(event) => {
+          event.stopPropagation();
+          restore(recordId ?? userId);
+        }}
         style={{ minWidth: 70 }}
       >
         Restore
@@ -475,7 +479,10 @@ export default function AdminUsers() {
     ) : (
       <button
         className="btn btn-sm btn-outline-danger"
-        onClick={() => destroy(recordId ?? userId)}
+        onClick={(event) => {
+          event.stopPropagation();
+          destroy(recordId ?? userId);
+        }}
         style={{ minWidth: 70 }}
       >
         Delete

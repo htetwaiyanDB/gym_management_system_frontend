@@ -217,166 +217,180 @@ export default function AdminUserHistory() {
       {msg && <div className={`alert alert-${msg.type}`}>{msg.text}</div>}
 
       <div className="mb-4">
-        <h5 className="mb-2">Subscriptions</h5>
-        <div className="table-responsive">
-          <table className="table table-dark table-hover align-middle mb-0">
-            <thead>
-              <tr>
-                <th style={{ width: 90 }}>ID</th>
-                <th>Plan</th>
-                <th>Price</th>
-                <th>Start</th>
-                <th>End</th>
-                <th>Status</th>
-                <th style={{ width: 140 }}>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {subscriptions.length === 0 ? (
-                <tr>
-                  <td colSpan="7" className="text-center text-muted py-3">
-                    {loading ? "Loading..." : "No subscriptions found."}
-                  </td>
-                </tr>
-              ) : (
-                subscriptions.map((subscription) => {
-                  const status = normalizeStatus(subscription?.status);
-                  const canActivate =
-                    status === "on-hold" || status === "pending" || status === "inactive";
-                  return (
-                    <tr key={subscription?.id ?? Math.random()}>
-                      <td>{subscription?.id ?? "-"}</td>
-                      <td>
+        <h5 className="mb-3">Subscriptions</h5>
+        {subscriptions.length === 0 ? (
+          <div className="text-center text-muted py-4">
+            {loading ? "Loading..." : "No subscriptions found."}
+          </div>
+        ) : (
+          <div className="row g-3">
+            {subscriptions.map((subscription) => {
+              const status = normalizeStatus(subscription?.status);
+              const canActivate =
+                status === "on-hold" || status === "pending" || status === "inactive";
+              return (
+                <div className="col-12 col-lg-6 col-xxl-4" key={subscription?.id ?? Math.random()}>
+                  <div className="card bg-dark text-white border-secondary h-100 shadow-sm">
+                    <div className="card-body d-flex flex-column gap-3">
+                      <div className="d-flex justify-content-between align-items-start gap-2">
+                        <div>
+                          <div className="text-muted small">Subscription ID</div>
+                          <div className="fw-bold">{subscription?.id ?? "-"}</div>
+                        </div>
+                        {statusBadge(subscription?.status)}
+                      </div>
+                      <div className="d-flex flex-wrap gap-2">
                         <span className="badge bg-primary">{subscription?.plan_name || "-"}</span>
-                      </td>
-                      <td>{moneyMMK(subscription?.price)}</td>
-                      <td>{subscription?.start_date || "-"}</td>
-                      <td>{subscription?.end_date || "-"}</td>
-                      <td>{statusBadge(subscription?.status)}</td>
-                      <td>
+                        <span className="badge bg-secondary">{moneyMMK(subscription?.price)}</span>
+                      </div>
+                      <div className="d-grid gap-2 small">
+                        <div className="d-flex justify-content-between">
+                          <span className="text-muted">Start</span>
+                          <span>{subscription?.start_date || "-"}</span>
+                        </div>
+                        <div className="d-flex justify-content-between">
+                          <span className="text-muted">End</span>
+                          <span>{subscription?.end_date || "-"}</span>
+                        </div>
+                      </div>
+                      <div className="mt-auto">
                         <button
-                          className="btn btn-sm btn-success"
+                          className="btn btn-sm btn-success w-100"
                           disabled={!canActivate || busyKey === `subscription-${subscription?.id}`}
                           onClick={() => resumeSubscription(subscription?.id)}
                         >
                           {busyKey === `subscription-${subscription?.id}` ? "..." : "Activate"}
                         </button>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <div className="mb-4">
-        <h5 className="mb-2">Trainer Bookings</h5>
-        <div className="table-responsive">
-          <table className="table table-dark table-hover align-middle mb-0">
-            <thead>
-              <tr>
-                <th style={{ width: 90 }}>ID</th>
-                <th>Trainer</th>
-                <th>Package</th>
-                <th>Price</th>
-                <th>Start</th>
-                <th>End</th>
-                <th>Status</th>
-                <th style={{ width: 140 }}>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {trainerBookings.length === 0 ? (
-                <tr>
-                  <td colSpan="8" className="text-center text-muted py-3">
-                    {loading ? "Loading..." : "No trainer bookings found."}
-                  </td>
-                </tr>
-              ) : (
-                trainerBookings.map((booking) => {
-                  const status = normalizeStatus(booking?.status);
-                  const canActivate = status === "pending" || status === "on-hold";
-                  return (
-                    <tr key={booking?.id ?? Math.random()}>
-                      <td>{booking?.id ?? "-"}</td>
-                      <td>{booking?.trainer_name || booking?.trainer?.name || "-"}</td>
-                      <td>{booking?.package_name || booking?.trainer_package?.name || "-"}</td>
-                      <td>{moneyMMK(booking?.total_price ?? booking?.price)}</td>
-                      <td>{booking?.start_date || "-"}</td>
-                      <td>{booking?.end_date || "-"}</td>
-                      <td>{statusBadge(booking?.status)}</td>
-                      <td>
+        <h5 className="mb-3">Trainer Bookings</h5>
+        {trainerBookings.length === 0 ? (
+          <div className="text-center text-muted py-4">
+            {loading ? "Loading..." : "No trainer bookings found."}
+          </div>
+        ) : (
+          <div className="row g-3">
+            {trainerBookings.map((booking) => {
+              const status = normalizeStatus(booking?.status);
+              const canActivate = status === "pending" || status === "on-hold";
+              return (
+                <div className="col-12 col-lg-6 col-xxl-4" key={booking?.id ?? Math.random()}>
+                  <div className="card bg-dark text-white border-secondary h-100 shadow-sm">
+                    <div className="card-body d-flex flex-column gap-3">
+                      <div className="d-flex justify-content-between align-items-start gap-2">
+                        <div>
+                          <div className="text-muted small">Booking ID</div>
+                          <div className="fw-bold">{booking?.id ?? "-"}</div>
+                        </div>
+                        {statusBadge(booking?.status)}
+                      </div>
+                      <div className="d-flex flex-wrap gap-2">
+                        <span className="badge bg-info text-dark">
+                          {booking?.trainer_name || booking?.trainer?.name || "-"}
+                        </span>
+                        <span className="badge bg-primary">
+                          {booking?.package_name || booking?.trainer_package?.name || "-"}
+                        </span>
+                        <span className="badge bg-secondary">
+                          {moneyMMK(booking?.total_price ?? booking?.price)}
+                        </span>
+                      </div>
+                      <div className="d-grid gap-2 small">
+                        <div className="d-flex justify-content-between">
+                          <span className="text-muted">Start</span>
+                          <span>{booking?.start_date || "-"}</span>
+                        </div>
+                        <div className="d-flex justify-content-between">
+                          <span className="text-muted">End</span>
+                          <span>{booking?.end_date || "-"}</span>
+                        </div>
+                      </div>
+                      <div className="mt-auto">
                         <button
-                          className="btn btn-sm btn-success"
+                          className="btn btn-sm btn-success w-100"
                           disabled={!canActivate || busyKey === `trainer-${booking?.id}`}
                           onClick={() => activateTrainerBooking(booking?.id)}
                         >
                           {busyKey === `trainer-${booking?.id}` ? "..." : "Activate"}
                         </button>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <div>
-        <h5 className="mb-2">Boxing Bookings</h5>
-        <div className="table-responsive">
-          <table className="table table-dark table-hover align-middle mb-0">
-            <thead>
-              <tr>
-                <th style={{ width: 90 }}>ID</th>
-                <th>Coach</th>
-                <th>Package</th>
-                <th>Price</th>
-                <th>Start</th>
-                <th>End</th>
-                <th>Status</th>
-                <th style={{ width: 140 }}>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {boxingBookings.length === 0 ? (
-                <tr>
-                  <td colSpan="8" className="text-center text-muted py-3">
-                    {loading ? "Loading..." : "No boxing bookings found."}
-                  </td>
-                </tr>
-              ) : (
-                boxingBookings.map((booking) => {
-                  const status = normalizeStatus(booking?.status);
-                  const canActivate = status === "pending" || status === "on-hold";
-                  return (
-                    <tr key={booking?.id ?? Math.random()}>
-                      <td>{booking?.id ?? "-"}</td>
-                      <td>{booking?.coach_name || booking?.coach?.name || "-"}</td>
-                      <td>{booking?.package_name || booking?.boxing_package?.name || "-"}</td>
-                      <td>{moneyMMK(booking?.total_price ?? booking?.price)}</td>
-                      <td>{booking?.start_date || "-"}</td>
-                      <td>{booking?.end_date || "-"}</td>
-                      <td>{statusBadge(booking?.status)}</td>
-                      <td>
+        <h5 className="mb-3">Boxing Bookings</h5>
+        {boxingBookings.length === 0 ? (
+          <div className="text-center text-muted py-4">
+            {loading ? "Loading..." : "No boxing bookings found."}
+          </div>
+        ) : (
+          <div className="row g-3">
+            {boxingBookings.map((booking) => {
+              const status = normalizeStatus(booking?.status);
+              const canActivate = status === "pending" || status === "on-hold";
+              return (
+                <div className="col-12 col-lg-6 col-xxl-4" key={booking?.id ?? Math.random()}>
+                  <div className="card bg-dark text-white border-secondary h-100 shadow-sm">
+                    <div className="card-body d-flex flex-column gap-3">
+                      <div className="d-flex justify-content-between align-items-start gap-2">
+                        <div>
+                          <div className="text-muted small">Booking ID</div>
+                          <div className="fw-bold">{booking?.id ?? "-"}</div>
+                        </div>
+                        {statusBadge(booking?.status)}
+                      </div>
+                      <div className="d-flex flex-wrap gap-2">
+                        <span className="badge bg-info text-dark">
+                          {booking?.coach_name || booking?.coach?.name || "-"}
+                        </span>
+                        <span className="badge bg-primary">
+                          {booking?.package_name || booking?.boxing_package?.name || "-"}
+                        </span>
+                        <span className="badge bg-secondary">
+                          {moneyMMK(booking?.total_price ?? booking?.price)}
+                        </span>
+                      </div>
+                      <div className="d-grid gap-2 small">
+                        <div className="d-flex justify-content-between">
+                          <span className="text-muted">Start</span>
+                          <span>{booking?.start_date || "-"}</span>
+                        </div>
+                        <div className="d-flex justify-content-between">
+                          <span className="text-muted">End</span>
+                          <span>{booking?.end_date || "-"}</span>
+                        </div>
+                      </div>
+                      <div className="mt-auto">
                         <button
-                          className="btn btn-sm btn-success"
+                          className="btn btn-sm btn-success w-100"
                           disabled={!canActivate || busyKey === `boxing-${booking?.id}`}
                           onClick={() => activateBoxingBooking(booking?.id)}
                         >
                           {busyKey === `boxing-${booking?.id}` ? "..." : "Activate"}
                         </button>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
