@@ -74,14 +74,28 @@ export default function AdminUserHistory() {
   const [trainerBookings, setTrainerBookings] = useState([]);
   const [boxingBookings, setBoxingBookings] = useState([]);
 
-  const normalizedUserId = useMemo(() => String(id || ""), [id]);
+  const candidateUserIds = useMemo(() => {
+    const values = [
+      id,
+      userFromState?.id,
+      userFromState?.user_id,
+      userFromState?.member_id,
+      userFromState?.user?.id,
+      userFromState?.user?.user_id,
+      userFromState?.member?.id,
+      userFromState?.member?.user_id,
+    ]
+      .filter((value) => value !== null && value !== undefined && value !== "")
+      .map((value) => String(value));
+    return new Set(values);
+  }, [id, userFromState]);
 
   const filterByUser = (list) => {
-    if (!normalizedUserId) return list;
+    if (candidateUserIds.size === 0) return list;
     return list.filter((record) => {
       const recordUserId = getRecordUserId(record);
       if (!recordUserId) return false;
-      return String(recordUserId) === normalizedUserId;
+      return candidateUserIds.has(String(recordUserId));
     });
   };
 
