@@ -5,7 +5,6 @@ import {
   FiCheckSquare,
   FiRepeat,
   FiBell,
-  FiCalendar,
   FiMessageCircle,
   FiSettings,
 } from "react-icons/fi";
@@ -76,19 +75,11 @@ export default function UserLayout() {
         </NavLink>
 
         <NavLink
-          to="/user/subscriptions"
+          to="/user/subs-books"
           className={({ isActive }) => "user-nav-item" + (isActive ? " active" : "")}
         >
           <FiRepeat className="user-nav-icon" />
-          <span className="user-nav-label">Subs</span>
-        </NavLink>
-
-        <NavLink
-          to="/user/bookings"
-          className={({ isActive }) => "user-nav-item" + (isActive ? " active" : "")}
-        >
-          <FiCalendar className="user-nav-icon" />
-          <span className="user-nav-label">Booking</span>
+          <span className="user-nav-label">Subs&Books</span>
         </NavLink>
 
         <NavLink
