@@ -387,12 +387,12 @@ export default function AdminSubscriptions() {
 
   {/* Plan summary */}
   {selectedPlan && (
-    <div className="mt-3 p-3 rounded bg-black border">
+    <div className="mt-3 p-3 rounded bg-dark border border-secondary-subtle">
       <div className="fw-bold">{selectedPlan.name}</div>
-      <div className="text-muted">
+      <div className="text-white-50">
         Duration: {selectedPlan.duration_days} day(s)
       </div>
-      <div className="text-muted">
+      <div className="text-white-50">
         Price: {moneyMMK(selectedPlan.price)}
       </div>
     </div>
