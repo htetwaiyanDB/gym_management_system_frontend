@@ -156,9 +156,9 @@ export default function AdminUserHistory() {
     return [
       id,
       userFromState?.id,
-      userFromState?.member_id,
+      
       userFromState?.user?.id,
-      userFromState?.member?.id,
+      
     ]
       .filter((value) => value !== null && value !== undefined && value !== "")
       .map((value) => String(value));
