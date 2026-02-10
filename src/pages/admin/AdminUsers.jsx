@@ -378,12 +378,18 @@ export default function AdminUsers() {
       <div className="row g-2 align-items-center mb-3">
         <div className="col-md-6">
           <input
+            type="search"
             className="form-control admin-search"
             placeholder="Search name / email / phone / role"
             value={query}
             autoComplete="new-password"
+            autoCorrect="off"
+            autoCapitalize="none"
+            spellCheck={false}
+            name="admin-user-search"
             onChange={(e) => setQuery(e.target.value)}
           />
+
           <style>
             {`
               .admin-search::placeholder {
