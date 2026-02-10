@@ -16,7 +16,7 @@ const emptyCreate = {
   name: "",
   email: "",
   phone: "",
-  role: "user", // only user/trainer allowed by /api/admin/register
+  role: "user",
   password: "",
   password_confirmation: "",
 };
@@ -34,24 +34,50 @@ const emptyEdit = {
 
 function roleBadge(roleRaw) {
   const role = (roleRaw || "").toLowerCase();
-  if (role === "administrator" || role === "admin") return <span className="badge bg-danger">Admin</span>;
-  if (role === "trainer") return <span className="badge bg-info text-dark">Trainer</span>;
+  if (role === "administrator" || role === "admin")
+    return <span className="badge bg-danger">Admin</span>;
+  if (role === "trainer")
+    return <span className="badge bg-info text-dark">Trainer</span>;
   return <span className="badge bg-secondary">User</span>;
 }
 
 function getUserRecordId(user) {
+  // Prefer DB primary key id
   const directId = user?.id ?? user?.user?.id ?? user?.member_id ?? null;
-  if (directId !== null && directId !== undefined) {
-    return directId;
-  }
-  if (user?.user_id !== null && user?.user_id !== undefined) {
-    return String(user.user_id);
-  }
+  if (directId !== null && directId !== undefined) return directId;
+
+  // If no DB id, fallback to user_id string (NOT ideal but stable)
+  if (user?.user_id !== null && user?.user_id !== undefined) return String(user.user_id);
+
   return null;
+}
+
+/**
+ * ✅ Stable & unique row key (NEVER Math.random, NEVER array index)
+ * - Prefer real DB id
+ * - Else fallback to user_id
+ * - Else fallback to email
+ */
+function getStableRowKey(u) {
+  const recordId = u?.id ?? u?.user?.id ?? u?.member_id ?? null;
+  if (recordId !== null && recordId !== undefined) return `id:${recordId}`;
+
+  const userId = u?.user_id ?? null;
+  if (userId !== null && userId !== undefined && String(userId).trim() !== "")
+    return `user_id:${String(userId)}`;
+
+  const email = (u?.email || "").trim().toLowerCase();
+  if (email) return `email:${email}`;
+
+  // last-resort stable-ish: name+phone
+  const name = (u?.name || "").trim().toLowerCase();
+  const phone = (u?.phone || "").trim();
+  return `fallback:${name}:${phone}`;
 }
 
 export default function AdminUsers() {
   const navigate = useNavigate();
+
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState(null);
 
@@ -82,9 +108,15 @@ export default function AdminUsers() {
     setMsg(null);
     setLoading(true);
     try {
-      // ✅ API route that actually exists
       const res = await axiosClient.get("/users");
-      setUsers(normalizeList(res.data));
+      const list = normalizeList(res.data);
+
+      // ✅ Optional: debug duplicate keys (helps you confirm it’s fixed)
+      // const keys = list.map(getStableRowKey);
+      // const dup = keys.filter((k, i) => keys.indexOf(k) !== i);
+      // if (dup.length) console.warn("DUPLICATE ROW KEYS:", dup);
+
+      setUsers(list);
       setPage(1);
     } catch (e) {
       setMsg({
@@ -123,7 +155,7 @@ export default function AdminUsers() {
 
   const goTo = (p) => setPage(Math.min(Math.max(1, p), totalPages));
 
-  // --------- Create (uses /api/admin/register) ----------
+  // --------- Create ----------
   const openCreate = () => {
     setMsg(null);
     setCreateForm({ ...emptyCreate });
@@ -138,21 +170,20 @@ export default function AdminUsers() {
   const submitCreate = async () => {
     setMsg(null);
     setSavingCreate(true);
-
     try {
-       if (!createForm.user_id) {
+      if (!createForm.user_id) {
         setMsg({ type: "danger", text: "User ID is required." });
         setSavingCreate(false);
         return;
       }
-      // ✅ API route exists: POST /api/admin/register (administrator middleware)
+
       await axiosClient.post("/admin/register", {
         user_id: createForm.user_id || undefined,
         card_id: createForm.card_id || undefined,
         name: createForm.name,
         email: createForm.email,
         phone: createForm.phone,
-        role: createForm.role, // allowed: trainer,user
+        role: createForm.role,
         password: createForm.password,
         password_confirmation: createForm.password_confirmation,
       });
@@ -167,14 +198,16 @@ export default function AdminUsers() {
     }
   };
 
-  // --------- Edit (needs PATCH /api/users/{id} which you must add) ----------
+  // --------- Edit ----------
   const openEdit = (u) => {
     setMsg(null);
+
     const recordId = getUserRecordId(u);
     if (!recordId) {
       setMsg({ type: "danger", text: "This user is missing a server ID. Please refresh the list." });
       return;
     }
+
     const next = {
       id: recordId,
       user_id: u?.user_id ?? "",
@@ -184,7 +217,8 @@ export default function AdminUsers() {
       role: (u?.role || "user").toLowerCase(),
       password: "",
       password_confirmation: "",
-     };
+    };
+
     setEditForm(next);
     setEditOriginal(next);
     setShowEdit(true);
@@ -205,13 +239,16 @@ export default function AdminUsers() {
         setSavingEdit(false);
         return;
       }
+
       const trimmedPassword = editForm.password.trim();
       const trimmedConfirmation = editForm.password_confirmation.trim();
+
       if (!trimmedPassword && trimmedConfirmation) {
         setMsg({ type: "danger", text: "Please enter a new password to confirm." });
         setSavingEdit(false);
         return;
       }
+
       if (trimmedPassword && trimmedPassword !== trimmedConfirmation) {
         setMsg({ type: "danger", text: "Passwords do not match." });
         setSavingEdit(false);
@@ -222,10 +259,11 @@ export default function AdminUsers() {
       const trimmedName = editForm.name.trim();
       const trimmedEmail = editForm.email.trim();
       const trimmedPhone = editForm.phone.trim();
-      const originalName = editOriginal.name.trim();
-      const originalEmail = editOriginal.email.trim();
-      const originalPhone = editOriginal.phone.trim();
-      const originalRole = editOriginal.role.trim();
+
+      const originalName = (editOriginal.name || "").trim();
+      const originalEmail = (editOriginal.email || "").trim();
+      const originalPhone = (editOriginal.phone || "").trim();
+      const originalRole = (editOriginal.role || "").trim();
 
       if (trimmedName !== originalName) payload.name = trimmedName;
       if (trimmedEmail !== originalEmail) payload.email = trimmedEmail;
@@ -243,7 +281,6 @@ export default function AdminUsers() {
         return;
       }
 
-      // ⚠️ This route does NOT exist yet in your API. Add backend in section (2).
       await axiosClient.patch(`/users/${editForm.id}`, payload);
 
       setMsg({ type: "success", text: "User updated successfully." });
@@ -251,10 +288,7 @@ export default function AdminUsers() {
       await load();
     } catch (e) {
       if (e?.response?.status === 404) {
-        setMsg({
-          type: "danger",
-          text: "This user no longer exists. Please refresh the list.",
-        });
+        setMsg({ type: "danger", text: "This user no longer exists. Please refresh the list." });
         setShowEdit(false);
         await load();
         return;
@@ -263,7 +297,7 @@ export default function AdminUsers() {
         type: "danger",
         text:
           e?.response?.data?.message ||
-          `Update failed (status: ${e?.response?.status || "unknown"}). Add patch API route.`,
+          `Update failed (status: ${e?.response?.status || "unknown"}).`,
       });
     } finally {
       setSavingEdit(false);
@@ -280,7 +314,7 @@ export default function AdminUsers() {
 
     setMsg(null);
     try {
-       try {
+      try {
         await axiosClient.delete(`/users/${id}`);
       } catch (softDeleteError) {
         if (softDeleteError?.response?.status !== 404) {
@@ -301,7 +335,6 @@ export default function AdminUsers() {
       setMsg({ type: "danger", text: "This user is missing a server ID. Please refresh the list." });
       return;
     }
-
     setMsg(null);
     try {
       await axiosClient.post(`/users/${id}/restore`);
@@ -321,22 +354,20 @@ export default function AdminUsers() {
     navigate(`/admin/users/${recordId}/history`, { state: { user: u } });
   };
 
-
   return (
     <div className="admin-card p-4">
       {/* Header */}
       <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
         <div>
           <h4 className="mb-1">Users Mangement</h4>
-          
         </div>
 
         <div className="d-flex gap-2">
           <button className="btn btn-outline-light" onClick={load} disabled={loading}>
-            <i className="bi bi-arrow-clockwise me-2"></i>{loading ? "Loading..." : "Refresh"}
+            <i className="bi bi-arrow-clockwise me-2"></i>
+            {loading ? "Loading..." : "Refresh"}
           </button>
 
-          {/* ✅ Top-right Create button */}
           <button className="btn btn-primary" onClick={openCreate}>
             <i className="bi bi-person-plus me-2"></i>Create User
           </button>
@@ -356,14 +387,14 @@ export default function AdminUsers() {
             onChange={(e) => setQuery(e.target.value)}
           />
           <style>
-    {`
-      .admin-search::placeholder {
-        color: #ffffff !important;
-        font-weight: 600;
-        opacity: 1; /* Firefox fix */
-      }
-    `}
-  </style>
+            {`
+              .admin-search::placeholder {
+                color: #ffffff !important;
+                font-weight: 600;
+                opacity: 1;
+              }
+            `}
+          </style>
         </div>
 
         <div className="col-md-6 d-flex justify-content-md-end gap-2">
@@ -414,16 +445,16 @@ export default function AdminUsers() {
               pageItems.map((u) => {
                 const recordId = getUserRecordId(u);
                 const userId = u?.user_id ?? "-";
-                const rowKey = recordId ?? userId ?? Math.random();
+                const rowKey = getStableRowKey(u); // ✅ FIXED KEY
                 const isDeleted = !!u?.deleted_at;
 
                 return (
-                   <tr
-                     key={rowKey}
-                     onClick={() => openHistory(u)}
-                     style={{ cursor: "pointer" }}
-                     title="Click to view user history"
-                   >
+                  <tr
+                    key={rowKey}
+                    onClick={() => openHistory(u)}
+                    style={{ cursor: "pointer" }}
+                    title="Click to view user history"
+                  >
                     <td>{userId}</td>
                     <td>{u?.name ?? "-"}</td>
                     <td className="text-break">{u?.email ?? "-"}</td>
@@ -436,62 +467,57 @@ export default function AdminUsers() {
                         <span className="badge bg-success">Active</span>
                       )}
                     </td>
-                    <td
-  style={{
-    verticalAlign: "middle",
-  }}
->
-  <div
-    style={{
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: "8px",
-      flexWrap: "nowrap",
-      whiteSpace: "nowrap",
-      minHeight: "100%",
-    }}
-  >
-    <button
-      className="btn btn-sm btn-outline-info"
-      onClick={(event) => {
-        event.stopPropagation();
-        openEdit(u);
-      }}
-      disabled={isDeleted}
-      title={isDeleted ? "Restore user first to update" : "Update"}
-      style={{ minWidth: 70 }}
-    >
-      Update
-    </button>
 
-        {isDeleted ? (
-      <button
-        className="btn btn-sm btn-outline-warning"
-        onClick={(event) => {
-          event.stopPropagation();
-          restore(recordId ?? userId);
-        }}
-        style={{ minWidth: 70 }}
-      >
-        Restore
-      </button>
-    ) : (
-      <button
-        className="btn btn-sm btn-outline-danger"
-        onClick={(event) => {
-          event.stopPropagation();
-          destroy(recordId ?? userId);
-        }}
-        style={{ minWidth: 70 }}
-      >
-        Delete
-      </button>
-    )}
+                    <td style={{ verticalAlign: "middle" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "8px",
+                          flexWrap: "nowrap",
+                          whiteSpace: "nowrap",
+                          minHeight: "100%",
+                        }}
+                      >
+                        <button
+                          className="btn btn-sm btn-outline-info"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            openEdit(u);
+                          }}
+                          disabled={isDeleted}
+                          title={isDeleted ? "Restore user first to update" : "Update"}
+                          style={{ minWidth: 70 }}
+                        >
+                          Update
+                        </button>
 
-  </div>
-</td>
-
+                        {isDeleted ? (
+                          <button
+                            className="btn btn-sm btn-outline-warning"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              restore(recordId ?? userId);
+                            }}
+                            style={{ minWidth: 70 }}
+                          >
+                            Restore
+                          </button>
+                        ) : (
+                          <button
+                            className="btn btn-sm btn-outline-danger"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              destroy(recordId ?? userId);
+                            }}
+                            style={{ minWidth: 70 }}
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 );
               })
@@ -547,10 +573,14 @@ export default function AdminUsers() {
                       required
                     />
                   </div>
+
                   <div className="mb-2">
-                    <label className="form- fw-bold">Name</label>
-                    <input className="form-control" value={createForm.name}
-                      onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })} />
+                    <label className="form-label fw-bold">Name</label>
+                    <input
+                      className="form-control"
+                      value={createForm.name}
+                      onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
+                    />
                   </div>
 
                   <div className="mb-2">
@@ -565,43 +595,61 @@ export default function AdminUsers() {
 
                   <div className="mb-2">
                     <label className="form-label fw-bold">Email</label>
-                    <input className="form-control" value={createForm.email}
-                      onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })} />
+                    <input
+                      className="form-control"
+                      value={createForm.email}
+                      onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
+                    />
                   </div>
 
                   <div className="mb-2">
                     <label className="form-label fw-bold">Phone</label>
-                    <input className="form-control" value={createForm.phone}
-                      onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value })} />
+                    <input
+                      className="form-control"
+                      value={createForm.phone}
+                      onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value })}
+                    />
                   </div>
 
                   <div className="mb-2">
                     <label className="form-label fw-bold">Role</label>
-                    <select className="form-select bg-dark" value={createForm.role}
-                      onChange={(e) => setCreateForm({ ...createForm, role: e.target.value })}>
+                    <select
+                      className="form-select bg-dark"
+                      value={createForm.role}
+                      onChange={(e) => setCreateForm({ ...createForm, role: e.target.value })}
+                    >
                       <option value="user" className="fw-bold text-white">User</option>
                       <option value="trainer" className="fw-bold text-white">Trainer</option>
                     </select>
-                    
                   </div>
 
                   <div className="mb-2">
                     <label className="form-label fw-bold">Password</label>
-                    <input type="password" className="form-control" value={createForm.password}
-                      onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })} />
+                    <input
+                      type="password"
+                      className="form-control"
+                      value={createForm.password}
+                      onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
+                    />
                   </div>
 
                   <div>
                     <label className="form-label fw-bold">Confirm Password</label>
-                    <input type="password" className="form-control" value={createForm.password_confirmation}
-                      onChange={(e) => setCreateForm({ ...createForm, password_confirmation: e.target.value })} />
+                    <input
+                      type="password"
+                      className="form-control"
+                      value={createForm.password_confirmation}
+                      onChange={(e) =>
+                        setCreateForm({ ...createForm, password_confirmation: e.target.value })
+                      }
+                    />
                   </div>
-
-                  
                 </div>
 
                 <div className="modal-footer">
-                  <button className="btn btn-outline-light" onClick={closeCreate} disabled={savingCreate}>Cancel</button>
+                  <button className="btn btn-outline-light" onClick={closeCreate} disabled={savingCreate}>
+                    Cancel
+                  </button>
                   <button className="btn btn-primary" onClick={submitCreate} disabled={savingCreate}>
                     {savingCreate ? "Saving..." : "Create"}
                   </button>
@@ -627,35 +675,43 @@ export default function AdminUsers() {
                 <div className="modal-body">
                   <div className="mb-2">
                     <label className="form-label fw-bold">User ID</label>
-                    <input
-                      className="form-control"
-                      value={editForm.user_id || ""}
-                      disabled
-                      readOnly
-                    />
+                    <input className="form-control" value={editForm.user_id || ""} disabled readOnly />
                   </div>
+
                   <div className="mb-2">
                     <label className="form-label fw-bold">Name</label>
-                    <input className="form-control" value={editForm.name}
-                      onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
+                    <input
+                      className="form-control"
+                      value={editForm.name}
+                      onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                    />
                   </div>
 
                   <div className="mb-2">
                     <label className="form-label fw-bold">Email</label>
-                    <input className="form-control" value={editForm.email}
-                      onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} />
+                    <input
+                      className="form-control"
+                      value={editForm.email}
+                      onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                    />
                   </div>
 
                   <div className="mb-2">
                     <label className="form-label fw-bold">Phone</label>
-                    <input className="form-control" value={editForm.phone}
-                      onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} />
+                    <input
+                      className="form-control"
+                      value={editForm.phone}
+                      onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                    />
                   </div>
 
                   <div>
                     <label className="form-label fw-bold">Role</label>
-                    <select className="form-select bg-dark" value={editForm.role}
-                      onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}>
+                    <select
+                      className="form-select bg-dark"
+                      value={editForm.role}
+                      onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
+                    >
                       <option value="user" className="fw-bold text-white">User</option>
                       <option value="trainer" className="fw-bold text-white">Trainer</option>
                     </select>
@@ -668,33 +724,28 @@ export default function AdminUsers() {
                       className="form-control"
                       placeholder="Leave blank to keep current password"
                       value={editForm.password}
-                      onChange={(e) =>
-                        setEditForm({ ...editForm, password: e.target.value })
-                      }
+                      onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
                     />
                   </div>
 
                   <div className="mt-2">
-                    <label className="form-label fw-bold">
-                      Confirm Password
-                    </label>
+                    <label className="form-label fw-bold">Confirm Password</label>
                     <input
                       type="password"
                       className="form-control"
                       placeholder="Leave blank to keep current password"
                       value={editForm.password_confirmation}
                       onChange={(e) =>
-                        setEditForm({
-                          ...editForm,
-                          password_confirmation: e.target.value,
-                        })
+                        setEditForm({ ...editForm, password_confirmation: e.target.value })
                       }
                     />
-                  </div> 
+                  </div>
                 </div>
 
                 <div className="modal-footer">
-                  <button className="btn btn-outline-light" onClick={closeEdit} disabled={savingEdit}>Cancel</button>
+                  <button className="btn btn-outline-light" onClick={closeEdit} disabled={savingEdit}>
+                    Cancel
+                  </button>
                   <button className="btn btn-primary" onClick={submitEdit} disabled={savingEdit}>
                     {savingEdit ? "Saving..." : "Save"}
                   </button>
