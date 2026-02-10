@@ -28,6 +28,13 @@ function normalizeStatus(value) {
   return s;
 }
 
+function displayDate(value) {
+  if (!value) return "-";
+  const parsed = parseDate(value);
+  if (!parsed) return String(value);
+  return parsed.toLocaleDateString("en-CA");
+}
+
 function statusBadge(status) {
   const normalized = normalizeStatus(status);
   if (normalized === "active") return <span className="badge bg-success">Active</span>;
@@ -69,13 +76,27 @@ function buildSubscriptionEntry(source, typeLabel, nameSource) {
       : Array.isArray(nameSource)
         ? pickFirstValue(source, nameSource) || "-"
         : "-";
+  const startDate =
+    source?.start_date ??
+    source?.sessions_start_date ??
+    source?.month_start_date ??
+    source?.startDate ??
+    null;
+  const endDate =
+    source?.end_date ??
+    source?.sessions_end_date ??
+    source?.month_end_date ??
+    source?.endDate ??
+    null;
+  const derivedStatus = source?.is_expired ? "expired" : source?.is_on_hold ? "on-hold" : source?.status;
+
   return {
     id: source?.id ?? "-",
     type: typeLabel,
     name,
-    status: source?.status ?? "pending",
-    startDate: source?.start_date ?? source?.startDate ?? null,
-    endDate: source?.end_date ?? source?.endDate ?? null,
+    status: derivedStatus ?? "pending",
+    startDate,
+    endDate,
     price: source?.price ?? source?.total_price ?? null,
   };
 }
@@ -129,6 +150,7 @@ export default function AdminUserHistory() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [records, setRecords] = useState(emptyRecords);
+  const [userProfile, setUserProfile] = useState(null);
 
   const candidateUserIds = useMemo(() => {
     return [
@@ -150,6 +172,7 @@ export default function AdminUserHistory() {
   const loadRecords = async () => {
     if (!recordId) {
       setRecords(emptyRecords);
+      setUserProfile(null);
       setError("Missing user id for this record.");
       return;
     }
@@ -158,9 +181,16 @@ export default function AdminUserHistory() {
     requestRef.current += 1;
     const requestId = requestRef.current;
     try {
-      const res = await axiosClient.get(`/users/${recordId}/records`);
+      let res;
+      try {
+        res = await axiosClient.get(`/user/${recordId}/records`);
+      } catch (primaryErr) {
+        if (primaryErr?.response?.status !== 404) throw primaryErr;
+        res = await axiosClient.get(`/users/${recordId}/records`);
+      }
       const payload = res?.data || {};
       if (requestId === requestRef.current) {
+        setUserProfile(payload?.user ?? null);
         const subscriptions = normalizeArray(payload.subscriptions);
         const trainerBookings = normalizeArray(payload.trainer_bookings ?? payload.trainerbookings);
         const boxingBookings = normalizeArray(payload.boxing_bookings ?? payload.boxingbookings);
@@ -190,6 +220,7 @@ export default function AdminUserHistory() {
     } catch (err) {
       if (requestId === requestRef.current) {
         setRecords(emptyRecords);
+        setUserProfile(null);
         setError(buildErrorMessage(err));
       }
     } finally {
@@ -201,6 +232,7 @@ export default function AdminUserHistory() {
 
   useEffect(() => {
     setRecords(emptyRecords);
+    setUserProfile(null);
     loadRecords();
   }, [recordId]);
 
@@ -210,6 +242,7 @@ export default function AdminUserHistory() {
       loading={loading}
       error={error}
       records={records}
+      userProfile={userProfile}
       onClose={() => navigate("/admin/users")}
       onRefresh={loadRecords}
     />
@@ -221,6 +254,7 @@ function UserRecordsDetail({
   loading,
   error,
   records,
+  userProfile,
   onClose,
   onRefresh,
 }) {
@@ -251,8 +285,8 @@ function UserRecordsDetail({
                 <td>{subscription?.type ?? "-"}</td>
                 <td>{subscription?.name ?? "-"}</td>
                 <td>{statusBadge(subscription?.status)}</td>
-                <td>{subscription?.startDate || "-"}</td>
-                <td>{subscription?.endDate || "-"}</td>
+                <td>{displayDate(subscription?.startDate)}</td>
+                <td>{displayDate(subscription?.endDate)}</td>
                 <td>{moneyMMK(subscription?.price)}</td>
               </tr>
             ))}
@@ -267,7 +301,7 @@ function UserRecordsDetail({
       <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
         <div>
           <h4 className="mb-1">User History</h4>
-          <div className="admin-muted">View subscription and package history.</div>
+          <div className="admin-muted">View user profile, subscriptions, and booking history.</div>
           {loading && <div className="text-muted small">Loading subscriptions...</div>}
         </div>
         <div className="d-flex gap-2">
@@ -283,6 +317,31 @@ function UserRecordsDetail({
       </div>
 
       {error && <div className="alert alert-danger">{error}</div>}
+
+      {userProfile && (
+        <div className="card bg-dark text-white border-secondary mb-4">
+          <div className="card-body">
+            <div className="row g-3">
+              <div className="col-md-3 col-sm-6">
+                <div className="text-muted small">Name</div>
+                <div className="fw-semibold">{userProfile?.name || "-"}</div>
+              </div>
+              <div className="col-md-3 col-sm-6">
+                <div className="text-muted small">Email</div>
+                <div>{userProfile?.email || "-"}</div>
+              </div>
+              <div className="col-md-3 col-sm-6">
+                <div className="text-muted small">Phone</div>
+                <div>{userProfile?.phone || "-"}</div>
+              </div>
+              <div className="col-md-3 col-sm-6">
+                <div className="text-muted small">Role</div>
+                <div className="text-capitalize">{userProfile?.role || "-"}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="card bg-dark text-white border-secondary mb-4">
         <div className="card-body">
