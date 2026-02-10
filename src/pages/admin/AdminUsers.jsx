@@ -382,11 +382,11 @@ export default function AdminUsers() {
             className="form-control admin-search"
             placeholder="Search name / email / phone / role"
             value={query}
-            autoComplete="new-password"
+            autoComplete="off"
             autoCorrect="off"
             autoCapitalize="none"
             spellCheck={false}
-            name="admin-user-search"
+            name="user-search"
             onChange={(e) => setQuery(e.target.value)}
           />
 
@@ -602,6 +602,7 @@ export default function AdminUsers() {
                     <input
                       className="form-control"
                       value={createForm.email}
+                      autoComplete="off"
                       onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
                     />
                   </div>
@@ -696,6 +697,7 @@ export default function AdminUsers() {
                     <input
                       className="form-control"
                       value={editForm.email}
+                      autoComplete="off"
                       onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
                     />
                   </div>
@@ -727,6 +729,7 @@ export default function AdminUsers() {
                       type="password"
                       className="form-control"
                       placeholder="Leave blank to keep current password"
+                      autoComplete="new-password"
                       value={editForm.password}
                       onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
                     />
@@ -738,6 +741,7 @@ export default function AdminUsers() {
                       type="password"
                       className="form-control"
                       placeholder="Leave blank to keep current password"
+                      autoComplete="new-password"
                       value={editForm.password_confirmation}
                       onChange={(e) =>
                         setEditForm({ ...editForm, password_confirmation: e.target.value })
