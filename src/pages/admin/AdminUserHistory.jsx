@@ -156,12 +156,9 @@ export default function AdminUserHistory() {
     return [
       id,
       userFromState?.id,
-      userFromState?.user_id,
       userFromState?.member_id,
       userFromState?.user?.id,
-      userFromState?.user?.user_id,
       userFromState?.member?.id,
-      userFromState?.member?.user_id,
     ]
       .filter((value) => value !== null && value !== undefined && value !== "")
       .map((value) => String(value));
@@ -173,7 +170,7 @@ export default function AdminUserHistory() {
     if (!recordId) {
       setRecords(emptyRecords);
       setUserProfile(null);
-      setError("Missing user id for this record.");
+      setError("Missing users.id for this record.");
       return;
     }
     setError(null);

@@ -45,10 +45,6 @@ function getUserRecordId(user) {
   // Prefer DB primary key id
   const directId = user?.id ?? user?.user?.id ?? user?.member_id ?? null;
   if (directId !== null && directId !== undefined) return directId;
-
-  // If no DB id, fallback to user_id string (NOT ideal but stable)
-  if (user?.user_id !== null && user?.user_id !== undefined) return String(user.user_id);
-
   return null;
 }
 
@@ -346,9 +342,9 @@ export default function AdminUsers() {
   };
 
   const openHistory = (u) => {
-    const recordId = getUserRecordId(u) ?? u?.user_id;
+    const recordId = getUserRecordId(u);
     if (!recordId) {
-      setMsg({ type: "danger", text: "This user is missing a server ID. Please refresh the list." });
+      setMsg({ type: "danger", text: "This user is missing a users.id value. Please refresh the list." });
       return;
     }
     navigate(`/admin/users/${recordId}/history`, { state: { user: u } });
