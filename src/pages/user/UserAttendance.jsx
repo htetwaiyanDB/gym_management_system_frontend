@@ -1,7 +1,11 @@
 // UserAttendance.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import axiosClient from "../../api/axiosClient";
-import { scanRfidAttendance } from "../../api/attendanceApi";
+import {
+  ATTENDANCE_SCAN_CONTROL_STORAGE_KEY,
+  getAttendanceScanControlStatus,
+  scanRfidAttendance,
+} from "../../api/attendanceApi";
 import RfidInputListener from "../../components/RfidInputListener";
 import QrScanner from "../common/QrScanner";
 import { isCardNotRegisteredError, normalizeCardId } from "../../utils/rfid";
@@ -116,6 +120,7 @@ export default function UserAttendance() {
   const nav = useNavigate();
 
   const [scannerActive, setScannerActive] = useState(true);
+  const [scanAllowedByAdmin, setScanAllowedByAdmin] = useState(true);
 
   const [statusMsg, setStatusMsg] = useState(null);
   const [rfidWarning, setRfidWarning] = useState(false);
@@ -191,7 +196,43 @@ export default function UserAttendance() {
     };
   }, []);
 
+  useEffect(() => {
+    let alive = true;
+
+    const loadScanControl = async () => {
+      const res = await getAttendanceScanControlStatus();
+      if (!alive) return;
+      setScanAllowedByAdmin(!!res?.isActive);
+    };
+
+    loadScanControl();
+    const intervalId = window.setInterval(loadScanControl, 10000);
+
+    const onStorage = (event) => {
+      if (event.key !== ATTENDANCE_SCAN_CONTROL_STORAGE_KEY) return;
+      try {
+        const next = event.newValue ? JSON.parse(event.newValue) : null;
+        setScanAllowedByAdmin(!!next?.isActive);
+      } catch {
+        setScanAllowedByAdmin(true);
+      }
+    };
+    window.addEventListener("storage", onStorage);
+
+    return () => {
+      alive = false;
+      window.clearInterval(intervalId);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, []);
+
+  const effectiveScannerActive = scannerActive && scanAllowedByAdmin;
+
   const handleRfidScan = async (rawCardId) => {
+    if (!scanAllowedByAdmin) {
+      setStatusMsg({ type: "warning", text: "Scanner is stopped by admin." });
+      return;
+    }
     if (busyRef.current) return;
     busyRef.current = true;
 
@@ -274,6 +315,10 @@ export default function UserAttendance() {
   };
 
   const handleQrScan = async (decodedText) => {
+    if (!scanAllowedByAdmin) {
+      setStatusMsg({ type: "warning", text: "Scanner is stopped by admin." });
+      return;
+    }
     const parsed = parseTokenFromQrText(decodedText);
     if (!parsed?.token) {
       setStatusMsg({ type: "danger", text: "Invalid QR code format." });
@@ -367,8 +412,8 @@ export default function UserAttendance() {
           </div>
 
           <div className="text-end">
-            <span className={`badge ${scannerActive ? "bg-success" : "bg-secondary"}`}>
-              {scannerActive ? "Scanner ON" : "Scanner OFF"}
+            <span className={`badge ${effectiveScannerActive ? "bg-success" : "bg-secondary"}`}>
+              {effectiveScannerActive ? "Scanner ON" : "Scanner OFF"}
             </span>
           </div>
         </div>
@@ -383,6 +428,12 @@ export default function UserAttendance() {
       {statusMsg && (
         <div className={`alert alert-${statusMsg.type}`} style={{ fontWeight: 600 }}>
           {statusMsg.text}
+        </div>
+      )}
+
+      {!scanAllowedByAdmin && (
+        <div className="alert alert-warning" style={{ fontWeight: 600 }}>
+          Attendance scanning is currently stopped by admin.
         </div>
       )}
 
@@ -412,8 +463,8 @@ export default function UserAttendance() {
         </div>
       )}
 
-      <RfidInputListener active={scannerActive} onScan={handleRfidScan} />
-      <QrScanner onDecode={handleQrScan} active={scannerActive} cooldownMs={1500} />
+      <RfidInputListener active={effectiveScannerActive} onScan={handleRfidScan} />
+      <QrScanner onDecode={handleQrScan} active={effectiveScannerActive} cooldownMs={1500} />
 
       <div
         className="mt-3"

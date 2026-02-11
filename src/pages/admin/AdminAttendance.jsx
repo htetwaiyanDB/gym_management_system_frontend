@@ -1,6 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import axiosClient from "../../api/axiosClient";
-import { scanMemberCardAttendance } from "../../api/attendanceApi";
+import {
+  ATTENDANCE_SCAN_CONTROL_STORAGE_KEY,
+  getAttendanceScanControlStatus,
+  saveAttendanceScanControlLocal,
+  scanMemberCardAttendance,
+  setAttendanceScanControlStatus,
+} from "../../api/attendanceApi";
 import { isCardNotRegisteredError, normalizeCardId } from "../../utils/rfid";
 
 function parseBackendDateTime(s) {
@@ -186,6 +192,8 @@ export default function AdminAttendance() {
   const [records, setRecords] = useState([]);
   const [recordRoleFilter, setRecordRoleFilter] = useState("all");
   const [recordTypeFilter, setRecordTypeFilter] = useState("all");
+  const [recordSearch, setRecordSearch] = useState("");
+  const [recordDateFilter, setRecordDateFilter] = useState("");
 
   // Member card scan panel
   const [scanValue, setScanValue] = useState("");
@@ -193,6 +201,7 @@ export default function AdminAttendance() {
   const [scanError, setScanError] = useState(null);
   const [scanResult, setScanResult] = useState(null);
   const [scannerActive, setScannerActive] = useState(false);
+  const [scanControlSyncing, setScanControlSyncing] = useState(false);
 
   // Checked-in
   const [checkedLoading, setCheckedLoading] = useState(false);
@@ -331,6 +340,42 @@ export default function AdminAttendance() {
   }, [activeTab]);
 
   useEffect(() => {
+    let alive = true;
+
+    const loadScanControl = async () => {
+      try {
+        const res = await getAttendanceScanControlStatus();
+        if (!alive) return;
+        setScannerActive(!!res?.isActive);
+      } catch {
+        if (!alive) return;
+      }
+    };
+
+    loadScanControl();
+
+    const intervalId = window.setInterval(loadScanControl, 10000);
+
+    const onStorage = (event) => {
+      if (event.key !== ATTENDANCE_SCAN_CONTROL_STORAGE_KEY) return;
+      try {
+        const next = event.newValue ? JSON.parse(event.newValue) : null;
+        setScannerActive(!!next?.isActive);
+      } catch {
+        setScannerActive(true);
+      }
+    };
+
+    window.addEventListener("storage", onStorage);
+
+    return () => {
+      alive = false;
+      window.clearInterval(intervalId);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, []);
+
+  useEffect(() => {
     if (activeTab !== "checked") return undefined;
     const intervalId = window.setInterval(() => {
       loadCheckedIn(false);
@@ -346,6 +391,8 @@ export default function AdminAttendance() {
   const filteredRecords = useMemo(() => {
     const roleF = String(recordRoleFilter).toLowerCase();
     const typeF = String(recordTypeFilter).toLowerCase();
+    const search = recordSearch.trim().toLowerCase();
+    const dateF = recordDateFilter;
 
     const list = Array.isArray(records) ? [...records] : [];
 
@@ -357,14 +404,25 @@ export default function AdminAttendance() {
     });
 
     return list.filter((r) => {
-      const role = String(r?.role || r?.user_role || "").toLowerCase();
+      const name = String(r?.name || r?.user_name || r?.username || "").trim();
+      const roleRaw = String(r?.role || r?.user_role || "").trim();
+      const role = roleRaw.toLowerCase();
       const type = normalizeRecordType(r);
+      const scannedAt = r?.scanned_at || r?.created_at || r?.time || r?.timestamp;
+      const dayKey = getRecordDayKey(scannedAt);
 
       if (roleF !== "all" && role !== roleF) return false;
       if (typeF !== "all" && type !== typeF) return false;
+      if (dateF && dayKey !== dateF) return false;
+
+      if (search) {
+        const haystack = `${name} ${roleRaw}`.toLowerCase();
+        if (!haystack.includes(search)) return false;
+      }
+
       return true;
     });
-  }, [records, recordRoleFilter, recordTypeFilter]);
+  }, [records, recordRoleFilter, recordTypeFilter, recordSearch, recordDateFilter]);
 
   const recordDayCounts = useMemo(() => {
     const datesByUser = new Map();
@@ -481,7 +539,7 @@ export default function AdminAttendance() {
               </div>
             </div>
             <span className={`badge ${scanLoading ? "bg-warning text-dark" : "bg-success"}`}>
-              {scanLoading ? "Scanning..." : scannerActive ? "Scanner ON" : "Scanner OFF"}
+              {scanControlSyncing ? "Syncing..." : scanLoading ? "Scanning..." : scannerActive ? "Scanner ON" : "Scanner OFF"}
             </span>
           </div>
 
@@ -489,25 +547,43 @@ export default function AdminAttendance() {
             <button
               type="button"
               className="btn btn-sm btn-outline-light"
-              onClick={() => {
-                setScannerActive(true);
-                setScanError(null);
-                setScanResult(null);
-                setTimeout(() => scanInputRef.current?.focus(), 0);
+              onClick={async () => {
+                setScanControlSyncing(true);
+                try {
+                  const res = await setAttendanceScanControlStatus(true);
+                  setScannerActive(!!res?.isActive);
+                  saveAttendanceScanControlLocal(!!res?.isActive);
+                  setScanError(null);
+                  setScanResult(null);
+                  setTimeout(() => scanInputRef.current?.focus(), 0);
+                } catch (e) {
+                  setScanError(e?.response?.data?.message || "Failed to start scanner control.");
+                } finally {
+                  setScanControlSyncing(false);
+                }
               }}
-              disabled={scannerActive || scanLoading}
+              disabled={scannerActive || scanLoading || scanControlSyncing}
             >
               Start Scan
             </button>
             <button
               type="button"
               className="btn btn-sm btn-outline-light"
-              onClick={() => {
-                setScannerActive(false);
-                setScanValue("");
-                setScanError(null);
+              onClick={async () => {
+                setScanControlSyncing(true);
+                try {
+                  const res = await setAttendanceScanControlStatus(false);
+                  setScannerActive(!!res?.isActive);
+                  saveAttendanceScanControlLocal(!!res?.isActive);
+                  setScanValue("");
+                  setScanError(null);
+                } catch (e) {
+                  setScanError(e?.response?.data?.message || "Failed to stop scanner control.");
+                } finally {
+                  setScanControlSyncing(false);
+                }
               }}
-              disabled={!scannerActive}
+              disabled={!scannerActive || scanControlSyncing}
             >
               Stop Scan
             </button>
@@ -718,6 +794,31 @@ export default function AdminAttendance() {
 
             <div style={{ minWidth: 220 }}>
               <label className="form-label mb-1" style={bodyText}>
+                Search Name / Role
+              </label>
+              <input
+                type="text"
+                className="form-control"
+                placeholder="e.g. john, trainer"
+                value={recordSearch}
+                onChange={(e) => setRecordSearch(e.target.value)}
+              />
+            </div>
+
+            <div style={{ minWidth: 220 }}>
+              <label className="form-label mb-1" style={bodyText}>
+                Day
+              </label>
+              <input
+                type="date"
+                className="form-control"
+                value={recordDateFilter}
+                onChange={(e) => setRecordDateFilter(e.target.value)}
+              />
+            </div>
+
+            <div style={{ minWidth: 220 }}>
+              <label className="form-label mb-1" style={bodyText}>
                 Scan Type
               </label>
               <select className="form-select" style={glassSelectStyle} value={recordTypeFilter} onChange={(e) => setRecordTypeFilter(e.target.value)}>
@@ -732,6 +833,8 @@ export default function AdminAttendance() {
               onClick={() => {
                 setRecordRoleFilter("all");
                 setRecordTypeFilter("all");
+                setRecordSearch("");
+                setRecordDateFilter("");
               }}
             >
               Clear Filters
