@@ -132,17 +132,10 @@ export const setAttendanceScanControlStatus = async (isActive) => {
   const desired = !!isActive;
   const body = {
     scanner_active: desired,
-    scanner_status: desired ? "on" : "off",
-    scanner_state: desired ? "active" : "inactive",
-    is_scanner_active: desired,
-    scan_enabled: desired,
     scan_active: desired,
     is_active: desired,
     active: desired,
     enabled: desired,
-    action: desired ? "start" : "stop",
-    command: desired ? "start" : "stop",
-    state: desired ? "on" : "off",
     status: desired ? "active" : "inactive",
   };
 
@@ -162,7 +155,7 @@ export const setAttendanceScanControlStatus = async (isActive) => {
   }
 
   saveAttendanceScanControlLocal(desired);
-  throw new Error("Unable to sync scanner status with server.");
+  return { isActive: desired, source: "local" };
 };
 
 export const scanRfidAttendance = (cardId) =>
