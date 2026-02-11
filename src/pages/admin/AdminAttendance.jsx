@@ -193,7 +193,8 @@ export default function AdminAttendance() {
   const [recordRoleFilter, setRecordRoleFilter] = useState("all");
   const [recordTypeFilter, setRecordTypeFilter] = useState("all");
   const [recordSearch, setRecordSearch] = useState("");
-  const [recordDateFilter, setRecordDateFilter] = useState("");
+  const [recordStartDateFilter, setRecordStartDateFilter] = useState("");
+  const [recordEndDateFilter, setRecordEndDateFilter] = useState("");
 
   // Member card scan panel
   const [scanValue, setScanValue] = useState("");
@@ -362,7 +363,7 @@ export default function AdminAttendance() {
         const next = event.newValue ? JSON.parse(event.newValue) : null;
         setScannerActive(!!next?.isActive);
       } catch {
-        setScannerActive(true);
+        setScannerActive(false);
       }
     };
 
@@ -392,7 +393,8 @@ export default function AdminAttendance() {
     const roleF = String(recordRoleFilter).toLowerCase();
     const typeF = String(recordTypeFilter).toLowerCase();
     const search = recordSearch.trim().toLowerCase();
-    const dateF = recordDateFilter;
+    const startDateF = recordStartDateFilter;
+    const endDateF = recordEndDateFilter;
 
     const list = Array.isArray(records) ? [...records] : [];
 
@@ -413,7 +415,8 @@ export default function AdminAttendance() {
 
       if (roleF !== "all" && role !== roleF) return false;
       if (typeF !== "all" && type !== typeF) return false;
-      if (dateF && dayKey !== dateF) return false;
+      if (startDateF && (!dayKey || dayKey < startDateF)) return false;
+      if (endDateF && (!dayKey || dayKey > endDateF)) return false;
 
       if (search) {
         const haystack = `${name} ${roleRaw}`.toLowerCase();
@@ -422,7 +425,7 @@ export default function AdminAttendance() {
 
       return true;
     });
-  }, [records, recordRoleFilter, recordTypeFilter, recordSearch, recordDateFilter]);
+  }, [records, recordRoleFilter, recordTypeFilter, recordSearch, recordStartDateFilter, recordEndDateFilter]);
 
   const recordDayCounts = useMemo(() => {
     const datesByUser = new Map();
@@ -807,13 +810,27 @@ export default function AdminAttendance() {
 
             <div style={{ minWidth: 220 }}>
               <label className="form-label mb-1" style={bodyText}>
-                Day
+                Start Date
               </label>
               <input
                 type="date"
                 className="form-control"
-                value={recordDateFilter}
-                onChange={(e) => setRecordDateFilter(e.target.value)}
+                value={recordStartDateFilter}
+                onChange={(e) => setRecordStartDateFilter(e.target.value)}
+              />
+            </div>
+
+
+            <div style={{ minWidth: 220 }}>
+              <label className="form-label mb-1" style={bodyText}>
+                End Date
+              </label>
+              <input
+                type="date"
+                className="form-control"
+                value={recordEndDateFilter}
+                min={recordStartDateFilter || undefined}
+                onChange={(e) => setRecordEndDateFilter(e.target.value)}
               />
             </div>
 
@@ -834,7 +851,8 @@ export default function AdminAttendance() {
                 setRecordRoleFilter("all");
                 setRecordTypeFilter("all");
                 setRecordSearch("");
-                setRecordDateFilter("");
+                setRecordStartDateFilter("");
+                setRecordEndDateFilter("");
               }}
             >
               Clear Filters

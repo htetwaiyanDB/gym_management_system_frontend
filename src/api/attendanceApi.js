@@ -17,7 +17,7 @@ const SCAN_CONTROL_WRITE_ENDPOINTS = [
   { method: "patch", url: "/attendance/scan-control" },
 ];
 
-const toBool = (value, fallback = true) => {
+const toBool = (value, fallback = false) => {
   if (typeof value === "boolean") return value;
   if (typeof value === "number") return value === 1;
   if (typeof value === "string") {
@@ -44,7 +44,7 @@ const extractScanControlFlag = (payload) => {
     payload?.data?.enabled ??
     payload?.data?.status;
 
-  return toBool(candidate, true);
+  return toBool(candidate, false);
 };
 
 export const saveAttendanceScanControlLocal = (isActive) => {
@@ -62,7 +62,7 @@ export const readAttendanceScanControlLocal = () => {
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     return {
-      isActive: toBool(parsed?.isActive, true),
+      isActive: toBool(parsed?.isActive, false),
       updatedAt: parsed?.updatedAt || null,
     };
   } catch {
@@ -87,7 +87,7 @@ export const getAttendanceScanControlStatus = async () => {
     return { isActive: cached.isActive, source: "local" };
   }
 
-  return { isActive: true, source: "default" };
+  return { isActive: false, source: "default" };
 };
 
 export const setAttendanceScanControlStatus = async (isActive) => {

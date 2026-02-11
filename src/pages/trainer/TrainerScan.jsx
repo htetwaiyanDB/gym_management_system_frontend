@@ -198,7 +198,7 @@ export default function TrainerScan() {
         const next = event.newValue ? JSON.parse(event.newValue) : null;
         setScanAllowedByAdmin(!!next?.isActive);
       } catch {
-        setScanAllowedByAdmin(true);
+        setScanAllowedByAdmin(false);
       }
     };
     window.addEventListener("storage", onStorage);
