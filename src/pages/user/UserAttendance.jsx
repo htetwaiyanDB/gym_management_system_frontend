@@ -1,11 +1,8 @@
 // UserAttendance.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import axiosClient from "../../api/axiosClient";
-import {
-  ATTENDANCE_SCAN_CONTROL_STORAGE_KEY,
-  getAttendanceScanControlStatus,
-  scanRfidAttendance,
-} from "../../api/attendanceApi";
+import { scanRfidAttendance } from "../../api/attendanceApi";
+import { useGlobalScanner } from "../../hooks/useGlobalScanner";
 import RfidInputListener from "../../components/RfidInputListener";
 import QrScanner from "../common/QrScanner";
 import { isCardNotRegisteredError, normalizeCardId } from "../../utils/rfid";
@@ -119,8 +116,8 @@ export default function UserAttendance() {
   const busyRef = useRef(false);
   const nav = useNavigate();
 
-  const [scannerActive, setScannerActive] = useState(true);
-  const [scanAllowedByAdmin, setScanAllowedByAdmin] = useState(true);
+  // Global scanner state - Admin controls ON/OFF
+  const { isScanningEnabled: scanAllowedByAdmin } = useGlobalScanner();
 
   const [statusMsg, setStatusMsg] = useState(null);
   const [rfidWarning, setRfidWarning] = useState(false);
@@ -196,37 +193,8 @@ export default function UserAttendance() {
     };
   }, []);
 
-  useEffect(() => {
-    let alive = true;
-
-    const loadScanControl = async () => {
-      const res = await getAttendanceScanControlStatus();
-      if (!alive) return;
-      setScanAllowedByAdmin(!!res?.isActive);
-    };
-
-    loadScanControl();
-    const intervalId = window.setInterval(loadScanControl, 10000);
-
-    const onStorage = (event) => {
-      if (event.key !== ATTENDANCE_SCAN_CONTROL_STORAGE_KEY) return;
-      try {
-        const next = event.newValue ? JSON.parse(event.newValue) : null;
-        setScanAllowedByAdmin(!!next?.isActive);
-      } catch {
-        setScanAllowedByAdmin(false);
-      }
-    };
-    window.addEventListener("storage", onStorage);
-
-    return () => {
-      alive = false;
-      window.clearInterval(intervalId);
-      window.removeEventListener("storage", onStorage);
-    };
-  }, []);
-
-  const effectiveScannerActive = scannerActive && scanAllowedByAdmin;
+  // Scanner is active only when Admin has enabled it globally
+  const effectiveScannerActive = scanAllowedByAdmin;
 
   const handleRfidScan = async (rawCardId) => {
     if (!scanAllowedByAdmin) {
@@ -247,9 +215,6 @@ export default function UserAttendance() {
     }
 
     try {
-      // prevent double scan while request is running
-      setScannerActive(false);
-
       const res = await scanRfidAttendance(cardId);
 
       const record = res?.data?.record ?? res?.data ?? null;
@@ -261,8 +226,6 @@ export default function UserAttendance() {
           type: "warning",
           text: res?.data?.message || "Recorded, but timestamp is not today.",
         });
-        // allow scanning again
-        setScannerActive(true);
         return;
       }
 
@@ -274,20 +237,15 @@ export default function UserAttendance() {
         setStatusMsg({ type: "success", text: "Checked in successfully" });
 
         saveCache({ latest: record, checkInTime: timestamp, checkOutTime: null });
-        setScannerActive(true);
       } else if (action === "check_out") {
         setCheckOutTime(timestamp);
         setStatusMsg({ type: "success", text: "Checked out successfully" });
 
         saveCache({ latest: record, checkInTime, checkOutTime: timestamp });
-
-        // optional: stop after check-out; if you want keep scanning, change to true
-        setScannerActive(false);
       } else {
         // unknown action, still store latest
         setStatusMsg({ type: "success", text: res?.data?.message || "Recorded." });
         saveCache({ latest: record, checkInTime, checkOutTime });
-        setScannerActive(true);
       }
     } catch (e) {
       const message = e?.response?.data?.message || "Scan failed.";
@@ -295,7 +253,6 @@ export default function UserAttendance() {
         setPendingCardId(cardId);
         localStorage.setItem("rfid_pending_card_id", cardId);
         setRfidWarning(true);
-        setScannerActive(false);
         const user = JSON.parse(localStorage.getItem("user") || "null");
         if (String(user?.role || "").toLowerCase() === "administrator") {
           nav("/admin/attendance/rfid-register");
@@ -305,7 +262,6 @@ export default function UserAttendance() {
           type: "danger",
           text: message,
         });
-        setScannerActive(true);
       }
     } finally {
       setTimeout(() => {
@@ -329,7 +285,6 @@ export default function UserAttendance() {
     setStatusMsg(null);
     setRfidWarning(false);
     try {
-      setScannerActive(false);
       const res = await axiosClient.post("/user/check-in/scan", {
         token: parsed.token,
       });
@@ -342,7 +297,6 @@ export default function UserAttendance() {
           type: "warning",
           text: res?.data?.message || "Recorded, but timestamp is not today.",
         });
-        setScannerActive(true);
         return;
       }
 
@@ -354,25 +308,20 @@ export default function UserAttendance() {
         setStatusMsg({ type: "success", text: res?.data?.message || "Check-in recorded." });
 
         saveCache({ latest: record, checkInTime: timestamp, checkOutTime: null });
-        setScannerActive(true);
       } else if (action === "check_out") {
         setCheckOutTime(timestamp);
         setStatusMsg({ type: "success", text: res?.data?.message || "Check-out recorded." });
 
         saveCache({ latest: record, checkInTime, checkOutTime: timestamp });
-
-        setScannerActive(false);
       } else {
         setStatusMsg({ type: "success", text: res?.data?.message || "Recorded." });
         saveCache({ latest: record, checkInTime, checkOutTime });
-        setScannerActive(true);
       }
     } catch (e) {
       setStatusMsg({
         type: "danger",
         text: e?.response?.data?.message || "Scan failed.",
       });
-      setScannerActive(true);
     } finally {
       setTimeout(() => {
         busyRef.current = false;
