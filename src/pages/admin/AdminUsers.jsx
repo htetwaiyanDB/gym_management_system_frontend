@@ -42,11 +42,25 @@ function roleBadge(roleRaw) {
 }
 
 function getUserRecordId(user) {
- // Prefer DB primary key id, but preserve legacy user_id fallback
-  const directId =
-    user?.id ?? user?.user?.id ?? user?.member_id ?? user?.user_id ?? null;
-  if (directId !== null && directId !== undefined) return directId;
-  return null;
+  // ✅ CRITICAL: Always use the database primary key 'id' field
+  // This is the actual users.id from the database, NOT the custom user_id field
+  
+  // Priority order: direct id > nested user.id > member_id > user_id (fallback only)
+  const directId = user?.id ?? user?.user?.id ?? user?.member_id ?? null;
+  
+  if (directId !== null && directId !== undefined) {
+    console.log("[getUserRecordId] Found database ID:", directId, "for user:", user?.name);
+    return directId;
+  }
+  
+  // FALLBACK: user_id is NOT the database ID, but use it if nothing else is available
+  const fallbackUserId = user?.user_id ?? null;
+  if (fallbackUserId !== null && fallbackUserId !== undefined) {
+    console.warn("[getUserRecordId] WARNING: Using user_id as fallback:", fallbackUserId, "for user:", user?.name);
+    console.warn("[getUserRecordId] This may cause ID mismatch! User object:", user);
+  }
+  
+  return fallbackUserId;
 }
 
 
@@ -345,6 +359,15 @@ export default function AdminUsers() {
 
   const openHistory = (u) => {
     const recordId = getUserRecordId(u);
+    console.log("[AdminUsers] Opening history for user:", u);
+    console.log("[AdminUsers] Extracted recordId:", recordId);
+    console.log("[AdminUsers] User object details:", {
+      id: u?.id,
+      user_id: u?.user_id,
+      name: u?.name,
+      email: u?.email,
+    });
+    
     if (!recordId) {
       setMsg({ type: "danger", text: "This user is missing a users.id value. Please refresh the list." });
       return;

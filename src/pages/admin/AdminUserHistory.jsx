@@ -152,9 +152,13 @@ export default function AdminUserHistory() {
   const [records, setRecords] = useState(emptyRecords);
   const [userProfile, setUserProfile] = useState(null);
 
-  const candidateUserIds = useMemo(() => {
-    return [
-      id,
+  // Always prioritize URL param ID (the actual database record ID from the route)
+  const recordId = useMemo(() => {
+    // URL param is the source of truth (from route /admin/users/:id/history)
+    if (id) return String(id);
+    
+    // Fallback: try to extract from state if URL param is missing
+    const fallbacks = [
       userFromState?.id,
       userFromState?.user?.id,
       userFromState?.users?.id,
@@ -164,12 +168,16 @@ export default function AdminUserHistory() {
       userFromState?.user_record_id,
       userFromState?.record_id,
       userFromState?.member_id,
-    ]
-      .filter((value) => value !== null && value !== undefined && value !== "")
-      .map((value) => String(value));
+    ];
+    
+    for (const candidate of fallbacks) {
+      if (candidate !== null && candidate !== undefined && candidate !== "") {
+        return String(candidate);
+      }
+    }
+    
+    return null;
   }, [id, userFromState]);
-
-  const recordId = candidateUserIds[0] || null;
 
   const loadRecords = async () => {
     if (!recordId) {
@@ -178,6 +186,11 @@ export default function AdminUserHistory() {
       setError("Missing users.id for this record.");
       return;
     }
+    
+    console.log("[AdminUserHistory] Loading records for user ID:", recordId);
+    console.log("[AdminUserHistory] URL param 'id':", id);
+    console.log("[AdminUserHistory] userFromState:", userFromState);
+    
     setError(null);
     setLoading(true);
     requestRef.current += 1;
@@ -185,12 +198,16 @@ export default function AdminUserHistory() {
     try {
       let res;
       try {
+        console.log("[AdminUserHistory] Trying GET /user/" + recordId + "/records");
         res = await axiosClient.get(`/user/${recordId}/records`);
       } catch (primaryErr) {
         if (primaryErr?.response?.status !== 404) throw primaryErr;
+        console.log("[AdminUserHistory] Fallback to GET /users/" + recordId + "/records");
         res = await axiosClient.get(`/users/${recordId}/records`);
       }
       const payload = res?.data || {};
+      console.log("[AdminUserHistory] API response payload:", payload);
+      
       if (requestId === requestRef.current) {
         setUserProfile(payload?.user ?? null);
         const subscriptions = normalizeArray(payload.subscriptions);
@@ -220,6 +237,7 @@ export default function AdminUserHistory() {
         });
       }
     } catch (err) {
+      console.error("[AdminUserHistory] Error loading records:", err);
       if (requestId === requestRef.current) {
         setRecords(emptyRecords);
         setUserProfile(null);

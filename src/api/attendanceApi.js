@@ -88,8 +88,8 @@ export const getAttendanceScanControlStatus = async () => {
   const cached = readAttendanceScanControlLocal();
   if (cached) return { isActive: cached.isActive, source: "local" };
 
-  // choose ONE consistent default:
-  return { isActive: false, source: "default" };
+  // Default to ON (true) for offline support - scanner works without API
+  return { isActive: true, source: "default" };
 };
 
 export const setAttendanceScanControlStatus = async (isActive) => {

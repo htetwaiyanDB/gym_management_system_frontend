@@ -105,7 +105,7 @@ export default function TrainerScan() {
   const nav = useNavigate();
 
   // Global scanner state - Admin controls ON/OFF
-  const { isScanningEnabled: scanAllowedByAdmin } = useGlobalScanner();
+  const { isScanningEnabled: scanAllowedByAdmin, setIsScanningEnabled } = useGlobalScanner();
 
   const [statusMsg, setStatusMsg] = useState(null);
   const [rfidWarning, setRfidWarning] = useState(false);
@@ -370,6 +370,17 @@ export default function TrainerScan() {
             <span className={`badge ${effectiveScannerActive ? "bg-success" : "bg-secondary"}`}>
               {effectiveScannerActive ? "Scanner ON" : "Scanner OFF"}
             </span>
+            {effectiveScannerActive && (
+              <button
+                className="btn btn-sm btn-outline-danger ms-2"
+                onClick={() => {
+                  setIsScanningEnabled(false);
+                  setStatusMsg({ type: "info", text: "Scanner disabled manually." });
+                }}
+              >
+                Stop
+              </button>
+            )}
           </div>
         </div>
 
@@ -388,7 +399,16 @@ export default function TrainerScan() {
 
       {!scanAllowedByAdmin && (
         <div className="alert alert-warning" style={{ fontWeight: 600 }}>
-          Attendance scanning is currently stopped by admin.
+          Attendance scanning is currently stopped.
+          <button
+            className="btn btn-sm btn-success ms-2"
+            onClick={() => {
+              setIsScanningEnabled(true);
+              setStatusMsg({ type: "success", text: "Scanner enabled manually." });
+            }}
+          >
+            Enable Scanner
+          </button>
         </div>
       )}
 
