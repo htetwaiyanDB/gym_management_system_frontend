@@ -89,13 +89,24 @@ function parseDate(value) {
 }
 
 function buildBookingEntry(source) {
+  // Member/Client name - try various field names
   const memberName = 
+    source?.member_name ||
     source?.user?.name ||
     source?.member?.name ||
-    source?.member_name ||
     source?.client_name ||
+    source?.customer_name ||
     "-";
   
+  // Member phone
+  const memberPhone = 
+    source?.member_phone ||
+    source?.user?.phone ||
+    source?.member?.phone ||
+    source?.client_phone ||
+    null;
+  
+  // Package name
   const packageName =
     source?.trainer_package?.name ||
     source?.package_name ||
@@ -103,17 +114,20 @@ function buildBookingEntry(source) {
     source?.name ||
     "-";
 
+  // Package type (personal, monthly, duo, etc.)
   const packageType = 
     source?.trainer_package?.package_type ||
     source?.package_type ||
     source?.type ||
     "-";
 
+  // Dates
   const startDate =
     source?.start_date ??
     source?.sessions_start_date ??
     source?.month_start_date ??
     source?.startDate ??
+    source?.created_at ??
     null;
 
   const endDate =
@@ -123,22 +137,47 @@ function buildBookingEntry(source) {
     source?.endDate ??
     null;
 
-  const sessionsTotal = source?.sessions_count ?? source?.session_count ?? source?.sessions ?? null;
-  const sessionsRemaining = source?.sessions_remaining ?? source?.remaining_sessions ?? null;
-  const sessionsUsed = source?.sessions_used ?? source?.sessions_completed ?? null;
+  // Sessions
+  const sessionsTotal = 
+    source?.sessions_count ?? 
+    source?.session_count ?? 
+    source?.sessions ?? 
+    source?.trainer_package?.sessions_count ??
+    null;
+  const sessionsRemaining = 
+    source?.sessions_remaining ?? 
+    source?.remaining_sessions ?? 
+    null;
+  const sessionsUsed = 
+    source?.sessions_used ?? 
+    source?.sessions_completed ?? 
+    null;
+
+  // Price
+  const price = 
+    source?.total_price ?? 
+    source?.price ?? 
+    source?.amount ??
+    null;
+
+  // Paid status
+  const paidStatus = source?.paid_status ?? source?.is_paid ?? null;
 
   return {
     id: source?.id ?? "-",
     memberName,
+    memberPhone,
     packageName,
     packageType,
     status: source?.status ?? "pending",
     startDate,
     endDate,
-    price: source?.price ?? source?.total_price ?? null,
+    price,
     sessionsTotal,
     sessionsRemaining,
     sessionsUsed,
+    paidStatus,
+    notes: source?.notes ?? source?.note ?? null,
   };
 }
 
@@ -237,55 +276,107 @@ export default function AdminTrainerHistory() {
     const requestId = requestRef.current;
 
     try {
-      let res;
-      // Try multiple endpoint patterns
-      const endpoints = [
-        `/trainer/${recordId}/records`,
-        `/trainers/${recordId}/records`,
-        `/user/${recordId}/records`,
-        `/users/${recordId}/records`,
-      ];
+      // Use trainer profile from state if available
+      if (trainerFromState) {
+        setTrainerProfile(trainerFromState);
+      }
 
-      for (const endpoint of endpoints) {
+      // Fetch trainer bookings (clients assigned to this trainer)
+      let trainerBookings = [];
+      let attendanceRecords = [];
+
+      // Try to get all trainer bookings and filter by trainer_id
+      try {
+        console.log("[AdminTrainerHistory] Fetching /trainer-bookings");
+        const bookingsRes = await axiosClient.get("/trainer-bookings");
+        
+        // Handle different response formats
+        const allBookings = Array.isArray(bookingsRes?.data?.bookings) 
+          ? bookingsRes.data.bookings 
+          : Array.isArray(bookingsRes?.data) 
+            ? bookingsRes.data 
+            : Array.isArray(bookingsRes?.data?.data) 
+              ? bookingsRes.data.data 
+              : [];
+        
+        console.log("[AdminTrainerHistory] All trainer bookings:", allBookings.length);
+        console.log("[AdminTrainerHistory] Sample booking:", allBookings[0]);
+        
+        // Filter bookings assigned to this trainer
+        trainerBookings = allBookings.filter((b) => {
+          const trainerId = String(
+            b?.trainer_id ?? 
+            b?.trainer?.id ?? 
+            b?.assigned_trainer_id ??
+            ""
+          );
+          console.log("[AdminTrainerHistory] Comparing trainer_id:", trainerId, "with recordId:", recordId);
+          return trainerId === recordId;
+        });
+        
+        console.log("[AdminTrainerHistory] Filtered bookings for trainer:", trainerBookings.length);
+      } catch (err) {
+        console.warn("[AdminTrainerHistory] Failed to fetch trainer-bookings:", err?.message);
+      }
+
+      // Try to get trainer's attendance records
+      try {
+        const attendanceEndpoints = [
+          `/attendance/trainer/${recordId}`,
+          `/trainer/${recordId}/attendance`,
+          `/attendance?trainer_id=${recordId}`,
+        ];
+
+        for (const endpoint of attendanceEndpoints) {
+          try {
+            console.log("[AdminTrainerHistory] Trying attendance:", endpoint);
+            const attRes = await axiosClient.get(endpoint);
+            const attData = attRes?.data;
+            attendanceRecords = Array.isArray(attData) 
+              ? attData 
+              : Array.isArray(attData?.data) 
+                ? attData.data 
+                : Array.isArray(attData?.records)
+                  ? attData.records
+                  : [];
+            if (attendanceRecords.length > 0) {
+              console.log("[AdminTrainerHistory] Found attendance records:", attendanceRecords.length);
+              break;
+            }
+          } catch (attErr) {
+            console.log("[AdminTrainerHistory] Attendance endpoint failed:", endpoint);
+          }
+        }
+      } catch (err) {
+        console.warn("[AdminTrainerHistory] Failed to fetch attendance:", err?.message);
+      }
+
+      // If we still don't have trainer profile, try to fetch it
+      if (!trainerFromState) {
         try {
-          console.log("[AdminTrainerHistory] Trying GET", endpoint);
-          res = await axiosClient.get(endpoint);
-          console.log("[AdminTrainerHistory] Success with endpoint:", endpoint);
-          break;
+          const userEndpoints = [
+            `/users/${recordId}`,
+            `/user/${recordId}`,
+            `/trainers/${recordId}`,
+          ];
+          for (const endpoint of userEndpoints) {
+            try {
+              const userRes = await axiosClient.get(endpoint);
+              const userData = userRes?.data?.user ?? userRes?.data?.data ?? userRes?.data;
+              if (userData?.name) {
+                setTrainerProfile(userData);
+                break;
+              }
+            } catch (e) {
+              // continue
+            }
+          }
         } catch (err) {
-          if (err?.response?.status !== 404) throw err;
-          console.log("[AdminTrainerHistory] 404 for endpoint:", endpoint);
+          console.warn("[AdminTrainerHistory] Failed to fetch trainer profile:", err?.message);
         }
       }
-
-      if (!res) {
-        throw new Error("No valid endpoint found for trainer records");
-      }
-
-      const payload = res?.data || {};
-      console.log("[AdminTrainerHistory] API response payload:", payload);
       
       if (requestId === requestRef.current) {
-        // Set trainer profile
-        setTrainerProfile(payload?.user ?? payload?.trainer ?? null);
-        
-        // Process trainer bookings (clients assigned to this trainer)
-        const trainerBookings = normalizeArray(
-          payload.trainer_bookings ?? 
-          payload.trainerbookings ?? 
-          payload.bookings ??
-          payload.assigned_bookings ??
-          []
-        );
-
-        // Process attendance records
-        const attendanceRecords = normalizeArray(
-          payload.attendance ?? 
-          payload.attendance_records ?? 
-          payload.check_ins ??
-          []
-        );
-
         const bookingEntries = trainerBookings.map(buildBookingEntry);
 
         setRecords({
@@ -297,7 +388,6 @@ export default function AdminTrainerHistory() {
       console.error("[AdminTrainerHistory] Error loading records:", err);
       if (requestId === requestRef.current) {
         setRecords(emptyRecords);
-        setTrainerProfile(null);
         setError(buildErrorMessage(err));
       }
     } finally {
@@ -350,9 +440,11 @@ function TrainerRecordsDetail({
             <tr>
               <th>ID</th>
               <th>Member</th>
+              <th>Phone</th>
               <th>Package</th>
               <th>Type</th>
               <th>Status</th>
+              <th>Paid</th>
               <th>Sessions</th>
               <th>Start</th>
               <th>End</th>
@@ -362,16 +454,29 @@ function TrainerRecordsDetail({
           <tbody>
             {items.map((booking) => {
               const sessionsDisplay = booking.sessionsTotal
-                ? `${booking.sessionsRemaining ?? "-"} / ${booking.sessionsTotal}`
+                ? `${booking.sessionsRemaining ?? booking.sessionsTotal} / ${booking.sessionsTotal}`
                 : "-";
+
+              const paidBadge = () => {
+                const paid = String(booking?.paidStatus || "").toLowerCase();
+                if (paid === "paid" || paid === "1" || paid === "true") {
+                  return <span className="badge bg-success">Paid</span>;
+                }
+                if (paid === "unpaid" || paid === "0" || paid === "false") {
+                  return <span className="badge bg-warning text-dark">Unpaid</span>;
+                }
+                return <span className="badge bg-secondary">-</span>;
+              };
 
               return (
                 <tr key={booking?.id ?? Math.random()}>
                   <td>{booking?.id ?? "-"}</td>
                   <td>{booking?.memberName ?? "-"}</td>
+                  <td>{booking?.memberPhone ?? "-"}</td>
                   <td>{booking?.packageName ?? "-"}</td>
                   <td className="text-capitalize">{booking?.packageType ?? "-"}</td>
                   <td>{statusBadge(booking?.status)}</td>
+                  <td>{paidBadge()}</td>
                   <td>{sessionsDisplay}</td>
                   <td>{displayDate(booking?.startDate)}</td>
                   <td>{displayDate(booking?.endDate)}</td>
