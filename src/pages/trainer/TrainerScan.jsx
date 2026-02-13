@@ -102,6 +102,7 @@ function clearCache() {
 export default function TrainerScan() {
   const isMobile = useMemo(() => window.innerWidth < 768, []);
   const busyRef = useRef(false);
+  const prevScannerStateRef = useRef(null);
   const nav = useNavigate();
 
   // Global scanner state - Admin controls ON/OFF
@@ -121,13 +122,31 @@ export default function TrainerScan() {
 
   // 1) Load cache immediately (so refresh doesn't wipe UI)
   useEffect(() => {
+    if (!scanAllowedByAdmin) {
+      clearCache();
+      return;
+    }
+
     const cached = loadCache();
     if (!cached) return;
 
     setLatest(cached.latest ?? null);
     setCheckInTime(cached.checkInTime ?? null);
     setCheckOutTime(cached.checkOutTime ?? null);
-  }, []);
+  }, [scanAllowedByAdmin]);
+
+  useEffect(() => {
+    if (prevScannerStateRef.current === null) {
+      prevScannerStateRef.current = scanAllowedByAdmin;
+      return;
+    }
+
+    if (prevScannerStateRef.current !== scanAllowedByAdmin) {
+      clearCache();
+    }
+
+    prevScannerStateRef.current = scanAllowedByAdmin;
+  }, [scanAllowedByAdmin]);
 
   // 2) Load from backend: GET /trainer/check-in
   useEffect(() => {
@@ -158,7 +177,7 @@ export default function TrainerScan() {
         setCheckInTime(nextIn);
         setCheckOutTime(nextOut);
 
-        if (nextLatest || nextIn || nextOut) {
+        if (scanAllowedByAdmin && (nextLatest || nextIn || nextOut)) {
           saveCache({ latest: nextLatest, checkInTime: nextIn, checkOutTime: nextOut });
         } else {
           clearCache();
@@ -175,7 +194,7 @@ export default function TrainerScan() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [scanAllowedByAdmin]);
 
   // Scanner is active only when Admin has enabled it globally
   const effectiveScannerActive = scanAllowedByAdmin;
@@ -225,7 +244,9 @@ export default function TrainerScan() {
           text: "Checked in successfully",
         });
 
-        saveCache({ latest: record, checkInTime: timestamp, checkOutTime: null });
+        if (scanAllowedByAdmin) {
+          saveCache({ latest: record, checkInTime: timestamp, checkOutTime: null });
+        }
       } else if (action === "check_out") {
         setCheckOutTime(timestamp);
 
@@ -234,14 +255,18 @@ export default function TrainerScan() {
           text: "Checked out successfully",
         });
 
-        saveCache({ latest: record, checkInTime, checkOutTime: timestamp });
+        if (scanAllowedByAdmin) {
+          saveCache({ latest: record, checkInTime, checkOutTime: timestamp });
+        }
       } else {
         setStatusMsg({
           type: "success",
           text: res?.data?.message || "Recorded.",
         });
 
-        saveCache({ latest: record, checkInTime, checkOutTime });
+        if (scanAllowedByAdmin) {
+          saveCache({ latest: record, checkInTime, checkOutTime });
+        }
       }
     } catch (e) {
       const message = e?.response?.data?.message || "Scan failed.";
@@ -307,7 +332,9 @@ export default function TrainerScan() {
           text: res?.data?.message || "Check-in recorded.",
         });
 
-        saveCache({ latest: record, checkInTime: timestamp, checkOutTime: null });
+        if (scanAllowedByAdmin) {
+          saveCache({ latest: record, checkInTime: timestamp, checkOutTime: null });
+        }
       } else if (action === "check_out") {
         setCheckOutTime(timestamp);
 
@@ -316,14 +343,18 @@ export default function TrainerScan() {
           text: res?.data?.message || "Check-out recorded.",
         });
 
-        saveCache({ latest: record, checkInTime, checkOutTime: timestamp });
+        if (scanAllowedByAdmin) {
+          saveCache({ latest: record, checkInTime, checkOutTime: timestamp });
+        }
       } else {
         setStatusMsg({
           type: "success",
           text: res?.data?.message || "Recorded.",
         });
 
-        saveCache({ latest: record, checkInTime, checkOutTime });
+        if (scanAllowedByAdmin) {
+          saveCache({ latest: record, checkInTime, checkOutTime });
+        }
       }
     } catch (e) {
       setStatusMsg({
