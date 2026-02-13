@@ -372,20 +372,30 @@ export default function AdminUsers() {
 
   const openHistory = (u) => {
     const recordId = getUserRecordId(u);
+    const userRole = String(u?.role || "").toLowerCase();
+    
     console.log("[AdminUsers] Opening history for user:", u);
     console.log("[AdminUsers] Extracted recordId:", recordId);
+    console.log("[AdminUsers] User role:", userRole);
     console.log("[AdminUsers] User object details:", {
       id: u?.id,
       user_id: u?.user_id,
       name: u?.name,
       email: u?.email,
+      role: u?.role,
     });
     
     if (!recordId) {
       setMsg({ type: "danger", text: "This user is missing a users.id value. Please refresh the list." });
       return;
     }
-    navigate(`/admin/users/${recordId}/history`, { state: { user: u } });
+    
+    // Navigate to appropriate history page based on role
+    if (userRole === "trainer") {
+      navigate(`/admin/trainers/${recordId}/history`, { state: { trainer: u, user: u } });
+    } else {
+      navigate(`/admin/users/${recordId}/history`, { state: { user: u } });
+    }
   };
 
   return (

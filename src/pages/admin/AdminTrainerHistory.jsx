@@ -1,0 +1,575 @@
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import axiosClient from "../../api/axiosClient";
+
+function moneyMMK(v) {
+  if (v === null || v === undefined || v === "") return "-";
+  const n = Number(v);
+  if (Number.isNaN(n)) return String(v);
+  return n.toLocaleString("en-US") + " MMK";
+}
+
+function pickFirstValue(source, keys) {
+  for (const key of keys) {
+    const value = source?.[key];
+    if (value !== null && value !== undefined && value !== "") {
+      return value;
+    }
+  }
+  return null;
+}
+
+function normalizeStatus(value) {
+  const s = String(value || "").trim().toLowerCase();
+  if (!s) return "pending";
+  if (s === "confirmed") return "active";
+  if (s === "cancelled" || s === "canceled") return "on-hold";
+  if (s === "hold") return "on-hold";
+  if (s === "completed" || s === "complete" || s === "done") return "completed";
+  return s;
+}
+
+function displayDate(value) {
+  if (!value) return "-";
+  const parsed = parseDate(value);
+  if (!parsed) return String(value);
+  return parsed.toLocaleDateString("en-CA");
+}
+
+function displayDateTime(value) {
+  if (!value) return "-";
+  const parsed = parseDate(value);
+  if (!parsed) return String(value);
+  return parsed.toLocaleString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function statusBadge(status) {
+  const normalized = normalizeStatus(status);
+  if (normalized === "active") return <span className="badge bg-success">Active</span>;
+  if (normalized === "completed") return <span className="badge bg-primary">Completed</span>;
+  if (normalized === "on-hold") return <span className="badge bg-warning text-dark">On Hold</span>;
+  if (normalized === "expired") return <span className="badge bg-secondary">Expired</span>;
+  if (normalized === "pending") return <span className="badge bg-info text-dark">Pending</span>;
+  if (normalized === "cancelled" || normalized === "canceled") 
+    return <span className="badge bg-danger">Cancelled</span>;
+  return <span className="badge bg-secondary">{normalized}</span>;
+}
+
+const emptyRecords = {
+  bookings: {
+    active: [],
+    completed: [],
+    upcoming: [],
+  },
+  attendance: [],
+};
+
+function normalizeArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function buildErrorMessage(error) {
+  const status = error?.response?.status;
+  if (status === 404) return "Trainer not found.";
+  if (status === 500) return "Server error. Please try again.";
+  return error?.response?.data?.message || "Failed to load trainer records.";
+}
+
+function parseDate(value) {
+  if (!value) return null;
+  const normalized = String(value).includes("T") ? value : String(value).replace(" ", "T");
+  const date = new Date(normalized);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function buildBookingEntry(source) {
+  const memberName = 
+    source?.user?.name ||
+    source?.member?.name ||
+    source?.member_name ||
+    source?.client_name ||
+    "-";
+  
+  const packageName =
+    source?.trainer_package?.name ||
+    source?.package_name ||
+    source?.package?.name ||
+    source?.name ||
+    "-";
+
+  const packageType = 
+    source?.trainer_package?.package_type ||
+    source?.package_type ||
+    source?.type ||
+    "-";
+
+  const startDate =
+    source?.start_date ??
+    source?.sessions_start_date ??
+    source?.month_start_date ??
+    source?.startDate ??
+    null;
+
+  const endDate =
+    source?.end_date ??
+    source?.sessions_end_date ??
+    source?.month_end_date ??
+    source?.endDate ??
+    null;
+
+  const sessionsTotal = source?.sessions_count ?? source?.session_count ?? source?.sessions ?? null;
+  const sessionsRemaining = source?.sessions_remaining ?? source?.remaining_sessions ?? null;
+  const sessionsUsed = source?.sessions_used ?? source?.sessions_completed ?? null;
+
+  return {
+    id: source?.id ?? "-",
+    memberName,
+    packageName,
+    packageType,
+    status: source?.status ?? "pending",
+    startDate,
+    endDate,
+    price: source?.price ?? source?.total_price ?? null,
+    sessionsTotal,
+    sessionsRemaining,
+    sessionsUsed,
+  };
+}
+
+function groupBookings(entries) {
+  const grouped = {
+    active: [],
+    completed: [],
+    upcoming: [],
+  };
+  const now = new Date();
+
+  entries.forEach((entry) => {
+    const normalized = normalizeStatus(entry.status);
+    const startDate = parseDate(entry.startDate);
+    const endDate = parseDate(entry.endDate);
+
+    if (normalized === "completed" || normalized === "done") {
+      grouped.completed.push(entry);
+      return;
+    }
+
+    if (normalized === "expired" || normalized === "cancelled" || normalized === "canceled") {
+      grouped.completed.push(entry);
+      return;
+    }
+
+    if (normalized === "pending" || normalized === "upcoming") {
+      grouped.upcoming.push(entry);
+      return;
+    }
+
+    if (startDate && startDate > now) {
+      grouped.upcoming.push(entry);
+      return;
+    }
+
+    if (endDate && endDate < now) {
+      grouped.completed.push(entry);
+      return;
+    }
+
+    grouped.active.push(entry);
+  });
+
+  return grouped;
+}
+
+export default function AdminTrainerHistory() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const trainerFromState = location.state?.trainer ?? location.state?.user ?? null;
+  const requestRef = useRef(0);
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [records, setRecords] = useState(emptyRecords);
+  const [trainerProfile, setTrainerProfile] = useState(null);
+
+  // Always prioritize URL param ID (the actual database record ID from the route)
+  const recordId = useMemo(() => {
+    // URL param is the source of truth (from route /admin/trainers/:id/history)
+    if (id) return String(id);
+    
+    // Fallback: try to extract from state if URL param is missing
+    const fallbacks = [
+      trainerFromState?.id,
+      trainerFromState?.user?.id,
+      trainerFromState?.trainer?.id,
+      trainerFromState?.trainer_id,
+      trainerFromState?.profile?.id,
+    ];
+    
+    for (const candidate of fallbacks) {
+      if (candidate !== null && candidate !== undefined && candidate !== "") {
+        return String(candidate);
+      }
+    }
+    
+    return null;
+  }, [id, trainerFromState]);
+
+  const loadRecords = async () => {
+    if (!recordId) {
+      setRecords(emptyRecords);
+      setTrainerProfile(null);
+      setError("Missing trainer ID for this record.");
+      return;
+    }
+    
+    console.log("[AdminTrainerHistory] Loading records for trainer ID:", recordId);
+    
+    setError(null);
+    setLoading(true);
+    requestRef.current += 1;
+    const requestId = requestRef.current;
+
+    try {
+      let res;
+      // Try multiple endpoint patterns
+      const endpoints = [
+        `/trainer/${recordId}/records`,
+        `/trainers/${recordId}/records`,
+        `/user/${recordId}/records`,
+        `/users/${recordId}/records`,
+      ];
+
+      for (const endpoint of endpoints) {
+        try {
+          console.log("[AdminTrainerHistory] Trying GET", endpoint);
+          res = await axiosClient.get(endpoint);
+          console.log("[AdminTrainerHistory] Success with endpoint:", endpoint);
+          break;
+        } catch (err) {
+          if (err?.response?.status !== 404) throw err;
+          console.log("[AdminTrainerHistory] 404 for endpoint:", endpoint);
+        }
+      }
+
+      if (!res) {
+        throw new Error("No valid endpoint found for trainer records");
+      }
+
+      const payload = res?.data || {};
+      console.log("[AdminTrainerHistory] API response payload:", payload);
+      
+      if (requestId === requestRef.current) {
+        // Set trainer profile
+        setTrainerProfile(payload?.user ?? payload?.trainer ?? null);
+        
+        // Process trainer bookings (clients assigned to this trainer)
+        const trainerBookings = normalizeArray(
+          payload.trainer_bookings ?? 
+          payload.trainerbookings ?? 
+          payload.bookings ??
+          payload.assigned_bookings ??
+          []
+        );
+
+        // Process attendance records
+        const attendanceRecords = normalizeArray(
+          payload.attendance ?? 
+          payload.attendance_records ?? 
+          payload.check_ins ??
+          []
+        );
+
+        const bookingEntries = trainerBookings.map(buildBookingEntry);
+
+        setRecords({
+          bookings: groupBookings(bookingEntries),
+          attendance: attendanceRecords.slice(0, 20), // Last 20 attendance records
+        });
+      }
+    } catch (err) {
+      console.error("[AdminTrainerHistory] Error loading records:", err);
+      if (requestId === requestRef.current) {
+        setRecords(emptyRecords);
+        setTrainerProfile(null);
+        setError(buildErrorMessage(err));
+      }
+    } finally {
+      if (requestId === requestRef.current) {
+        setLoading(false);
+      }
+    }
+  };
+
+  useEffect(() => {
+    setRecords(emptyRecords);
+    setTrainerProfile(null);
+    loadRecords();
+  }, [recordId]);
+
+  return (
+    <TrainerRecordsDetail
+      variant="page"
+      loading={loading}
+      error={error}
+      records={records}
+      trainerProfile={trainerProfile}
+      onClose={() => navigate("/admin/users")}
+      onRefresh={loadRecords}
+    />
+  );
+}
+
+function TrainerRecordsDetail({
+  variant = "page",
+  loading,
+  error,
+  records,
+  trainerProfile,
+  onClose,
+  onRefresh,
+}) {
+  const bookingGroups = records?.bookings ?? emptyRecords.bookings;
+  const attendanceRecords = records?.attendance ?? [];
+
+  const renderBookingsTable = (items) => {
+    if (items.length === 0) {
+      return <div className="text-center text-muted py-4">No bookings found for this category.</div>;
+    }
+
+    return (
+      <div className="table-responsive">
+        <table className="table table-dark table-striped align-middle">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Member</th>
+              <th>Package</th>
+              <th>Type</th>
+              <th>Status</th>
+              <th>Sessions</th>
+              <th>Start</th>
+              <th>End</th>
+              <th>Price</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((booking) => {
+              const sessionsDisplay = booking.sessionsTotal
+                ? `${booking.sessionsRemaining ?? "-"} / ${booking.sessionsTotal}`
+                : "-";
+
+              return (
+                <tr key={booking?.id ?? Math.random()}>
+                  <td>{booking?.id ?? "-"}</td>
+                  <td>{booking?.memberName ?? "-"}</td>
+                  <td>{booking?.packageName ?? "-"}</td>
+                  <td className="text-capitalize">{booking?.packageType ?? "-"}</td>
+                  <td>{statusBadge(booking?.status)}</td>
+                  <td>{sessionsDisplay}</td>
+                  <td>{displayDate(booking?.startDate)}</td>
+                  <td>{displayDate(booking?.endDate)}</td>
+                  <td>{moneyMMK(booking?.price)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
+  const renderAttendanceTable = () => {
+    if (attendanceRecords.length === 0) {
+      return <div className="text-center text-muted py-4">No attendance records found.</div>;
+    }
+
+    return (
+      <div className="table-responsive">
+        <table className="table table-dark table-striped align-middle">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Action</th>
+              <th>Date/Time</th>
+              <th>Method</th>
+            </tr>
+          </thead>
+          <tbody>
+            {attendanceRecords.map((record) => (
+              <tr key={record?.id ?? Math.random()}>
+                <td>{record?.id ?? "-"}</td>
+                <td>
+                  <span className={`badge ${
+                    String(record?.action || record?.type || "").toLowerCase().includes("in") 
+                      ? "bg-success" 
+                      : "bg-warning text-dark"
+                  }`}>
+                    {record?.action ?? record?.type ?? "-"}
+                  </span>
+                </td>
+                <td>{displayDateTime(record?.timestamp ?? record?.scanned_at ?? record?.created_at)}</td>
+                <td className="text-capitalize">{record?.method ?? record?.scan_type ?? "-"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
+  const totalActive = bookingGroups.active.length;
+  const totalCompleted = bookingGroups.completed.length;
+  const totalUpcoming = bookingGroups.upcoming.length;
+  const totalBookings = totalActive + totalCompleted + totalUpcoming;
+
+  const container = (
+    <div className="admin-card p-4">
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+        <div>
+          <h4 className="mb-1">Trainer History</h4>
+          <div className="admin-muted">View trainer profile, assigned bookings, and attendance history.</div>
+          {loading && <div className="text-muted small">Loading records...</div>}
+        </div>
+        <div className="d-flex gap-2">
+          {onClose && (
+            <button className="btn btn-outline-light" onClick={onClose}>
+              {variant === "modal" ? "Close" : "Back to Users"}
+            </button>
+          )}
+          <button className="btn btn-outline-light" onClick={onRefresh} disabled={loading}>
+            {loading ? "Loading..." : "Refresh"}
+          </button>
+        </div>
+      </div>
+
+      {error && <div className="alert alert-danger">{error}</div>}
+
+      {trainerProfile && (
+        <div className="card bg-dark text-white border-secondary mb-4">
+          <div className="card-body">
+            <div className="row g-3">
+              <div className="col-md-3 col-sm-6">
+                <div className="text-muted small">Name</div>
+                <div className="fw-semibold">{trainerProfile?.name || "-"}</div>
+              </div>
+              <div className="col-md-3 col-sm-6">
+                <div className="text-muted small">Email</div>
+                <div>{trainerProfile?.email || "-"}</div>
+              </div>
+              <div className="col-md-3 col-sm-6">
+                <div className="text-muted small">Phone</div>
+                <div>{trainerProfile?.phone || "-"}</div>
+              </div>
+              <div className="col-md-3 col-sm-6">
+                <div className="text-muted small">Role</div>
+                <div className="text-capitalize">
+                  <span className="badge bg-info text-dark">{trainerProfile?.role || "Trainer"}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Summary Stats */}
+      <div className="card bg-dark text-white border-secondary mb-4">
+        <div className="card-body">
+          <div className="row g-3">
+            <div className="col-md-3 col-6">
+              <div className="text-muted small">Total Bookings</div>
+              <div className="fw-bold fs-4">{totalBookings}</div>
+            </div>
+            <div className="col-md-3 col-6">
+              <div className="text-muted small">Active</div>
+              <div className="fw-bold fs-4 text-success">{totalActive}</div>
+            </div>
+            <div className="col-md-3 col-6">
+              <div className="text-muted small">Upcoming</div>
+              <div className="fw-bold fs-4 text-info">{totalUpcoming}</div>
+            </div>
+            <div className="col-md-3 col-6">
+              <div className="text-muted small">Completed</div>
+              <div className="fw-bold fs-4 text-primary">{totalCompleted}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Active Bookings */}
+      <div className="mb-4">
+        <h5 className="mb-3">
+          <span className="badge bg-success me-2">{totalActive}</span>
+          Active Bookings (Currently Training)
+        </h5>
+        {loading && bookingGroups.active.length === 0 ? (
+          <div className="text-center text-muted py-4">Loading...</div>
+        ) : (
+          renderBookingsTable(bookingGroups.active)
+        )}
+      </div>
+
+      {/* Upcoming Bookings */}
+      <div className="mb-4">
+        <h5 className="mb-3">
+          <span className="badge bg-info me-2">{totalUpcoming}</span>
+          Upcoming / Pending Bookings
+        </h5>
+        {loading && bookingGroups.upcoming.length === 0 ? (
+          <div className="text-center text-muted py-4">Loading...</div>
+        ) : (
+          renderBookingsTable(bookingGroups.upcoming)
+        )}
+      </div>
+
+      {/* Completed Bookings */}
+      <div className="mb-4">
+        <h5 className="mb-3">
+          <span className="badge bg-primary me-2">{totalCompleted}</span>
+          Completed / Past Bookings
+        </h5>
+        {loading && bookingGroups.completed.length === 0 ? (
+          <div className="text-center text-muted py-4">Loading...</div>
+        ) : (
+          renderBookingsTable(bookingGroups.completed)
+        )}
+      </div>
+
+      {/* Attendance Records */}
+      <div>
+        <h5 className="mb-3">
+          <span className="badge bg-secondary me-2">{attendanceRecords.length}</span>
+          Recent Attendance Records
+        </h5>
+        {loading && attendanceRecords.length === 0 ? (
+          <div className="text-center text-muted py-4">Loading...</div>
+        ) : (
+          renderAttendanceTable()
+        )}
+      </div>
+    </div>
+  );
+
+  if (variant === "modal") {
+    return (
+      <>
+        <div className="modal fade show d-block" tabIndex="-1">
+          <div className="modal-dialog modal-xl modal-dialog-scrollable">
+            <div className="modal-content bg-dark text-white">
+              <div className="modal-body">{container}</div>
+            </div>
+          </div>
+        </div>
+        <div className="modal-backdrop fade show"></div>
+      </>
+    );
+  }
+
+  return container;
+}

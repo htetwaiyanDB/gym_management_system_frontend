@@ -19,6 +19,7 @@ const AdminMessages = lazy(() => import("./pages/admin/AdminMessages"));
 const AdminBlogs = lazy(() => import("./pages/admin/AdminBlogs"));
 const AdminSettings = lazy(() => import("./pages/admin/AdminSettings"));
 const AdminUserHistory = lazy(() => import("./pages/admin/AdminUserHistory"));
+const AdminTrainerHistory = lazy(() => import("./pages/admin/AdminTrainerHistory"));
 
 /* Trainer */
 const TrainerLayout = lazy(() => import("./layouts/TrainerLayout"));
@@ -105,6 +106,7 @@ export default function App() {
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="users/:id/history" element={<AdminUserHistory />} />
+          <Route path="trainers/:id/history" element={<AdminTrainerHistory />} />
           <Route path="subscriptions" element={<AdminSubscriptions />} />
           <Route path="pricing" element={<AdminPricing />} />
           <Route path="trainer-bookings" element={<AdminTrainerBookings />} />
