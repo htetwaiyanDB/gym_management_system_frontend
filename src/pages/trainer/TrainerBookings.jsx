@@ -2,27 +2,6 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import axiosClient from "../../api/axiosClient";
 import { FaCalendar, FaClock, FaPhoneAlt, FaUser } from "react-icons/fa";
 
-/**
- * Endpoint:
- *   GET /api/trainer/subscriptions
- *  POST /api/trainer/bookings/{booking}/confirm
- *
- * Response:
- * {
- *   "bookings": [
- *      {
- *        id,
- *        member_name | member:{name},
- *        date | start_date,
- *        time | start_time,
- *        session_datetime (common: "YYYY-MM-DD HH:mm:ss"),
- *        status,
- *        note
- *      }
- *   ]
- * }
- */
-
 function getMemberName(b) {
   return b?.member_name || b?.member?.name || b?.user?.name || "—";
 }
@@ -35,7 +14,6 @@ function pick(obj, keys) {
   return null;
 }
 
-/** ✅ NEW: parse backend datetime safely (supports "YYYY-MM-DD HH:mm:ss" and ISO) */
 function parseBackendDateTime(value) {
   if (!value) return null;
   const str = String(value);
@@ -93,13 +71,12 @@ function getPackageType(booking) {
     pick(booking, ["package_type", "package_type_name", "package_category", "package_kind"]) ||
     pick(booking?.package, ["type", "package_type", "package_kind", "package_category"]) ||
     pick(booking?.trainer_package, ["type", "package_type", "package_kind", "package_category"]) ||
+    pick(booking?.boxing_package, ["type", "package_type", "package_kind", "package_category"]) ||
     pick(booking?.package_detail, ["type", "package_type", "package_kind", "package_category"]) ||
     "—"
   );
 }
 
-
-/** ✅ UPDATED: supports session_datetime + more fallbacks */
 function getDate(b) {
   const dtRaw =
     b?.session_datetime ||
@@ -112,17 +89,13 @@ function getDate(b) {
   const d = parseBackendDateTime(dtRaw);
   if (d) return formatISODate(d);
 
-  // fallback if backend provides a pure date field
   if (b?.date) return b.date;
   if (b?.start_date) return b.start_date;
-
-  // fallback if string contains date at beginning
   if (typeof dtRaw === "string" && dtRaw.length >= 10) return dtRaw.slice(0, 10);
 
   return "";
 }
 
-/** ✅ UPDATED: supports session_datetime + more fallbacks */
 function getTime(b) {
   const dtRaw =
     b?.session_datetime ||
@@ -137,17 +110,40 @@ function getTime(b) {
     return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   }
 
-  // fallback if backend provides a pure time field
   if (b?.time) return b.time;
 
-  // fallback if string looks like time or includes time part
   if (typeof dtRaw === "string") {
-    if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(dtRaw)) return dtRaw; // "10:30" or "10:30:00"
-    const maybe = dtRaw.split(" ")[1] || dtRaw.split("T")[1]; // "YYYY-MM-DD HH:mm:ss" or ISO
+    if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(dtRaw)) return dtRaw;
+    const maybe = dtRaw.split(" ")[1] || dtRaw.split("T")[1];
     if (maybe) return maybe;
   }
 
   return "—";
+}
+
+function extractBookings(payload) {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.bookings)) return payload.bookings;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.data?.bookings)) return payload.data.bookings;
+  if (Array.isArray(payload?.bookings?.data)) return payload.bookings.data;
+  return [];
+}
+
+async function runFirstSuccessfulRequest(candidates) {
+  let lastError = null;
+  for (const candidate of candidates) {
+    try {
+      return await candidate();
+    } catch (error) {
+      const status = error?.response?.status;
+      if (status && ![404, 405].includes(status)) {
+        throw error;
+      }
+      lastError = error;
+    }
+  }
+  throw lastError || new Error("No matching endpoint found.");
 }
 
 export default function TrainerBooking() {
@@ -156,34 +152,49 @@ export default function TrainerBooking() {
   const [error, setError] = useState(null);
   const [msg, setMsg] = useState(null);
   const [busyKey, setBusyKey] = useState(null);
-  
 
-  const [bookings, setBookings] = useState([]);
+  const [activeTab, setActiveTab] = useState("trainer");
+  const [trainerBookings, setTrainerBookings] = useState([]);
+  const [boxingBookings, setBoxingBookings] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
 
-  // filters
   const [search, setSearch] = useState("");
   const [date, setDate] = useState("");
 
- const fetchBookings = useCallback(async () => {
+  const fetchTrainerBookings = useCallback(async () => {
+    const res = await axiosClient.get("/trainer/subscriptions");
+    setTrainerBookings(extractBookings(res?.data));
+  }, []);
+
+  const fetchBoxingBookings = useCallback(async () => {
+    const res = await runFirstSuccessfulRequest([
+      () => axiosClient.get("/trainer/boxing-bookings"),
+      () => axiosClient.get("/trainer/boxing-subscriptions"),
+    ]);
+    setBoxingBookings(extractBookings(res?.data));
+  }, []);
+
+  const fetchBookings = useCallback(async () => {
     setLoading(true);
     setError(null);
     setMsg(null);
 
     try {
-      // ✅ UPDATED ENDPOINT
-      const res = await axiosClient.get("/trainer/subscriptions");
-      setBookings(Array.isArray(res?.data?.bookings) ? res.data.bookings : []);
+      await Promise.all([fetchTrainerBookings(), fetchBoxingBookings()]);
     } catch (e) {
       setError(e?.response?.data?.message || "Failed to load bookings.");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fetchTrainerBookings, fetchBoxingBookings]);
 
   useEffect(() => {
     fetchBookings();
- }, [fetchBookings]);
+  }, [fetchBookings]);
+
+  useEffect(() => {
+    setSelectedId(null);
+  }, [activeTab]);
 
   const confirmSession = async (bookingId) => {
     if (!bookingId) return;
@@ -192,7 +203,7 @@ export default function TrainerBooking() {
     try {
       const res = await axiosClient.post(`/trainer/bookings/${bookingId}/confirm`);
       setMsg({ type: "success", text: res?.data?.message || "Session confirmed." });
-      await fetchBookings();
+      await fetchTrainerBookings();
     } catch (e) {
       setMsg({
         type: "danger",
@@ -203,17 +214,38 @@ export default function TrainerBooking() {
     }
   };
 
+  const moveBoxingBooking = async (bookingId) => {
+    if (!bookingId) return;
+    setMsg(null);
+    setBusyKey(`move-${bookingId}`);
+    try {
+      const res = await runFirstSuccessfulRequest([
+        () => axiosClient.post(`/trainer/boxing-bookings/${bookingId}/move`),
+        () => axiosClient.patch(`/trainer/boxing-bookings/${bookingId}/move`),
+        () => axiosClient.patch(`/trainer/boxing-bookings/${bookingId}/mark-hold`),
+      ]);
+      setMsg({ type: "success", text: res?.data?.message || "Booking moved." });
+      await fetchBoxingBookings();
+    } catch (e) {
+      setMsg({
+        type: "danger",
+        text: e?.response?.data?.message || "Failed to move booking.",
+      });
+    } finally {
+      setBusyKey(null);
+    }
+  };
+
+  const currentBookings = activeTab === "trainer" ? trainerBookings : boxingBookings;
 
   const filtered = useMemo(() => {
-    return bookings.filter((b) => {
+    return currentBookings.filter((b) => {
       const nameMatch =
         !search || getMemberName(b).toLowerCase().includes(search.toLowerCase());
-
       const dateMatch = !date || getDate(b) === date;
-
       return nameMatch && dateMatch;
     });
-  }, [bookings, search, date]);
+  }, [currentBookings, search, date]);
 
   const cardStyle = {
     borderRadius: 14,
@@ -241,7 +273,7 @@ export default function TrainerBooking() {
     return pill("rgba(13,110,253,0.35)");
   };
 
-    const paidPill = (paidStatus) => {
+  const paidPill = (paidStatus) => {
     const s = String(paidStatus || "").toLowerCase();
     if (s.includes("paid")) return pill("rgba(25,135,84,0.35)");
     if (s.includes("unpaid")) return pill("rgba(220,53,69,0.35)");
@@ -260,15 +292,14 @@ export default function TrainerBooking() {
 
   return (
     <div className="container py-3" style={{ maxWidth: 720 }}>
-      {/* Header */}
       <div style={cardStyle} className="mb-3">
         <div className="d-flex justify-content-between align-items-start">
           <div>
             <div style={{ fontSize: 18, fontWeight: 900 }}>
-              Trainer Bookings
+              {activeTab === "trainer" ? "Trainer Bookings" : "Boxing Bookings"}
             </div>
             <div className="small" style={{ opacity: 0.9 }}>
-              From subscriptions
+              {activeTab === "trainer" ? "From subscriptions" : "From boxing bookings"}
             </div>
           </div>
 
@@ -282,7 +313,23 @@ export default function TrainerBooking() {
           </button>
         </div>
 
-        {/* Filters */}
+        <div className="mt-3 d-flex gap-2 flex-wrap">
+          <button
+            type="button"
+            className={`btn btn-sm ${activeTab === "trainer" ? "btn-primary" : "btn-outline-light"}`}
+            onClick={() => setActiveTab("trainer")}
+          >
+            Trainer Booking Tag
+          </button>
+          <button
+            type="button"
+            className={`btn btn-sm ${activeTab === "boxing" ? "btn-primary" : "btn-outline-light"}`}
+            onClick={() => setActiveTab("boxing")}
+          >
+            Boxing Booking Tag
+          </button>
+        </div>
+
         <div className="mt-3 d-flex gap-2">
           <input
             className="form-control"
@@ -314,11 +361,8 @@ export default function TrainerBooking() {
       </div>
 
       {error && <div className="alert alert-danger">{error}</div>}
-
       {msg && <div className={`alert alert-${msg.type}`}>{msg.text}</div>}
 
-
-      {/* List */}
       {loading ? (
         <div style={cardStyle}>Loading bookings...</div>
       ) : filtered.length === 0 ? (
@@ -329,110 +373,125 @@ export default function TrainerBooking() {
             const bookingId = b?.id ?? i;
             const { total: totalSessions, remaining: remainingSessions } = getSessionProgress(b);
             const isCompleted =
-                remainingSessions === 0 || isCompletedStatus(b?.status);
+              remainingSessions === 0 || isCompletedStatus(b?.status);
             return (
-            <div
-              key={bookingId}
-              style={{ ...cardStyle, cursor: "pointer" }}
-              onClick={() =>
-                setSelectedId((prev) => (prev === bookingId ? null : bookingId))
-              }
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  setSelectedId((prev) =>
-                    prev === bookingId ? null : bookingId
-                  );
+              <div
+                key={bookingId}
+                style={{ ...cardStyle, cursor: "pointer" }}
+                onClick={() =>
+                  setSelectedId((prev) => (prev === bookingId ? null : bookingId))
                 }
-              }}
-            >
-              <div className="d-flex justify-content-between">
-                <div style={{ fontWeight: 900 }}>{getMemberName(b)}</div>
-                <span style={statusPill(b.status)}>
-                  {String(b.status || "ACTIVE").toUpperCase()}
-                </span>
-              </div>
-
-              <div className="mt-2 d-flex gap-2 flex-wrap">
-                <span style={pill("rgba(255,255,255,0.12)")}>
-                    <FaCalendar /> {getDate(b) || "—"}
-                </span>
-                <span style={pill("rgba(255,255,255,0.12)")}>
-                  <FaClock /> {getTime(b)}
-                </span>
-              </div>
-
-                            {selectedId === bookingId && (
-                <div
-                  className="mt-3"
-                  style={{
-                    background: "rgba(255,255,255,0.06)",
-                    borderRadius: 12,
-                    padding: 12,
-                    border: "1px solid rgba(255,255,255,0.1)",
-                  }}
-                >
-                  <div className="d-flex justify-content-between align-items-center">
-                    <div className="d-flex align-items-center gap-2">
-                      <FaUser />
-                      <span style={{ fontWeight: 700 }}>
-                        {getMemberName(b)}
-                      </span>
-                    </div>
-                    <span style={paidPill(b.paid_status)}>
-                      {String(b.paid_status || "—").toUpperCase()}
-                    </span>
-                  </div>
-
-                  <div className="mt-2 d-flex flex-column gap-2">
-                    <div className="d-flex justify-content-between">
-                      <span style={{ opacity: 0.8 }}>Phone</span>
-                      <span className="d-flex align-items-center gap-2">
-                        <FaPhoneAlt />
-                        {b?.member?.phone || "—"}
-                      </span>
-                    </div>
-                    <div className="d-flex justify-content-between">
-                      <span style={{ opacity: 0.8 }}>Package type</span>
-                      <span>{getPackageType(b)}</span>
-                    </div>
-                    <div className="d-flex justify-content-between">
-                      <span style={{ opacity: 0.8 }}>Session Count</span>
-                         <span>
-                        {totalSessions === null && remainingSessions !== null
-                          ? `${remainingSessions} / —`
-                          : totalSessions === null
-                          ? b?.sessions_count ?? "—"
-                          : `${remainingSessions ?? "—"} / ${totalSessions}`}
-                      </span>
-                    </div>
-                    <div className="d-flex justify-content-between">
-                      <span style={{ opacity: 0.8 }}>Status</span>
-                      <span>{String(b?.status || "—")}</span>
-                    </div>
-                    <div className="d-flex justify-content-between align-items-center">
-                      <span style={{ opacity: 0.8 }}>Session confirmation</span>
-                      <button
-                        className="btn btn-sm btn-outline-info"
-                        onClick={() => confirmSession(bookingId)}
-                        disabled={isCompleted || busyKey === `confirm-${bookingId}`}
-                        title={isCompleted ? "All sessions completed" : "Confirm this session"}
-                      >
-                        {busyKey === `confirm-${bookingId}` ? "..." : "Confirm"}
-                      </button>
-                    </div>
-                  </div>
-
-                  {b?.notes && (
-                    <div className="small mt-2" style={{ opacity: 0.9 }}>
-                      {b.notes}
-                    </div>
-                  )}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    setSelectedId((prev) =>
+                      prev === bookingId ? null : bookingId
+                    );
+                  }
+                }}
+              >
+                <div className="d-flex justify-content-between">
+                  <div style={{ fontWeight: 900 }}>{getMemberName(b)}</div>
+                  <span style={statusPill(b.status)}>
+                    {String(b.status || "ACTIVE").toUpperCase()}
+                  </span>
                 </div>
-              )}
-            </div>
-          );
+
+                <div className="mt-2 d-flex gap-2 flex-wrap">
+                  <span style={pill("rgba(255,255,255,0.12)")}>
+                    <FaCalendar /> {getDate(b) || "—"}
+                  </span>
+                  <span style={pill("rgba(255,255,255,0.12)")}>
+                    <FaClock /> {getTime(b)}
+                  </span>
+                </div>
+
+                {selectedId === bookingId && (
+                  <div
+                    className="mt-3"
+                    style={{
+                      background: "rgba(255,255,255,0.06)",
+                      borderRadius: 12,
+                      padding: 12,
+                      border: "1px solid rgba(255,255,255,0.1)",
+                    }}
+                  >
+                    <div className="d-flex justify-content-between align-items-center">
+                      <div className="d-flex align-items-center gap-2">
+                        <FaUser />
+                        <span style={{ fontWeight: 700 }}>
+                          {getMemberName(b)}
+                        </span>
+                      </div>
+                      <span style={paidPill(b.paid_status)}>
+                        {String(b.paid_status || "—").toUpperCase()}
+                      </span>
+                    </div>
+
+                    <div className="mt-2 d-flex flex-column gap-2">
+                      <div className="d-flex justify-content-between">
+                        <span style={{ opacity: 0.8 }}>Phone</span>
+                        <span className="d-flex align-items-center gap-2">
+                          <FaPhoneAlt />
+                          {b?.member?.phone || b?.user?.phone || "—"}
+                        </span>
+                      </div>
+                      <div className="d-flex justify-content-between">
+                        <span style={{ opacity: 0.8 }}>Package type</span>
+                        <span>{getPackageType(b)}</span>
+                      </div>
+                      <div className="d-flex justify-content-between">
+                        <span style={{ opacity: 0.8 }}>Session Count</span>
+                        <span>
+                          {totalSessions === null && remainingSessions !== null
+                            ? `${remainingSessions} / —`
+                            : totalSessions === null
+                            ? b?.sessions_count ?? "—"
+                            : `${remainingSessions ?? "—"} / ${totalSessions}`}
+                        </span>
+                      </div>
+                      <div className="d-flex justify-content-between">
+                        <span style={{ opacity: 0.8 }}>Status</span>
+                        <span>{String(b?.status || "—")}</span>
+                      </div>
+
+                      {activeTab === "trainer" ? (
+                        <div className="d-flex justify-content-between align-items-center">
+                          <span style={{ opacity: 0.8 }}>Session confirmation</span>
+                          <button
+                            className="btn btn-sm btn-outline-info"
+                            onClick={() => confirmSession(bookingId)}
+                            disabled={isCompleted || busyKey === `confirm-${bookingId}`}
+                            title={isCompleted ? "All sessions completed" : "Confirm this session"}
+                          >
+                            {busyKey === `confirm-${bookingId}` ? "..." : "Confirm"}
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="d-flex justify-content-between align-items-center">
+                          <span style={{ opacity: 0.8 }}>Booking flow</span>
+                          <button
+                            className="btn btn-sm btn-outline-warning"
+                            onClick={() => moveBoxingBooking(bookingId)}
+                            disabled={isCompleted || busyKey === `move-${bookingId}`}
+                            title={isCompleted ? "All sessions completed" : "Move booking"}
+                          >
+                            {busyKey === `move-${bookingId}` ? "..." : "Move"}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {b?.notes && (
+                      <div className="small mt-2" style={{ opacity: 0.9 }}>
+                        {b.notes}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
           })}
         </div>
       )}
