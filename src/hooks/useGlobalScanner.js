@@ -51,10 +51,8 @@ export function useGlobalScanner() {
       saveAttendanceScanControlLocal(newValue);
       setError(null);
     } catch (e) {
-      // On error, read from localStorage as fallback
-      const cached = readAttendanceScanControlLocal();
-      // Default to true if no cached value
-      setIsScanningEnabledState(cached ? !!cached.isActive : true);
+      // On API error, default to ON (true) so scanning still works
+      setIsScanningEnabledState(true);
       setError("Failed to load scanner status");
     }
   }, []);
@@ -72,11 +70,9 @@ export function useGlobalScanner() {
         saveAttendanceScanControlLocal(newValue);
       } catch {
         if (!alive) return;
-        // On API error, keep the localStorage value (don't default to false)
-        const cached = readAttendanceScanControlLocal();
-        console.log("[useGlobalScanner] API failed, using localStorage:", cached);
-        // Default to true if no cached value exists
-        setIsScanningEnabledState(cached ? !!cached.isActive : true);
+        // On API error, default to ON (true) so scanning still works
+        console.log("[useGlobalScanner] API failed, defaulting to ON");
+        setIsScanningEnabledState(true);
       } finally {
         if (alive) setIsLoading(false);
       }
