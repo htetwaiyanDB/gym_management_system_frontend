@@ -8,10 +8,31 @@ import {
   FiCalendar,
   FiSettings,
 } from "react-icons/fi";
+import axiosClient from "../api/axiosClient";
 import "./TrainerLayout.css";
 
 export default function TrainerLayout() {
   const [isMobile, setIsMobile] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const fetchUnreadCount = async () => {
+    try {
+      const res = await axiosClient.get("/notifications");
+      const list = Array.isArray(res?.data) ? res.data : res?.data?.data || res?.data?.notifications || [];
+      const unread = list.filter((item) => !item?.read_at).length;
+      setUnreadCount(unread);
+    } catch (err) {
+      // Silently fail - don't show badge if we can't fetch
+      setUnreadCount(0);
+    }
+  };
+
+  useEffect(() => {
+    fetchUnreadCount();
+    // Poll for new notifications every 30 seconds
+    const interval = setInterval(fetchUnreadCount, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth <= 767);
@@ -94,7 +115,24 @@ export default function TrainerLayout() {
           to="/trainer/notifications"
           className={({ isActive }) => "nav-item" + (isActive ? " active" : "")}
         >
-          <FiBell className="nav-icon" />
+          <div style={{ position: "relative" }}>
+            <FiBell className="nav-icon" />
+            {unreadCount > 0 && (
+              <span
+                style={{
+                  position: "absolute",
+                  top: -4,
+                  right: -4,
+                  width: 10,
+                  height: 10,
+                  borderRadius: "50%",
+                  backgroundColor: "#dc3545",
+                  boxShadow: "0 0 0 2px rgba(220, 53, 69, 0.25)",
+                }}
+                aria-hidden="true"
+              />
+            )}
+          </div>
           <span className="nav-label">Alerts</span>
         </NavLink>
 
