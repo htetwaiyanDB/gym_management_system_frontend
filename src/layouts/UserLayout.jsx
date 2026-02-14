@@ -8,10 +8,49 @@ import {
   FiMessageCircle,
   FiSettings,
 } from "react-icons/fi";
+import axiosClient from "../api/axiosClient";
 import "./UserLayout.css";
 
 export default function UserLayout() {
   const [isMobile, setIsMobile] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const fetchUnreadCount = async () => {
+    try {
+      const res = await axiosClient.get("/notifications");
+      const list = Array.isArray(res?.data) ? res.data : res?.data?.data || res?.data?.notifications || [];
+      const unread = list.filter((item) => !item?.read_at).length;
+      setUnreadCount(unread);
+    } catch (err) {
+      // Silently fail - don't show badge if we can't fetch
+      setUnreadCount(0);
+    }
+  };
+
+  useEffect(() => {
+    fetchUnreadCount();
+    // Poll for new notifications every 5 seconds for near real-time updates
+    const interval = setInterval(fetchUnreadCount, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Check for updates when window regains focus (user returns to app)
+  useEffect(() => {
+    const handleFocus = () => {
+      fetchUnreadCount();
+    };
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, []);
+
+  // Listen for notification updates from other components (e.g., when marking as read)
+  useEffect(() => {
+    const handleNotificationUpdate = () => {
+      fetchUnreadCount();
+    };
+    window.addEventListener("notifications-updated", handleNotificationUpdate);
+    return () => window.removeEventListener("notifications-updated", handleNotificationUpdate);
+  }, []);
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth <= 767);
@@ -94,7 +133,24 @@ export default function UserLayout() {
           to="/user/notifications"
           className={({ isActive }) => "user-nav-item" + (isActive ? " active" : "")}
         >
-          <FiBell className="user-nav-icon" />
+          <div style={{ position: "relative" }}>
+            <FiBell className="user-nav-icon" />
+            {unreadCount > 0 && (
+              <span
+                style={{
+                  position: "absolute",
+                  top: -4,
+                  right: -4,
+                  width: 10,
+                  height: 10,
+                  borderRadius: "50%",
+                  backgroundColor: "#dc3545",
+                  boxShadow: "0 0 0 2px rgba(220, 53, 69, 0.25)",
+                }}
+                aria-hidden="true"
+              />
+            )}
+          </div>
           <span className="user-nav-label">Alerts</span>
         </NavLink>
 
