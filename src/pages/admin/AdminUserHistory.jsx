@@ -23,6 +23,8 @@ function normalizeStatus(value) {
   const s = String(value || "").trim().toLowerCase();
   if (!s) return "pending";
   if (s === "confirmed") return "active";
+  if (s === "activated") return "active";
+  if (s === "on hold") return "on-hold";
   if (s === "cancelled" || s === "canceled") return "on-hold";
   if (s === "hold") return "on-hold";
   return s;
@@ -89,12 +91,14 @@ function buildSubscriptionEntry(source, typeLabel, nameSource) {
     source?.month_end_date ??
     source?.endDate ??
     null;
-  // Prioritize explicit status field over boolean flags
-  // This ensures "active" status is respected even if is_on_hold flag is set
+  const isActiveFlag = source?.is_active === true || source?.active === true;
+
+  // Prioritize explicit non-pending status field over flags.
+  // For pending rows, allow activation flags to promote to active.
   const rawStatus = source?.status;
   const normalizedRawStatus = String(rawStatus || "").trim().toLowerCase();
-  
-  // If status is explicitly set, use it; otherwise fall back to boolean flags
+
+  // If status is explicitly set, use it; otherwise fall back to boolean flags.
   let derivedStatus;
   if (rawStatus && normalizedRawStatus !== "pending") {
     derivedStatus = rawStatus;
@@ -102,6 +106,8 @@ function buildSubscriptionEntry(source, typeLabel, nameSource) {
     derivedStatus = "expired";
   } else if (source?.is_on_hold) {
     derivedStatus = "on-hold";
+  } else if (isActiveFlag) {
+    derivedStatus = "active";
   } else {
     derivedStatus = rawStatus || "pending";
   }
@@ -148,8 +154,18 @@ function groupSubscriptions(entries) {
       return;
     }
 
-    // "pending", "upcoming" go to upcoming section
-    if (normalized === "upcoming" || normalized === "pending") {
+    if (normalized === "upcoming") {
+      grouped.upcoming.push(entry);
+      return;
+    }
+
+    // Pending rows can still be active if dates indicate current validity.
+    if (normalized === "pending" && startDate && endDate && startDate <= now && endDate >= now) {
+      grouped.active.push(entry);
+      return;
+    }
+
+    if (normalized === "pending") {
       grouped.upcoming.push(entry);
       return;
     }
