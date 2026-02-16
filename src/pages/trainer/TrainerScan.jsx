@@ -218,7 +218,7 @@ export default function TrainerScan() {
     }
 
     try {
-      const res = await scanRfidAttendance(cardId);
+      const res = await scanRfidAttendance(cardId, { action: nextAction });
 
       const record = res?.data?.record ?? res?.data ?? null;
       const action = getAction(record);
@@ -308,6 +308,9 @@ export default function TrainerScan() {
     try {
       const res = await axiosClient.post("/trainer/check-in/scan", {
         token: parsed.token,
+        action: nextAction,
+        scan_type: nextAction,
+        attendance_event: nextAction,
       });
       const record = res?.data?.record ?? null;
       const action = getAction(record);

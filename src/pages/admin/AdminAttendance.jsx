@@ -428,7 +428,7 @@ export default function AdminAttendance() {
   }, [records, recordRoleFilter, recordTypeFilter, recordSearch, recordStartDateFilter, recordEndDateFilter]);
 
   const recordDayCounts = useMemo(() => {
-    const datesByUser = new Map();
+    const dayActionByUser = new Map();
     const list = Array.isArray(records) ? records : [];
 
     list.forEach((record) => {
@@ -437,16 +437,32 @@ export default function AdminAttendance() {
       const key = getRecordUserKey({ ...record, name, role }, `${name}-${role}`);
       const scannedAt = record?.scanned_at || record?.created_at || record?.time || record?.timestamp;
       const dayKey = getRecordDayKey(scannedAt);
+      const action = normalizeRecordType(record);
       if (!key || !dayKey) return;
+      if (action !== "check_in" && action !== "check_out") return;
 
-      if (!datesByUser.has(key)) {
-        datesByUser.set(key, new Set());
+      if (!dayActionByUser.has(key)) {
+        dayActionByUser.set(key, new Map());
       }
-      datesByUser.get(key).add(dayKey);
+      const days = dayActionByUser.get(key);
+      if (!days.has(dayKey)) {
+        days.set(dayKey, { hasCheckIn: false, hasCheckOut: false });
+      }
+      const state = days.get(dayKey);
+      if (action === "check_in") state.hasCheckIn = true;
+      if (action === "check_out") state.hasCheckOut = true;
     });
 
     const counts = new Map();
-    datesByUser.forEach((set, key) => counts.set(key, set.size));
+    dayActionByUser.forEach((days, key) => {
+      let completedDays = 0;
+      days.forEach((state) => {
+        if (state.hasCheckIn && state.hasCheckOut) {
+          completedDays += 1;
+        }
+      });
+      counts.set(key, completedDays);
+    });
     return counts;
   }, [records]);
 
