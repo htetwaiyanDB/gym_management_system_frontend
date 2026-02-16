@@ -213,7 +213,7 @@ function groupBookings(entries) {
       return;
     }
 
-    if (normalized === "expired" || normalized === "cancelled" || normalized === "canceled") {
+    if (normalized === "expired" || normalized === "on-hold") {
       grouped.completed.push(entry);
       return;
     }
@@ -319,26 +319,35 @@ export default function AdminTrainerHistory() {
           }
         } catch {
           // Try alternative endpoint without query param
-          try {
-            const tbRes2 = await axiosClient.get(`/trainer-bookings`);
-            const tbData2 = tbRes2?.data;
-            const allBookings = pickArray(tbData2, ["bookings", "trainer_bookings", "data", "records"]);
-            if (!allBookings.length) {
-              const normalizedAll = normalizeArray(tbData2);
-              // Filter bookings for this trainer
-              trainerBookings = normalizedAll.filter(b => {
-                const bookingTrainerId = b?.trainer_id ?? b?.trainer?.id ?? b?.trainer_user_id;
-                return String(bookingTrainerId) === String(recordId);
-              });
-            } else {
-              trainerBookings = allBookings.filter(b => {
-                const bookingTrainerId = b?.trainer_id ?? b?.trainer?.id ?? b?.trainer_user_id;
-                return String(bookingTrainerId) === String(recordId);
-              });
-            }
-          } catch {
-            // No fallback available
-          }
+        }
+      }
+
+      // If still no bookings, fetch all and filter by trainer
+      if (!trainerBookings.length) {
+        try {
+          const tbRes2 = await axiosClient.get(`/trainer-bookings`);
+          const tbData2 = tbRes2?.data;
+          const allBookings = pickArray(tbData2, ["bookings", "trainer_bookings", "data", "records"]);
+          const normalizedAll = allBookings.length ? allBookings : normalizeArray(tbData2);
+
+          // Filter bookings for this trainer - check multiple possible ID fields
+          trainerBookings = normalizedAll.filter(b => {
+            const bookingTrainerId =
+              b?.trainer_id ??
+              b?.trainer?.id ??
+              b?.trainer_user_id ??
+              b?.trainer?.user_id ??
+              null;
+            // Also try matching by trainer name if ID matching fails
+            const trainerName = b?.trainer_name ?? b?.trainer?.name ?? "";
+            const stateTrainerName = trainerFromState?.name ?? "";
+            const idMatch = String(bookingTrainerId) === String(recordId);
+            const nameMatch = stateTrainerName && trainerName &&
+              trainerName.toLowerCase() === stateTrainerName.toLowerCase();
+            return idMatch || nameMatch;
+          });
+        } catch {
+          // No fallback available
         }
       }
 
