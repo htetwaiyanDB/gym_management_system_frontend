@@ -22,9 +22,8 @@ function pickFirstValue(source, keys) {
 function normalizeStatus(value) {
   const s = String(value || "").trim().toLowerCase();
   if (!s) return "pending";
-  if (s === "confirmed") return "active";
-  if (s === "cancelled" || s === "canceled") return "on-hold";
-  if (s === "hold") return "on-hold";
+  if (s === "confirmed" || s === "active") return "active";
+  if (s === "cancelled" || s === "canceled" || s === "on-hold" || s === "hold") return "on-hold";
   return s;
 }
 
@@ -119,6 +118,12 @@ function groupSubscriptions(entries) {
       return;
     }
 
+    // Treat "on-hold" as active since it means the subscription is resumed/active
+    if (normalized === "active" || normalized === "on-hold") {
+      grouped.active.push(entry);
+      return;
+    }
+
     if (normalized === "upcoming" || normalized === "pending") {
       grouped.upcoming.push(entry);
       return;
@@ -134,6 +139,7 @@ function groupSubscriptions(entries) {
       return;
     }
 
+    // Default to active for any other status
     grouped.active.push(entry);
   });
 
