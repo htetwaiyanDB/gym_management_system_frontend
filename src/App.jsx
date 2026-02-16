@@ -19,7 +19,6 @@ const AdminMessages = lazy(() => import("./pages/admin/AdminMessages"));
 const AdminBlogs = lazy(() => import("./pages/admin/AdminBlogs"));
 const AdminSettings = lazy(() => import("./pages/admin/AdminSettings"));
 const AdminUserHistory = lazy(() => import("./pages/admin/AdminUserHistory"));
-const AdminTrainerHistory = lazy(() => import("./pages/admin/AdminTrainerHistory"));
 
 /* Trainer */
 const TrainerLayout = lazy(() => import("./layouts/TrainerLayout"));
