@@ -290,11 +290,13 @@ export default function AdminTrainerHistory() {
     try {
       let payload = null;
       try {
-        const res = await axiosClient.get(`/user/${recordId}/records`);
+        // Try the correct endpoint first: /users/{id}/records
+        const res = await axiosClient.get(`/users/${recordId}/records`);
         payload = res?.data || null;
       } catch (primaryErr) {
         if (primaryErr?.response?.status !== 404) throw primaryErr;
-        const fallbackRes = await axiosClient.get(`/users/${recordId}/records`);
+        // Fallback to /user/{id}/records (without 's')
+        const fallbackRes = await axiosClient.get(`/user/${recordId}/records`);
         payload = fallbackRes?.data || null;
       }
 
