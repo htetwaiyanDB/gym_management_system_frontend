@@ -91,23 +91,26 @@ function buildSubscriptionEntry(source, typeLabel, nameSource) {
     source?.month_end_date ??
     source?.endDate ??
     null;
-  const isActiveFlag = source?.is_active === true || source?.active === true;
-
+  // Check for various active status indicators from different API endpoints
+  const isActiveFlag = source?.is_active === true || source?.active === true || source?.activated === true;
+  const hasActiveStatus = String(source?.status || "").toLowerCase() === "active";
+  const hasConfirmedStatus = String(source?.status || "").toLowerCase() === "confirmed";
+  
   // Prioritize explicit non-pending status field over flags.
   // For pending rows, allow activation flags to promote to active.
   const rawStatus = source?.status;
   const normalizedRawStatus = String(rawStatus || "").trim().toLowerCase();
 
-  // If status is explicitly set, use it; otherwise fall back to boolean flags.
+  // If status is explicitly set to active/confirmed, or active flag is set, use active
   let derivedStatus;
-  if (rawStatus && normalizedRawStatus !== "pending") {
+  if (hasActiveStatus || hasConfirmedStatus || isActiveFlag) {
+    derivedStatus = "active";
+  } else if (rawStatus && normalizedRawStatus !== "pending") {
     derivedStatus = rawStatus;
   } else if (source?.is_expired) {
     derivedStatus = "expired";
   } else if (source?.is_on_hold) {
     derivedStatus = "on-hold";
-  } else if (isActiveFlag) {
-    derivedStatus = "active";
   } else {
     derivedStatus = rawStatus || "pending";
   }
