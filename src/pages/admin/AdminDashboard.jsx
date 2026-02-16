@@ -57,6 +57,69 @@ const deepPick = (obj, paths, fallback = 0) => {
 const sumArr = (arr = []) => arr.reduce((a, b) => a + n(b), 0);
 const lastVal = (arr = []) => (arr.length ? n(arr[arr.length - 1]) : 0);
 
+const normalizeMonthLabel = (value) => {
+  if (value === undefined || value === null) return "";
+  return String(value).trim();
+};
+
+const getSeriesDataByKeys = (payload, keys = []) => {
+  for (const key of keys) {
+    const candidate = payload?.[key];
+    if (candidate !== undefined && candidate !== null) return candidate;
+  }
+  return undefined;
+};
+
+const normalizeGrowthSeries = (labels, valuesSource) => {
+  // Standard backend format: { labels: [...], series: [...] }
+  if (Array.isArray(valuesSource)) {
+    if (valuesSource.length && typeof valuesSource[0] === "object") {
+      // Flexible object item formats: [{ month, count }], [{ name, total }], ...
+      return valuesSource.map((item, index) => {
+        const name =
+          deepPick(item, ["name", "label", "month", "date"], labels?.[index] ?? `M${index + 1}`) ||
+          `M${index + 1}`;
+        const value = deepPick(item, ["value", "count", "total", "bookings"], 0);
+        return { name: String(name), value: n(value) };
+      });
+    }
+
+    return (labels.length ? labels : valuesSource.map((_, index) => `M${index + 1}`)).map((lbl, i) => ({
+      name: String(lbl),
+      value: n(valuesSource?.[i]),
+    }));
+  }
+
+  // Map/object format: { "Jan": 12, "Feb": 5 }
+  if (valuesSource && typeof valuesSource === "object") {
+    const entries = Object.entries(valuesSource);
+
+    if (labels.length) {
+      const lookup = Object.fromEntries(
+        entries.map(([key, value]) => [normalizeMonthLabel(key).toLowerCase(), value])
+      );
+
+      return labels.map((lbl, i) => {
+        const normalizedLabel = normalizeMonthLabel(lbl);
+        const byLabel = lookup[normalizedLabel.toLowerCase()];
+        const byIndex = entries?.[i]?.[1];
+        return {
+          name: normalizedLabel || `M${i + 1}`,
+          value: n(byLabel ?? byIndex ?? 0),
+        };
+      });
+    }
+
+    return entries.map(([key, value], index) => ({
+      name: normalizeMonthLabel(key) || `M${index + 1}`,
+      value: n(value),
+    }));
+  }
+
+  // unknown format fallback
+  return labels.map((lbl) => ({ name: String(lbl), value: 0 }));
+};
+
 const normalizeReportPayload = (resData) => {
   let payload =
     resData?.data ??
@@ -206,26 +269,35 @@ export default function AdminDashboard() {
       });
 
       const payload = res?.data?.data ?? res?.data ?? {};
-      const labels = Array.isArray(payload.labels) ? payload.labels : [];
-      const usersArr = Array.isArray(payload.users) ? payload.users : [];
-      const subsArr = Array.isArray(payload.subscriptions) ? payload.subscriptions : [];
-      const bookingsArr = Array.isArray(payload.trainer_bookings) ? payload.trainer_bookings : [];
-      const boxingArr = Array.isArray(payload.boxing_bookings)
-        ? payload.boxing_bookings
-        : Array.isArray(payload.boxingBookings)
-          ? payload.boxingBookings
+      const labels = Array.isArray(payload.labels)
+        ? payload.labels
+        : Array.isArray(payload.months)
+          ? payload.months
           : [];
 
-      const toSeries = (vals) =>
-        labels.map((lbl, i) => ({
-          name: String(lbl),
-          value: n(vals?.[i]),
-        }));
+      const usersSeries = getSeriesDataByKeys(payload, ["users", "user_growth", "userGrowth"]);
+      const subscriptionsSeries = getSeriesDataByKeys(payload, [
+        "subscriptions",
+        "subscription_growth",
+        "subscriptionGrowth",
+      ]);
+      const trainerBookingsSeries = getSeriesDataByKeys(payload, [
+        "trainer_bookings",
+        "trainerBookings",
+        "bookings",
+        "trainer_booking_growth",
+      ]);
+      const boxingBookingsSeries = getSeriesDataByKeys(payload, [
+        "boxing_bookings",
+        "boxingBookings",
+        "boxing",
+        "boxing_booking_growth",
+      ]);
 
-      setUsersGrowthData(toSeries(usersArr));
-      setSubscriptionsData(toSeries(subsArr));
-      setTrainerBookingsData(toSeries(bookingsArr));
-      setBoxingBookingsData(toSeries(boxingArr));
+      setUsersGrowthData(normalizeGrowthSeries(labels, usersSeries));
+      setSubscriptionsData(normalizeGrowthSeries(labels, subscriptionsSeries));
+      setTrainerBookingsData(normalizeGrowthSeries(labels, trainerBookingsSeries));
+      setBoxingBookingsData(normalizeGrowthSeries(labels, boxingBookingsSeries));
     } catch (e) {
       if (e?.name === "CanceledError" || e?.code === "ERR_CANCELED") return;
 
