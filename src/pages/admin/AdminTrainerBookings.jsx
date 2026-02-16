@@ -73,10 +73,30 @@ function normalizeBookingStatus(value) {
 function getBookingPackageType(booking) {
   return String(
     booking?.package_type ||
+      booking?.type ||
+      booking?.package_group ||
+      booking?.package_category ||
       booking?.trainer_package?.package_type ||
       booking?.trainer_package?.type ||
       ""
   ).toLowerCase();
+}
+
+function getBookingPackageLabel(booking) {
+  const raw =
+    booking?.package_type ||
+    booking?.type ||
+    booking?.package_group ||
+    booking?.package_category ||
+    booking?.trainer_package?.package_type ||
+    booking?.trainer_package?.type ||
+    booking?.trainer_package?.name ||
+    null;
+
+  if (!raw) return "-";
+  const value = String(raw).trim();
+  if (!value) return "-";
+  return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
 function getSessionProgress(booking) {
@@ -342,7 +362,15 @@ export default function AdminTrainerBookings() {
           selectedPackage?.package_type ??
           selectedPackage?.type ??
           selectedPackage?.packageType ??
+          packageGroup ??
           packageType,
+        type:
+          selectedPackage?.package_type ??
+          selectedPackage?.type ??
+          selectedPackage?.packageType ??
+          packageGroup ??
+          packageType,
+        package_group: packageGroup || undefined,
         sessions_count: sessions,
         price_per_session: price,
         status,
@@ -807,7 +835,7 @@ export default function AdminTrainerBookings() {
                     <td>{b.trainer_name || "-"}</td>
                     <td>{b.trainer_phone || "-"}</td>
 
-                    <td>{b.package_type || b?.trainer_package?.package_type || b?.trainer_package?.name || "-"}</td>
+                    <td>{getBookingPackageLabel(b)}</td>
                     <td>{statusBadge(b.status)}</td>
                     <td>{paidBadge(b.paid_status)}</td>
 
@@ -963,10 +991,7 @@ export default function AdminTrainerBookings() {
                           <div className="col-12 col-md-4">
                             <div className="admin-muted">Package Type</div>
                             <div>
-                              {selectedBooking?.package_type ||
-                                selectedBooking?.trainer_package?.package_type ||
-                                selectedBooking?.trainer_package?.name ||
-                                "-"}
+                              {getBookingPackageLabel(selectedBooking)}
                             </div>
                           </div>
                         </div>

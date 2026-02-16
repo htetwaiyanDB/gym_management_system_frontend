@@ -123,11 +123,21 @@ export const setAttendanceScanControlStatus = async (isActive) => {
   return { isActive: desired, source: "local" };
 };
 
-export const scanRfidAttendance = (cardId) =>
-  axiosClient.post("/attendance/rfid/scan", { card_id: String(cardId) });
+export const scanRfidAttendance = (cardId, options = {}) =>
+  axiosClient.post("/attendance/rfid/scan", {
+    card_id: String(cardId),
+    action: options?.action,
+    scan_type: options?.action,
+    attendance_event: options?.action,
+  });
 
-export const scanMemberCardAttendance = (memberCardId) =>
-  axiosClient.post("/attendance/scan", { member_card_id: String(memberCardId) });
+export const scanMemberCardAttendance = (memberCardId, options = {}) =>
+  axiosClient.post("/attendance/scan", {
+    member_card_id: String(memberCardId),
+    action: options?.action,
+    scan_type: options?.action,
+    attendance_event: options?.action,
+  });
 
 export const registerRfidCard = (userId, cardId) =>
   axiosClient.post("/attendance/rfid/register", {

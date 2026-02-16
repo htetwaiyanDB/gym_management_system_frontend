@@ -234,7 +234,7 @@ export default function UserAttendance() {
     }
 
     try {
-      const res = await scanRfidAttendance(cardId);
+      const res = await scanRfidAttendance(cardId, { action: nextAction });
 
       const record = res?.data?.record ?? res?.data ?? null;
       const action = getAction(record);
@@ -312,6 +312,9 @@ export default function UserAttendance() {
     try {
       const res = await axiosClient.post("/user/check-in/scan", {
         token: parsed.token,
+        action: nextAction,
+        scan_type: nextAction,
+        attendance_event: nextAction,
       });
       const record = res?.data?.record ?? null;
       const action = getAction(record);

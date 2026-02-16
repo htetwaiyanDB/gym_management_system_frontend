@@ -73,10 +73,30 @@ function normalizeBookingStatus(value) {
 function getBookingPackageType(booking) {
   return String(
     booking?.package_type ||
+      booking?.type ||
+      booking?.package_group ||
+      booking?.package_category ||
       booking?.boxing_package?.package_type ||
       booking?.boxing_package?.type ||
       ""
   ).toLowerCase();
+}
+
+function getBookingPackageLabel(booking) {
+  const raw =
+    booking?.package_type ||
+    booking?.type ||
+    booking?.package_group ||
+    booking?.package_category ||
+    booking?.boxing_package?.package_type ||
+    booking?.boxing_package?.type ||
+    booking?.boxing_package?.name ||
+    null;
+
+  if (!raw) return "-";
+  const value = String(raw).trim();
+  if (!value) return "-";
+  return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
 function getCoachName(booking) {
@@ -396,7 +416,15 @@ export default function AdminBoxingBookings() {
           selectedPackage?.package_type ??
           selectedPackage?.type ??
           selectedPackage?.packageType ??
+          packageGroup ??
           packageType,
+        type:
+          selectedPackage?.package_type ??
+          selectedPackage?.type ??
+          selectedPackage?.packageType ??
+          packageGroup ??
+          packageType,
+        package_group: packageGroup || undefined,
         sessions_count: sessions,
         price_per_session: price,
         status,
@@ -859,7 +887,7 @@ export default function AdminBoxingBookings() {
                     <td>{coachName}</td>
                     <td>{coachPhone}</td>
 
-                    <td>{b.package_type || b?.boxing_package?.package_type || b?.boxing_package?.name || "-"}</td>
+                    <td>{getBookingPackageLabel(b)}</td>
                     <td>{statusBadge(b.status)}</td>
                     <td>{paidBadge(b.paid_status)}</td>
 
@@ -1015,10 +1043,7 @@ export default function AdminBoxingBookings() {
                           <div className="col-12 col-md-4">
                             <div className="admin-muted">Package Type</div>
                             <div>
-                              {selectedBooking?.package_type ||
-                                selectedBooking?.boxing_package?.package_type ||
-                                selectedBooking?.boxing_package?.name ||
-                                "-"}
+                              {getBookingPackageLabel(selectedBooking)}
                             </div>
                           </div>
                         </div>
