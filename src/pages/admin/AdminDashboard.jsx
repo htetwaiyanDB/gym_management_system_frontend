@@ -327,6 +327,24 @@ export default function AdminDashboard() {
           "boxing_sessions",
         ])
       );
+      const usersSeries = getSeriesDataByKeys(payload, ["users", "user_growth", "userGrowth"]);
+      const subscriptionsSeries = getSeriesDataByKeys(payload, [
+        "subscriptions",
+        "subscription_growth",
+        "subscriptionGrowth",
+      ]);
+      const trainerBookingsSeries = getSeriesDataByKeys(payload, [
+        "trainer_bookings",
+        "trainerBookings",
+        "bookings",
+        "trainer_booking_growth",
+      ]);
+      const boxingBookingsSeries = getSeriesDataByKeys(payload, [
+        "boxing_bookings",
+        "boxingBookings",
+        "boxing",
+        "boxing_booking_growth",
+      ]);
 
       setUsersGrowthData(normalizeGrowthSeries(labels, usersSeries));
       setSubscriptionsData(normalizeGrowthSeries(labels, subscriptionsSeries));
