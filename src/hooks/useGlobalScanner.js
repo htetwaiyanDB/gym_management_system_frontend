@@ -51,8 +51,9 @@ export function useGlobalScanner() {
       saveAttendanceScanControlLocal(newValue);
       setError(null);
     } catch (e) {
-      // On API error, default to ON (true) so scanning still works
-      setIsScanningEnabledState(true);
+      // On API error, read from localStorage (set by admin panel)
+      const cached = readAttendanceScanControlLocal();
+      setIsScanningEnabledState(cached ? !!cached.isActive : true);
       setError("Failed to load scanner status");
     }
   }, []);
@@ -70,9 +71,10 @@ export function useGlobalScanner() {
         saveAttendanceScanControlLocal(newValue);
       } catch {
         if (!alive) return;
-        // On API error, default to ON (true) so scanning still works
-        console.log("[useGlobalScanner] API failed, defaulting to ON");
-        setIsScanningEnabledState(true);
+        // On API error, read from localStorage (set by admin panel)
+        const cached = readAttendanceScanControlLocal();
+        console.log("[useGlobalScanner] API failed, using localStorage:", cached);
+        setIsScanningEnabledState(cached ? !!cached.isActive : true);
       } finally {
         if (alive) setIsLoading(false);
       }

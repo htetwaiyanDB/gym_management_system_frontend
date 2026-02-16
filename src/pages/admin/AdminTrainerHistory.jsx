@@ -281,7 +281,7 @@ export default function AdminTrainerHistory() {
       setError("Missing trainer ID for this record.");
       return;
     }
-    
+
     setError(null);
     setLoading(true);
     requestRef.current += 1;
@@ -308,9 +308,39 @@ export default function AdminTrainerHistory() {
         setTrainerProfile(trainerFromState);
       }
 
-      // NOTE: Do not fallback to global trainer-bookings endpoint.
-      // It can mix unrelated trainers when IDs differ between users.id and trainer-specific IDs.
-      // /users/{id}/records already returns bookings for this specific user record.
+      // If no trainer bookings from user records endpoint, try fetching from trainer-bookings endpoint
+      if (!trainerBookings.length) {
+        try {
+          const tbRes = await axiosClient.get(`/trainer-bookings?trainer_id=${recordId}`);
+          const tbData = tbRes?.data;
+          trainerBookings = pickArray(tbData, ["bookings", "trainer_bookings", "data", "records"]);
+          if (!trainerBookings.length) {
+            trainerBookings = normalizeArray(tbData);
+          }
+        } catch {
+          // Try alternative endpoint without query param
+          try {
+            const tbRes2 = await axiosClient.get(`/trainer-bookings`);
+            const tbData2 = tbRes2?.data;
+            const allBookings = pickArray(tbData2, ["bookings", "trainer_bookings", "data", "records"]);
+            if (!allBookings.length) {
+              const normalizedAll = normalizeArray(tbData2);
+              // Filter bookings for this trainer
+              trainerBookings = normalizedAll.filter(b => {
+                const bookingTrainerId = b?.trainer_id ?? b?.trainer?.id ?? b?.trainer_user_id;
+                return String(bookingTrainerId) === String(recordId);
+              });
+            } else {
+              trainerBookings = allBookings.filter(b => {
+                const bookingTrainerId = b?.trainer_id ?? b?.trainer?.id ?? b?.trainer_user_id;
+                return String(bookingTrainerId) === String(recordId);
+              });
+            }
+          } catch {
+            // No fallback available
+          }
+        }
+      }
 
       if (!attendanceRecords.length) {
         const attendanceEndpoints = [
@@ -331,7 +361,7 @@ export default function AdminTrainerHistory() {
           }
         }
       }
-      
+
       if (requestId === requestRef.current) {
         const bookingEntries = trainerBookings.map(buildBookingEntry);
 
