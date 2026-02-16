@@ -89,7 +89,22 @@ function buildSubscriptionEntry(source, typeLabel, nameSource) {
     source?.month_end_date ??
     source?.endDate ??
     null;
-  const derivedStatus = source?.is_expired ? "expired" : source?.is_on_hold ? "on-hold" : source?.status;
+  // Prioritize explicit status field over boolean flags
+  // This ensures "active" status is respected even if is_on_hold flag is set
+  const rawStatus = source?.status;
+  const normalizedRawStatus = String(rawStatus || "").trim().toLowerCase();
+  
+  // If status is explicitly set, use it; otherwise fall back to boolean flags
+  let derivedStatus;
+  if (rawStatus && normalizedRawStatus !== "pending") {
+    derivedStatus = rawStatus;
+  } else if (source?.is_expired) {
+    derivedStatus = "expired";
+  } else if (source?.is_on_hold) {
+    derivedStatus = "on-hold";
+  } else {
+    derivedStatus = rawStatus || "pending";
+  }
 
   return {
     id: source?.id ?? "-",
