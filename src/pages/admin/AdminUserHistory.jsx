@@ -47,6 +47,7 @@ function statusBadge(status) {
 const emptyRecords = {
   subscriptions: {
     active: [],
+    onHold: [],
     past: [],
     upcoming: [],
   },
@@ -104,6 +105,7 @@ function buildSubscriptionEntry(source, typeLabel, nameSource) {
 function groupSubscriptions(entries) {
   const grouped = {
     active: [],
+    onHold: [],
     past: [],
     upcoming: [],
   };
@@ -119,6 +121,19 @@ function groupSubscriptions(entries) {
       return;
     }
 
+    // "on-hold" status goes to onHold section
+    if (normalized === "on-hold") {
+      grouped.onHold.push(entry);
+      return;
+    }
+
+    // Only "active" status goes to active section
+    if (normalized === "active") {
+      grouped.active.push(entry);
+      return;
+    }
+
+    // "pending", "upcoming" go to upcoming section
     if (normalized === "upcoming" || normalized === "pending") {
       grouped.upcoming.push(entry);
       return;
@@ -134,7 +149,8 @@ function groupSubscriptions(entries) {
       return;
     }
 
-    grouped.active.push(entry);
+    // Default to upcoming for any other status
+    grouped.upcoming.push(entry);
   });
 
   return grouped;
@@ -392,12 +408,12 @@ function UserRecordsDetail({
                 {isTrainer ? "Trainer Booking Records" : "Subscription & Package Records"}
               </div>
               <div className="text-muted small">
-                {isTrainer ? "Total" : "Active"}: {subscriptionGroups.active.length + subscriptionGroups.upcoming.length + subscriptionGroups.past.length}
+                Total: {subscriptionGroups.active.length + subscriptionGroups.onHold.length + subscriptionGroups.upcoming.length + subscriptionGroups.past.length}
                 {isTrainer && (
-                  <> · Active: {subscriptionGroups.active.length} · Upcoming: {subscriptionGroups.upcoming.length} · Completed: {subscriptionGroups.past.length}</>
+                  <> · Active: {subscriptionGroups.active.length} · On Hold: {subscriptionGroups.onHold.length} · Upcoming: {subscriptionGroups.upcoming.length} · Completed: {subscriptionGroups.past.length}</>
                 )}
                 {!isTrainer && (
-                  <> · Active: {subscriptionGroups.active.length} · Upcoming: {subscriptionGroups.upcoming.length} · Past: {subscriptionGroups.past.length}</>
+                  <> · Active: {subscriptionGroups.active.length} · On Hold: {subscriptionGroups.onHold.length} · Upcoming: {subscriptionGroups.upcoming.length} · Past: {subscriptionGroups.past.length}</>
                 )}
               </div>
             </div>
@@ -411,6 +427,15 @@ function UserRecordsDetail({
           <div className="text-center text-muted py-4">Loading...</div>
         ) : (
           renderTable(subscriptionGroups.active)
+        )}
+      </div>
+
+      <div className="mb-4">
+        <h5 className="mb-3">{isTrainer ? "On Hold Bookings" : "On Hold Subscriptions"}</h5>
+        {loading && subscriptionGroups.onHold.length === 0 ? (
+          <div className="text-center text-muted py-4">Loading...</div>
+        ) : (
+          renderTable(subscriptionGroups.onHold)
         )}
       </div>
 
