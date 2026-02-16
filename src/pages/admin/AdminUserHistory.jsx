@@ -144,13 +144,21 @@ export default function AdminUserHistory() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const userFromState = location.state?.user ?? null;
+  const userFromState = location.state?.user ?? location.state?.trainer ?? null;
   const requestRef = useRef(0);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [records, setRecords] = useState(emptyRecords);
   const [userProfile, setUserProfile] = useState(null);
+
+  // Detect if this is a trainer based on URL path or state
+  const isTrainer = useMemo(() => {
+    const path = location.pathname;
+    if (path.includes('/trainers/')) return true;
+    const role = userFromState?.role;
+    return role === 'trainer' || role === 'Trainer';
+  }, [location.pathname, userFromState]);
 
   // Always prioritize URL param ID (the actual database record ID from the route)
   const recordId = useMemo(() => {
@@ -263,7 +271,8 @@ export default function AdminUserHistory() {
       error={error}
       records={records}
       userProfile={userProfile}
-      onClose={() => navigate("/admin/users")}
+      isTrainer={isTrainer}
+      onClose={() => navigate(isTrainer ? "/admin/users" : "/admin/users")}
       onRefresh={loadRecords}
     />
   );
@@ -275,6 +284,7 @@ function UserRecordsDetail({
   error,
   records,
   userProfile,
+  isTrainer = false,
   onClose,
   onRefresh,
 }) {
@@ -320,9 +330,13 @@ function UserRecordsDetail({
     <div className="admin-card p-4">
       <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
         <div>
-          <h4 className="mb-1">User History</h4>
-          <div className="admin-muted">View user profile, subscriptions, and booking history.</div>
-          {loading && <div className="text-muted small">Loading subscriptions...</div>}
+          <h4 className="mb-1">{isTrainer ? "Trainer History" : "User History"}</h4>
+          <div className="admin-muted">
+            {isTrainer
+              ? "View trainer profile, assigned bookings, and attendance history."
+              : "View user profile, subscriptions, and booking history."}
+          </div>
+          {loading && <div className="text-muted small">Loading {isTrainer ? "records" : "subscriptions"}...</div>}
         </div>
         <div className="d-flex gap-2">
           {onClose && (
@@ -356,7 +370,13 @@ function UserRecordsDetail({
               </div>
               <div className="col-md-3 col-sm-6">
                 <div className="text-muted small">Role</div>
-                <div className="text-capitalize">{userProfile?.role || "-"}</div>
+                <div className="text-capitalize">
+                  {isTrainer ? (
+                    <span className="badge bg-info text-dark">Trainer</span>
+                  ) : (
+                    userProfile?.role || "-"
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -368,10 +388,17 @@ function UserRecordsDetail({
           <div className="d-flex flex-wrap justify-content-between gap-3">
             <div>
               <div className="text-muted small">Summary</div>
-              <div className="fw-bold fs-5">Subscription & Package Records</div>
+              <div className="fw-bold fs-5">
+                {isTrainer ? "Trainer Booking Records" : "Subscription & Package Records"}
+              </div>
               <div className="text-muted small">
-                Active: {subscriptionGroups.active.length} · Upcoming:{" "}
-                {subscriptionGroups.upcoming.length} · Past: {subscriptionGroups.past.length}
+                {isTrainer ? "Total" : "Active"}: {subscriptionGroups.active.length + subscriptionGroups.upcoming.length + subscriptionGroups.past.length}
+                {isTrainer && (
+                  <> · Active: {subscriptionGroups.active.length} · Upcoming: {subscriptionGroups.upcoming.length} · Completed: {subscriptionGroups.past.length}</>
+                )}
+                {!isTrainer && (
+                  <> · Active: {subscriptionGroups.active.length} · Upcoming: {subscriptionGroups.upcoming.length} · Past: {subscriptionGroups.past.length}</>
+                )}
               </div>
             </div>
           </div>
@@ -379,7 +406,7 @@ function UserRecordsDetail({
       </div>
 
       <div className="mb-4">
-        <h5 className="mb-3">Active Subscriptions</h5>
+        <h5 className="mb-3">{isTrainer ? "Active Bookings" : "Active Subscriptions"}</h5>
         {loading && subscriptionGroups.active.length === 0 ? (
           <div className="text-center text-muted py-4">Loading...</div>
         ) : (
@@ -388,7 +415,7 @@ function UserRecordsDetail({
       </div>
 
       <div className="mb-4">
-        <h5 className="mb-3">Expired / Past Subscriptions</h5>
+        <h5 className="mb-3">{isTrainer ? "Completed / Past Bookings" : "Expired / Past Subscriptions"}</h5>
         {loading && subscriptionGroups.past.length === 0 ? (
           <div className="text-center text-muted py-4">Loading...</div>
         ) : (
@@ -397,7 +424,7 @@ function UserRecordsDetail({
       </div>
 
       <div>
-        <h5 className="mb-3">Upcoming / Pre-purchased Subscriptions</h5>
+        <h5 className="mb-3">{isTrainer ? "Upcoming / Pending Bookings" : "Upcoming / Pre-purchased Subscriptions"}</h5>
         {loading && subscriptionGroups.upcoming.length === 0 ? (
           <div className="text-center text-muted py-4">Loading...</div>
         ) : (
