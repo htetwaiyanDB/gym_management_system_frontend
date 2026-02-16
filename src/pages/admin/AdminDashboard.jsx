@@ -654,7 +654,7 @@ export default function AdminDashboard() {
       </div>
 
       <div className="row g-3 mb-3">
-        <div className="col-6">
+        <div className="col-12 col-md-6">
           <MetricAreaChart
             title="Trainer Bookings"
             data={trainerBookingsData}
@@ -662,7 +662,7 @@ export default function AdminDashboard() {
             fill="rgba(251,146,60,0.20)"
           />
         </div>
-        <div className="col-6">
+        <div className="col-12 col-md-6">
           <MetricAreaChart
             title="Boxing Bookings"
             data={boxingBookingsData}
