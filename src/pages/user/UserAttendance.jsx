@@ -4,9 +4,7 @@ import axiosClient from "../../api/axiosClient";
 import { scanRfidAttendance } from "../../api/attendanceApi";
 import { useGlobalScanner } from "../../hooks/useGlobalScanner";
 import RfidInputListener from "../../components/RfidInputListener";
-import QrScanner from "../common/QrScanner";
 import { isCardNotRegisteredError, normalizeCardId } from "../../utils/rfid";
-import { parseTokenFromQrText } from "../../utils/qr";
 import { useNavigate } from "react-router-dom";
 
 /**
@@ -295,74 +293,6 @@ export default function UserAttendance() {
     }
   };
 
-  const handleQrScan = async (decodedText) => {
-    if (!scanAllowedByAdmin) {
-      setStatusMsg({ type: "warning", text: "Scanner is stopped by admin." });
-      return;
-    }
-    const parsed = parseTokenFromQrText(decodedText);
-    if (!parsed?.token) {
-      setStatusMsg({ type: "danger", text: "Invalid QR code format." });
-      return;
-    }
-    if (busyRef.current) return;
-    busyRef.current = true;
-    setStatusMsg(null);
-    setRfidWarning(false);
-    try {
-      const res = await axiosClient.post("/user/check-in/scan", {
-        token: parsed.token,
-        action: nextAction,
-        scan_type: nextAction,
-        attendance_event: nextAction,
-      });
-      const record = res?.data?.record ?? null;
-      const action = getAction(record);
-      const timestamp = getTimestamp(record);
-
-      if (!timestamp || !isToday(timestamp)) {
-        setStatusMsg({
-          type: "warning",
-          text: res?.data?.message || "Recorded, but timestamp is not today.",
-        });
-        return;
-      }
-
-      setLatest(record);
-
-      if (action === "check_in") {
-        setCheckInTime(timestamp);
-        setCheckOutTime(null);
-        setStatusMsg({ type: "success", text: res?.data?.message || "Check-in recorded." });
-
-        if (scanAllowedByAdmin) {
-          saveCache({ latest: record, checkInTime: timestamp, checkOutTime: null });
-        }
-      } else if (action === "check_out") {
-        setCheckOutTime(timestamp);
-        setStatusMsg({ type: "success", text: res?.data?.message || "Check-out recorded." });
-
-        if (scanAllowedByAdmin) {
-          saveCache({ latest: record, checkInTime, checkOutTime: timestamp });
-        }
-      } else {
-        setStatusMsg({ type: "success", text: res?.data?.message || "Recorded." });
-        if (scanAllowedByAdmin) {
-          saveCache({ latest: record, checkInTime, checkOutTime });
-        }
-      }
-    } catch (e) {
-      setStatusMsg({
-        type: "danger",
-        text: e?.response?.data?.message || "Scan failed.",
-      });
-    } finally {
-      setTimeout(() => {
-        busyRef.current = false;
-      }, 700);
-    }
-  };
-
   if (!isMobile) {
     return (
       <div className="container py-3" style={{ maxWidth: 520 }}>
@@ -447,7 +377,6 @@ export default function UserAttendance() {
       )}
 
       <RfidInputListener active={effectiveScannerActive} onScan={handleRfidScan} />
-      <QrScanner onDecode={handleQrScan} active={effectiveScannerActive} cooldownMs={1500} />
 
       <div
         className="mt-3"
