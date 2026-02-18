@@ -130,6 +130,7 @@ export default function AdminSubscriptions() {
       if (planId === "class") {
         // Handle class subscription with fixed 1-month package
         payload.member_id = Number(memberId);
+        payload.membership_plan_id = classMembershipPlanId;
         payload.subscription_type = "class";
         payload.type = "class";
         payload.plan_type = "class";
@@ -218,6 +219,14 @@ export default function AdminSubscriptions() {
     }
     return planMap.get(String(planId)) || null;
   }, [planId, planMap]);
+
+  const classMembershipPlanId = useMemo(() => {
+    const classPlan = plans.find((plan) => {
+      const name = String(plan?.name || "").toLowerCase();
+      return name === "class" || name.includes("class");
+    });
+    return classPlan?.id ? Number(classPlan.id) : 1;
+  }, [plans]);
 
   // Removed requiresClassSelection since we don't need class selection
 
