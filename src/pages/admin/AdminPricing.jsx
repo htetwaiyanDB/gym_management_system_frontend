@@ -328,7 +328,7 @@ export default function AdminPricing() {
       {msg && <div className={`alert alert-${msg.type}`}>{msg.text}</div>}
 
       <div className="row g-3 mb-4">
-        <div className="col-12 col-md-3">
+        <div className="col-12 col-md-6 col-xl-3">
           <div className="card bg-dark text-light h-100 border-secondary">
             <div className="card-header border-secondary fw-semibold">One Month Plan</div>
             <div className="card-body">
@@ -356,7 +356,7 @@ export default function AdminPricing() {
           </div>
         </div>
 
-        <div className="col-12 col-md-3">
+        <div className="col-12 col-md-6 col-xl-3">
           <div className="card bg-dark text-light h-100 border-secondary">
             <div className="card-header border-secondary fw-semibold">Three Months Plan</div>
             <div className="card-body">
@@ -384,7 +384,7 @@ export default function AdminPricing() {
           </div>
         </div>
 
-        <div className="col-12 col-md-3">
+        <div className="col-12 col-md-6 col-xl-3">
           <div className="card bg-dark text-light h-100 border-secondary">
             <div className="card-header border-secondary fw-semibold">Six Months Plan</div>
             <div className="card-body">
@@ -412,7 +412,7 @@ export default function AdminPricing() {
           </div>
         </div>
 
-        <div className="col-12 col-md-3">
+        <div className="col-12 col-md-6 col-xl-3">
           <div className="card bg-dark text-light h-100 border-secondary">
             <div className="card-header border-secondary fw-semibold">Twelve Months Plan</div>
             <div className="card-body">
@@ -435,6 +435,32 @@ export default function AdminPricing() {
                 onClick={() => updatePlan("twelveMonths")}
               >
                 {busyKey === "twelveMonths" ? "Updating..." : "Update"}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="col-12 col-md-6 col-xl-3">
+          <div
+            className="card text-light h-100 border-info"
+            style={{
+              background: "linear-gradient(140deg, rgba(13, 110, 253, 0.25), rgba(13, 202, 240, 0.12) 55%, rgba(33, 37, 41, 0.95) 100%)",
+            }}
+          >
+            <div className="card-header border-info d-flex justify-content-between align-items-center fw-semibold">
+              <span>Class Plan</span>
+              <span className="badge text-bg-info">New</span>
+            </div>
+            <div className="card-body d-flex flex-column">
+              <div className="admin-muted">Perfect for drop-in members and class-only access.</div>
+              <div className="fs-5 fw-bold mt-3">Flexible Class Pricing</div>
+              <ul className="small mt-3 mb-4 ps-3">
+                <li>Designed for group classes</li>
+                <li>Simple monthly adjustments</li>
+                <li>Matches the style of existing plans</li>
+              </ul>
+              <button className="btn btn-outline-info mt-auto" type="button" disabled>
+                Configure soon
               </button>
             </div>
           </div>
