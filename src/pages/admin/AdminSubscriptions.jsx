@@ -39,6 +39,26 @@ function isExpiredByDate(endDateValue) {
   return today > endDate;
 }
 
+
+function normalizeClassOptions(payload) {
+  const list =
+    payload?.classes ||
+    payload?.class_plans ||
+    payload?.class_packages ||
+    payload?.classSubscriptions ||
+    payload?.class_subscriptions ||
+    [];
+
+  return Array.isArray(list) ? list : [];
+}
+
+function isClassPlan(plan) {
+  const type = String(plan?.type || plan?.plan_type || plan?.category || "").toLowerCase();
+  if (type.includes("class")) return true;
+
+  const name = String(plan?.name || plan?.title || "").toLowerCase();
+  return name.includes("class");
+}
 export default function AdminSubscriptions() {
   const [loading, setLoading] = useState(false);
   const [busyId, setBusyId] = useState(null);
@@ -51,15 +71,18 @@ export default function AdminSubscriptions() {
   const [optionsLoading, setOptionsLoading] = useState(false);
   const [members, setMembers] = useState([]);
   const [plans, setPlans] = useState([]);
+  const [classes, setClasses] = useState([]);
 
   const [memberId, setMemberId] = useState("");
   const [planId, setPlanId] = useState("");
   const [startDate, setStartDate] = useState(""); // optional
+  const [classId, setClassId] = useState("");
 
   const resetForm = () => {
     setMemberId("");
     setPlanId("");
     setStartDate("");
+    setClassId("");
   };
 
   const load = async () => {
@@ -89,6 +112,7 @@ export default function AdminSubscriptions() {
       const res = await axiosClient.get("/subscriptions/options");
       setMembers(Array.isArray(res.data?.members) ? res.data.members : []);
       setPlans(Array.isArray(res.data?.plans) ? res.data.plans : []);
+      setClasses(normalizeClassOptions(res.data));
     } catch (e) {
       setMsg({
         type: "danger",
@@ -117,12 +141,22 @@ export default function AdminSubscriptions() {
       return;
     }
 
+    if (requiresClassSelection && !classId) {
+      setMsg({ type: "danger", text: "Please select a class package." });
+      return;
+    }
+
     try {
       const payload = {
         member_id: Number(memberId),
         membership_plan_id: Number(planId),
       };
       if (startDate) payload.start_date = startDate;
+      if (requiresClassSelection && classId) {
+        payload.class_id = Number(classId);
+        payload.class_plan_id = Number(classId);
+        payload.class_package_id = Number(classId);
+      }
 
       const res = await axiosClient.post("/subscriptions", payload);
 
@@ -188,6 +222,8 @@ export default function AdminSubscriptions() {
     if (!planId) return null;
     return planMap.get(String(planId)) || null;
   }, [planId, planMap]);
+
+  const requiresClassSelection = useMemo(() => isClassPlan(selectedPlan), [selectedPlan]);
 
   const sortedSubscriptions = useMemo(() => {
     const list = [...subs];
@@ -372,6 +408,25 @@ export default function AdminSubscriptions() {
       </select>
     </div>
 
+    {requiresClassSelection && (
+      <div className="col-md-6">
+        <label className="form-label fw-bold">Class Package</label>
+        <select
+          className="form-select bg-dark text-white"
+          value={classId}
+          onChange={(e) => setClassId(e.target.value)}
+          disabled={optionsLoading}
+        >
+          <option value="">Select class package</option>
+          {classes.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name || c.title || `Class #${c.id}`}
+            </option>
+          ))}
+        </select>
+      </div>
+    )}
+
     {/* Start Date */}
     <div className="col-md-4">
       <label className="form-label fw-bold">Start Date</label>
@@ -395,6 +450,9 @@ export default function AdminSubscriptions() {
       <div className="text-white-50">
         Price: {moneyMMK(selectedPlan.price)}
       </div>
+      {requiresClassSelection && (
+        <div className="text-warning-emphasis">Class package required for this plan.</div>
+      )}
     </div>
   )}
 </div>
