@@ -16,6 +16,19 @@ function normalizeSubscriptions(payload) {
   return [];
 }
 
+function normalizePackageList(data) {
+  const list = data?.packages ?? data?.class_packages ?? data?.data ?? data ?? [];
+  return Array.isArray(list) ? list : [];
+}
+
+function packageIdOf(pkg) {
+  return pkg?.id ?? pkg?.package_id ?? pkg?.packageId;
+}
+
+function packagePriceOf(pkg) {
+  return pkg?.price ?? pkg?.price_per_session ?? pkg?.amount ?? null;
+}
+
 function parseDateOnly(value) {
   if (!value) return null;
   const s = String(value).trim();
@@ -52,7 +65,8 @@ export default function AdminSubscriptions() {
   const [optionsLoading, setOptionsLoading] = useState(false);
   const [members, setMembers] = useState([]);
   const [plans, setPlans] = useState([]);
-  // Removed classes state since we only have one fixed class package
+  const [classPackages, setClassPackages] = useState([]);
+  const [classPrice, setClassPrice] = useState(null);
 
   const [memberId, setMemberId] = useState("");
   const [planId, setPlanId] = useState("");
@@ -87,13 +101,41 @@ export default function AdminSubscriptions() {
     setShowModal(true);
     resetForm();
 
-    // load options: members + plans
+    // load options + class packages + class pricing
     setOptionsLoading(true);
     try {
-      const res = await axiosClient.get("/subscriptions/options");
-      setMembers(Array.isArray(res.data?.members) ? res.data.members : []);
-      setPlans(Array.isArray(res.data?.plans) ? res.data.plans : []);
-      // No need to load classes since we have only one fixed class package
+      const [optionsResult, pricingResult] = await Promise.allSettled([
+        axiosClient.get("/subscriptions/options"),
+        axiosClient.get("/pricing"),
+      ]);
+
+      if (optionsResult.status !== "fulfilled") {
+        throw optionsResult.reason;
+      }
+
+      setMembers(Array.isArray(optionsResult.value.data?.members) ? optionsResult.value.data.members : []);
+      setPlans(Array.isArray(optionsResult.value.data?.plans) ? optionsResult.value.data.plans : []);
+
+      if (pricingResult.status === "fulfilled") {
+        const pricing = pricingResult.value?.data?.subscription_prices || {};
+        setClassPrice(
+          pricing.class_subscription_price ??
+            pricing.class_price ??
+            pricing.class_month ??
+            pricing.class ??
+            null
+        );
+      } else {
+        setClassPrice(null);
+      }
+
+      try {
+        const classRes = await axiosClient.get("/class-packages");
+        setClassPackages(normalizePackageList(classRes.data));
+      } catch (error) {
+        if (error?.response?.status !== 404) throw error;
+        setClassPackages([]);
+      }
     } catch (e) {
       setMsg({
         type: "danger",
@@ -127,17 +169,25 @@ export default function AdminSubscriptions() {
     try {
       const payload = {};
       
-      if (planId === "class") {
-        // Handle class subscription with fixed 1-month package
+      if (String(planId).startsWith("class-")) {
+        const selectedClassPackageId = Number(String(planId).replace("class-", ""));
+
+        if (!classMembershipPlanId) {
+          setMsg({ type: "danger", text: "Class membership plan is not configured yet." });
+          return;
+        }
+
         payload.member_id = Number(memberId);
         payload.membership_plan_id = classMembershipPlanId;
         payload.subscription_type = "class";
         payload.type = "class";
         payload.plan_type = "class";
         if (startDate) payload.start_date = startDate;
-        // Automatically set the fixed class package (1 month, 70000 MMK)
-        payload.class_id = 1; // Assuming ID 1 for your fixed class package
-        payload.class_package_id = 1;
+
+        if (!Number.isNaN(selectedClassPackageId) && selectedClassPackageId > 0) {
+          payload.class_id = selectedClassPackageId;
+          payload.class_package_id = selectedClassPackageId;
+        }
       } else {
         // Handle regular subscription
         payload.member_id = Number(memberId);
@@ -207,25 +257,36 @@ export default function AdminSubscriptions() {
 
   const selectedPlan = useMemo(() => {
     if (!planId) return null;
-    if (planId === "class") {
+    if (String(planId).startsWith("class-")) {
+      const selectedClassPackageId = Number(String(planId).replace("class-", ""));
+      const selectedClassPackage = classPackages.find(
+        (pkg) => Number(packageIdOf(pkg)) === selectedClassPackageId
+      );
       return { 
-        id: "class", 
-        name: "Class (1 Month)", 
+        id: planId,
+        name:
+          selectedClassPackage?.name ||
+          selectedClassPackage?.title ||
+          "Class",
         type: "class", 
         plan_type: "class",
-        duration_days: 30,
-        price: 70000
+        duration_days:
+          selectedClassPackage?.duration_days ??
+          (selectedClassPackage?.duration_months
+            ? Number(selectedClassPackage.duration_months) * 30
+            : 30),
+        price: packagePriceOf(selectedClassPackage) ?? classPrice,
       };
     }
     return planMap.get(String(planId)) || null;
-  }, [planId, planMap]);
+  }, [planId, planMap, classPackages, classPrice]);
 
   const classMembershipPlanId = useMemo(() => {
     const classPlan = plans.find((plan) => {
       const name = String(plan?.name || "").toLowerCase();
       return name === "class" || name.includes("class");
     });
-    return classPlan?.id ? Number(classPlan.id) : 1;
+    return classPlan?.id ? Number(classPlan.id) : "";
   }, [plans]);
 
   // Removed requiresClassSelection since we don't need class selection
@@ -410,7 +471,20 @@ export default function AdminSubscriptions() {
             {p.name}
           </option>
         ))}
-        <option value="class">Class (1 Month - 70,000 MMK)</option>
+        {classPackages.map((pkg) => {
+          const pkgId = packageIdOf(pkg);
+          if (pkgId === null || pkgId === undefined) return null;
+          const duration = pkg?.duration_months
+            ? `${pkg.duration_months} Month${Number(pkg.duration_months) === 1 ? "" : "s"}`
+            : "Class";
+          const price = packagePriceOf(pkg) ?? classPrice;
+          return (
+            <option key={`class-${pkgId}`} value={`class-${pkgId}`}>
+              {pkg?.name || pkg?.title || `Class #${pkgId}`} ({duration}
+              {price !== null && price !== undefined ? ` - ${moneyMMK(price)}` : ""})
+            </option>
+          );
+        })}
       </select>
     </div>
 
@@ -437,8 +511,8 @@ export default function AdminSubscriptions() {
       <div className="text-white-50">
         Price: {moneyMMK(selectedPlan.price)}
       </div>
-      {planId === "class" && (
-        <div className="text-success-emphasis">Fixed 1-month class package at 70,000 MMK</div>
+      {String(planId).startsWith("class-") && (
+        <div className="text-success-emphasis">Class pricing is synced from Pricing page package values.</div>
       )}
     </div>
   )}
