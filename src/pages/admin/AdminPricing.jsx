@@ -82,6 +82,7 @@ export default function AdminPricing() {
   const [trainerPackages, setTrainerPackages] = useState([]);
   const [boxingPackages, setBoxingPackages] = useState([]);
   const [classPackages, setClassPackages] = useState([]);
+  const [classPackagesSupported, setClassPackagesSupported] = useState(true);
   const [packageInputs, setPackageInputs] = useState({});
   const [createPackageInputs, setCreatePackageInputs] = useState({
     [PACKAGE_TYPES.trainer.key]: emptyCreateForm(),
@@ -102,12 +103,24 @@ export default function AdminPricing() {
     setLoading(true);
 
     try {
-      const [pricingRes, trainerRes, boxingRes, classRes] = await Promise.all([
+      const [pricingRes, trainerRes, boxingRes] = await Promise.all([
         axiosClient.get("/pricing", { cache: false }),
         axiosClient.get(PACKAGE_TYPES.trainer.endpoint, { cache: false }),
         axiosClient.get(PACKAGE_TYPES.boxing.endpoint, { cache: false }),
-        axiosClient.get(PACKAGE_TYPES.class.endpoint, { cache: false }),
       ]);
+
+      let classList = [];
+      let classEndpointAvailable = true;
+      try {
+        const classRes = await axiosClient.get(PACKAGE_TYPES.class.endpoint, { cache: false });
+        classList = normalizePackageList(classRes.data);
+      } catch (classError) {
+        if (classError?.response?.status !== 404) {
+          throw classError;
+        }
+        classEndpointAvailable = false;
+      }
+
       const p = pricingRes.data?.subscription_prices || {};
 
       const oneMonth = p.one_month ?? "";
@@ -127,11 +140,15 @@ export default function AdminPricing() {
 
       const trainerList = normalizePackageList(trainerRes.data);
       const boxingList = normalizePackageList(boxingRes.data);
-      const classList = normalizePackageList(classRes.data);
 
       setTrainerPackages(trainerList);
       setBoxingPackages(boxingList);
       setClassPackages(classList);
+      setClassPackagesSupported(classEndpointAvailable);
+
+      if (!classEndpointAvailable && activePackageTab === PACKAGE_TYPES.class.key) {
+        setActivePackageTab(PACKAGE_TYPES.trainer.key);
+      }
 
       const nextInputs = {};
       trainerList.forEach((pkg) => {
@@ -549,6 +566,7 @@ export default function AdminPricing() {
             </button>
             <button
               className={`btn ${activePackageTab === PACKAGE_TYPES.class.key ? "btn-primary" : "btn-outline-light"}`}
+              disabled={!classPackagesSupported}
               onClick={() => setActivePackageTab(PACKAGE_TYPES.class.key)}
             >
               Class Packages
