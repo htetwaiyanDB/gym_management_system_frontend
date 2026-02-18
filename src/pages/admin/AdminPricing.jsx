@@ -61,6 +61,7 @@ export default function AdminPricing() {
     threeMonths: "",
     sixMonths: "",
     twelveMonths: "",
+    classPrice: "",
   });
 
   const [inputs, setInputs] = useState({
@@ -68,6 +69,7 @@ export default function AdminPricing() {
     threeMonths: "",
     sixMonths: "",
     twelveMonths: "",
+    classPrice: "",
   });
 
   const [activePackageTab, setActivePackageTab] = useState(PACKAGE_TYPES.trainer.key);
@@ -103,13 +105,15 @@ export default function AdminPricing() {
       const threeMonths = p.three_months ?? "";
       const sixMonths = p.six_months ?? "";
       const twelveMonths = p.twelve_months ?? "";
+      const classPrice = p.class_subscription_price ?? p.class_price ?? p.class_month ?? p.class ?? "";
 
-      setPrices({ oneMonth, threeMonths, sixMonths, twelveMonths });
+      setPrices({ oneMonth, threeMonths, sixMonths, twelveMonths, classPrice });
       setInputs({
         oneMonth: String(oneMonth),
         threeMonths: String(threeMonths),
         sixMonths: String(sixMonths),
         twelveMonths: String(twelveMonths),
+        classPrice: String(classPrice),
       });
 
       const trainerList = normalizePackageList(trainerRes.data);
@@ -182,6 +186,44 @@ export default function AdminPricing() {
           twelve_month_subscription_price: value,
         });
         setMsg({ type: "success", text: res?.data?.message || "Twelve-month price updated." });
+      }
+
+      if (type === "classPrice") {
+        const classPricingRequests = [
+          {
+            endpoint: "/pricing/class",
+            payload: { class_subscription_price: value },
+          },
+          {
+            endpoint: "/pricing/class",
+            payload: { class_price: value },
+          },
+          {
+            endpoint: "/pricing/class-month",
+            payload: { class_month_subscription_price: value },
+          },
+        ];
+
+        let classUpdated = false;
+        let latestError = null;
+
+        for (const req of classPricingRequests) {
+          try {
+            const res = await axiosClient.put(req.endpoint, req.payload);
+            setMsg({ type: "success", text: res?.data?.message || "Class plan price updated." });
+            classUpdated = true;
+            break;
+          } catch (error) {
+            latestError = error;
+            if (error?.response?.status !== 404) {
+              throw error;
+            }
+          }
+        }
+
+        if (!classUpdated) {
+          throw latestError || new Error("Failed to update class price.");
+        }
       }
 
       clearRequestCache();
@@ -316,7 +358,7 @@ export default function AdminPricing() {
       <div className="d-flex align-items-center justify-content-between mb-3">
         <div>
           <h4 className="mb-1">Pricing</h4>
-          <div className="admin-muted">Update subscription prices, trainer packages, and boxing packages.</div>
+          <div className="admin-muted">Update subscription prices (including class plan), trainer packages, and boxing packages.</div>
         </div>
 
         <button className="btn btn-outline-light" onClick={load} disabled={loading}>
@@ -441,26 +483,28 @@ export default function AdminPricing() {
         </div>
 
         <div className="col-12 col-md-6 col-xl-3">
-          <div
-            className="card text-light h-100 border-info"
-            style={{
-              background: "linear-gradient(140deg, rgba(13, 110, 253, 0.25), rgba(13, 202, 240, 0.12) 55%, rgba(33, 37, 41, 0.95) 100%)",
-            }}
-          >
-            <div className="card-header border-info d-flex justify-content-between align-items-center fw-semibold">
-              <span>Class Plan</span>
-              <span className="badge text-bg-info">New</span>
-            </div>
-            <div className="card-body d-flex flex-column">
-              <div className="admin-muted">Perfect for drop-in members and class-only access.</div>
-              <div className="fs-5 fw-bold mt-3">Flexible Class Pricing</div>
-              <ul className="small mt-3 mb-4 ps-3">
-                <li>Designed for group classes</li>
-                <li>Simple monthly adjustments</li>
-                <li>Matches the style of existing plans</li>
-              </ul>
-              <button className="btn btn-outline-info mt-auto" type="button" disabled>
-                Configure soon
+          <div className="card bg-dark text-light h-100 border-secondary">
+            <div className="card-header border-secondary fw-semibold">Class Plan</div>
+            <div className="card-body">
+              <div className="admin-muted">Current class plan price</div>
+              <div className="fs-5 fw-bold mb-3">{moneyMMK(prices.classPrice)}</div>
+
+              <div className="input-group mb-3">
+                <input
+                  className="form-control"
+                  value={inputs.classPrice}
+                  onChange={(e) => setInputs((s) => ({ ...s, classPrice: e.target.value }))}
+                  placeholder="Enter new price"
+                />
+                <span className="input-group-text">MMK</span>
+              </div>
+
+              <button
+                className="btn btn-primary w-100"
+                disabled={busyKey === "classPrice"}
+                onClick={() => updatePlan("classPrice")}
+              >
+                {busyKey === "classPrice" ? "Updating..." : "Update"}
               </button>
             </div>
           </div>
