@@ -95,6 +95,11 @@ export default function TrainerSettings() {
     event.preventDefault();
     setMessage(null);
 
+    if (form.password && form.password.length < 4) {
+      setMessage({ type: "danger", text: "Password must be at least 4 characters." });
+      return;
+    }
+
     if (form.password && form.password !== form.passwordConfirm) {
       setMessage({ type: "danger", text: "Passwords do not match." });
       return;

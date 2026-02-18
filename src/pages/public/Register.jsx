@@ -120,7 +120,7 @@ export default function Register() {
                 type="password"
                 className={`form-control ${errors.password ? "is-invalid" : ""}`}
                 placeholder="Enter password"
-                {...register("password", { required: "Required", minLength: { value: 8, message: "Min 8 characters" } })}
+                {...register("password", { required: "Required", minLength: { value: 4, message: "Min 4 characters" } })}
               />
               {errors.password && <div className="invalid-feedback">{errors.password.message}</div>}
               <div className="text-muted small mt-1">
