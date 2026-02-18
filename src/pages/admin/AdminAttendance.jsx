@@ -190,8 +190,6 @@ export default function AdminAttendance() {
   // Records
   const [recordsLoading, setRecordsLoading] = useState(false);
   const [records, setRecords] = useState([]);
-  const [recordRoleFilter, setRecordRoleFilter] = useState("all");
-  const [recordTypeFilter, setRecordTypeFilter] = useState("all");
   const [recordSearch, setRecordSearch] = useState("");
   const [recordStartDateFilter, setRecordStartDateFilter] = useState("");
   const [recordEndDateFilter, setRecordEndDateFilter] = useState("");
@@ -390,8 +388,6 @@ export default function AdminAttendance() {
   // ---------------- computed ----------------
 
   const filteredRecords = useMemo(() => {
-    const roleF = String(recordRoleFilter).toLowerCase();
-    const typeF = String(recordTypeFilter).toLowerCase();
     const search = recordSearch.trim().toLowerCase();
     const startDateF = recordStartDateFilter;
     const endDateF = recordEndDateFilter;
@@ -407,25 +403,17 @@ export default function AdminAttendance() {
 
     return list.filter((r) => {
       const name = String(r?.name || r?.user_name || r?.username || "").trim();
-      const roleRaw = String(r?.role || r?.user_role || "").trim();
-      const role = roleRaw.toLowerCase();
-      const type = normalizeRecordType(r);
       const scannedAt = r?.scanned_at || r?.created_at || r?.time || r?.timestamp;
       const dayKey = getRecordDayKey(scannedAt);
 
-      if (roleF !== "all" && role !== roleF) return false;
-      if (typeF !== "all" && type !== typeF) return false;
       if (startDateF && (!dayKey || dayKey < startDateF)) return false;
       if (endDateF && (!dayKey || dayKey > endDateF)) return false;
 
-      if (search) {
-        const haystack = `${name} ${roleRaw}`.toLowerCase();
-        if (!haystack.includes(search)) return false;
-      }
+      if (search && !name.toLowerCase().includes(search)) return false;
 
       return true;
     });
-  }, [records, recordRoleFilter, recordTypeFilter, recordSearch, recordStartDateFilter, recordEndDateFilter]);
+  }, [records, recordSearch, recordStartDateFilter, recordEndDateFilter]);
 
   const recordDayCounts = useMemo(() => {
     const dayActionByUser = new Map();
@@ -812,25 +800,14 @@ export default function AdminAttendance() {
 
           {/* Filters */}
           <div className="d-flex flex-wrap gap-2 align-items-end mb-3">
-            <div style={{ minWidth: 200 }}>
-              <label className="form-label mb-1" style={bodyText}>
-                Role
-              </label>
-              <select className="form-select" style={glassSelectStyle} value={recordRoleFilter} onChange={(e) => setRecordRoleFilter(e.target.value)}>
-                <option value="all">All</option>
-                <option value="user">User</option>
-                <option value="trainer">Trainer</option>
-              </select>
-            </div>
-
             <div style={{ minWidth: 220 }}>
               <label className="form-label mb-1" style={bodyText}>
-                Search Name / Role
+                Search Name
               </label>
               <input
                 type="text"
                 className="form-control"
-                placeholder="e.g. john, trainer"
+                placeholder="e.g. john"
                 value={recordSearch}
                 onChange={(e) => setRecordSearch(e.target.value)}
               />
@@ -861,23 +838,9 @@ export default function AdminAttendance() {
                 onChange={(e) => setRecordEndDateFilter(e.target.value)}
               />
             </div>
-
-            <div style={{ minWidth: 220 }}>
-              <label className="form-label mb-1" style={bodyText}>
-                Scan Type
-              </label>
-              <select className="form-select" style={glassSelectStyle} value={recordTypeFilter} onChange={(e) => setRecordTypeFilter(e.target.value)}>
-                <option value="all">All</option>
-                <option value="check_in">Check In</option>
-                <option value="check_out">Check Out</option>
-              </select>
-            </div>
-
             <button
               className="btn btn-outline-light"
               onClick={() => {
-                setRecordRoleFilter("all");
-                setRecordTypeFilter("all");
                 setRecordSearch("");
                 setRecordStartDateFilter("");
                 setRecordEndDateFilter("");
