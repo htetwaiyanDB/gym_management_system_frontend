@@ -115,18 +115,19 @@ export default function AdminClassSubscriptions() {
               <th style={{ width: 90 }}>ID</th>
               <th>User</th>
               <th>Phone</th>
-              <th>Class</th>
+              <th>Class Package</th>
               <th>Plan</th>
-              <th>Start</th>
-              <th>End</th>
+              <th>Start Date</th>
+              <th>End Date</th>
               <th>Status</th>
+              <th>Price</th>
             </tr>
           </thead>
 
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan="8" className="text-center text-muted py-4">
+                <td colSpan="9" className="text-center text-muted py-4">
                   {emptyText}
                 </td>
               </tr>
@@ -134,7 +135,8 @@ export default function AdminClassSubscriptions() {
               rows.map((row) => {
                 const status = String(pick(row, ["status", "state"]) || "-");
                 const className =
-                  pick(row, ["class_name", "class_title", "class_plan_name"]) || "-";
+                  pick(row, ["class_name", "class_title", "class_plan_name", "package_name"]) || "-";
+                const price = pick(row, ["price", "amount", "total_price"]) || "-";
                 return (
                   <tr key={row.id}>
                     <td>{row.id}</td>
@@ -143,14 +145,15 @@ export default function AdminClassSubscriptions() {
                     <td>
                       <span className="badge bg-info text-dark">{className}</span>
                     </td>
-                    <td>{pick(row, ["plan_name", "package_name", "name"]) || "-"}</td>
-                    <td>{pick(row, ["start_date", "starts_at", "start"]) || "-"}</td>
-                    <td>{pick(row, ["end_date", "ends_at", "end"]) || "-"}</td>
+                    <td>{pick(row, ["plan_name", "subscription_plan", "membership_plan"]) || "-"}</td>
+                    <td>{pick(row, ["start_date", "starts_at", "start", "created_at"]) || "-"}</td>
+                    <td>{pick(row, ["end_date", "ends_at", "end", "expiry_date"]) || "-"}</td>
                     <td>
                       <span className="badge bg-secondary" style={{ textTransform: "capitalize" }}>
                         {status}
                       </span>
                     </td>
+                    <td>{price !== "-" ? `${Number(price).toLocaleString()} MMK` : "-"}</td>
                   </tr>
                 );
               })

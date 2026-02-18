@@ -113,6 +113,18 @@ export default function AdminSubscriptions() {
       setMembers(Array.isArray(res.data?.members) ? res.data.members : []);
       setPlans(Array.isArray(res.data?.plans) ? res.data.plans : []);
       setClasses(normalizeClassOptions(res.data));
+      
+      // Also fetch class packages separately if not included in options
+      try {
+        const classRes = await axiosClient.get("/class-packages");
+        const classPackages = normalizeClassOptions(classRes.data);
+        if (classPackages.length > 0) {
+          setClasses(prev => [...prev, ...classPackages]);
+        }
+      } catch (classError) {
+        // If class-packages endpoint doesn't exist, continue with existing classes
+        console.log("Class packages endpoint not available");
+      }
     } catch (e) {
       setMsg({
         type: "danger",
@@ -140,22 +152,38 @@ export default function AdminSubscriptions() {
       setMsg({ type: "danger", text: "Please select a plan." });
       return;
     }
-
-    if (requiresClassSelection && !classId) {
+    
+    const isClassPlanSelected = planId === "class" || (selectedPlan && isClassPlan(selectedPlan));
+    
+    if (isClassPlanSelected && !classId) {
       setMsg({ type: "danger", text: "Please select a class package." });
       return;
     }
 
     try {
-      const payload = {
-        member_id: Number(memberId),
-        membership_plan_id: Number(planId),
-      };
-      if (startDate) payload.start_date = startDate;
-      if (requiresClassSelection && classId) {
-        payload.class_id = Number(classId);
-        payload.class_plan_id = Number(classId);
-        payload.class_package_id = Number(classId);
+      const payload = {};
+      
+      if (planId === "class") {
+        // Handle class subscription
+        payload.member_id = Number(memberId);
+        payload.subscription_type = "class";
+        payload.type = "class";
+        payload.plan_type = "class";
+        if (startDate) payload.start_date = startDate;
+        if (classId) {
+          payload.class_id = Number(classId);
+          payload.class_package_id = Number(classId);
+        }
+      } else {
+        // Handle regular subscription
+        payload.member_id = Number(memberId);
+        payload.membership_plan_id = Number(planId);
+        if (startDate) payload.start_date = startDate;
+        if (requiresClassSelection && classId) {
+          payload.class_id = Number(classId);
+          payload.class_plan_id = Number(classId);
+          payload.class_package_id = Number(classId);
+        }
       }
 
       const res = await axiosClient.post("/subscriptions", payload);
@@ -220,6 +248,9 @@ export default function AdminSubscriptions() {
 
   const selectedPlan = useMemo(() => {
     if (!planId) return null;
+    if (planId === "class") {
+      return { id: "class", name: "Class", type: "class", plan_type: "class" };
+    }
     return planMap.get(String(planId)) || null;
   }, [planId, planMap]);
 
@@ -405,6 +436,7 @@ export default function AdminSubscriptions() {
             {p.name}
           </option>
         ))}
+        <option value="class">Class</option>
       </select>
     </div>
 

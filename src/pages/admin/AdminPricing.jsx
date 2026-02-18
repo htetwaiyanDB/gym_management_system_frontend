@@ -21,6 +21,12 @@ const PACKAGE_TYPES = {
     emptyText: "No boxing packages found.",
     endpoint: "/boxing-packages",
   },
+  class: {
+    key: "class",
+    title: "Class Packages",
+    emptyText: "No class packages found.",
+    endpoint: "/class-packages",
+  },
 };
 
 function normalizePackageList(data) {
@@ -75,10 +81,12 @@ export default function AdminPricing() {
   const [activePackageTab, setActivePackageTab] = useState(PACKAGE_TYPES.trainer.key);
   const [trainerPackages, setTrainerPackages] = useState([]);
   const [boxingPackages, setBoxingPackages] = useState([]);
+  const [classPackages, setClassPackages] = useState([]);
   const [packageInputs, setPackageInputs] = useState({});
   const [createPackageInputs, setCreatePackageInputs] = useState({
     [PACKAGE_TYPES.trainer.key]: emptyCreateForm(),
     [PACKAGE_TYPES.boxing.key]: emptyCreateForm(),
+    [PACKAGE_TYPES.class.key]: emptyCreateForm(),
   });
 
   const [busyKey, setBusyKey] = useState(null);
@@ -94,10 +102,11 @@ export default function AdminPricing() {
     setLoading(true);
 
     try {
-      const [pricingRes, trainerRes, boxingRes] = await Promise.all([
+      const [pricingRes, trainerRes, boxingRes, classRes] = await Promise.all([
         axiosClient.get("/pricing", { cache: false }),
         axiosClient.get(PACKAGE_TYPES.trainer.endpoint, { cache: false }),
         axiosClient.get(PACKAGE_TYPES.boxing.endpoint, { cache: false }),
+        axiosClient.get(PACKAGE_TYPES.class.endpoint, { cache: false }),
       ]);
       const p = pricingRes.data?.subscription_prices || {};
 
@@ -118,9 +127,11 @@ export default function AdminPricing() {
 
       const trainerList = normalizePackageList(trainerRes.data);
       const boxingList = normalizePackageList(boxingRes.data);
+      const classList = normalizePackageList(classRes.data);
 
       setTrainerPackages(trainerList);
       setBoxingPackages(boxingList);
+      setClassPackages(classList);
 
       const nextInputs = {};
       trainerList.forEach((pkg) => {
@@ -132,6 +143,11 @@ export default function AdminPricing() {
         const id = packageIdOf(pkg);
         if (id === null || id === undefined) return;
         nextInputs[`${PACKAGE_TYPES.boxing.key}-${id}`] = packageToInput(pkg);
+      });
+      classList.forEach((pkg) => {
+        const id = packageIdOf(pkg);
+        if (id === null || id === undefined) return;
+        nextInputs[`${PACKAGE_TYPES.class.key}-${id}`] = packageToInput(pkg);
       });
 
       setPackageInputs(nextInputs);
@@ -349,8 +365,12 @@ export default function AdminPricing() {
   };
 
   const currentPackages = useMemo(
-    () => (activePackageTab === PACKAGE_TYPES.trainer.key ? trainerPackages : boxingPackages),
-    [activePackageTab, trainerPackages, boxingPackages]
+    () => {
+      if (activePackageTab === PACKAGE_TYPES.trainer.key) return trainerPackages;
+      if (activePackageTab === PACKAGE_TYPES.boxing.key) return boxingPackages;
+      return classPackages;
+    },
+    [activePackageTab, trainerPackages, boxingPackages, classPackages]
   );
 
   return (
@@ -526,6 +546,12 @@ export default function AdminPricing() {
               onClick={() => setActivePackageTab(PACKAGE_TYPES.boxing.key)}
             >
               Boxing Packages
+            </button>
+            <button
+              className={`btn ${activePackageTab === PACKAGE_TYPES.class.key ? "btn-primary" : "btn-outline-light"}`}
+              onClick={() => setActivePackageTab(PACKAGE_TYPES.class.key)}
+            >
+              Class Packages
             </button>
           </div>
         </div>
