@@ -61,6 +61,7 @@ export default function AdminPricing() {
     threeMonths: "",
     sixMonths: "",
     twelveMonths: "",
+    classPlan: "",
   });
 
   const [inputs, setInputs] = useState({
@@ -68,6 +69,7 @@ export default function AdminPricing() {
     threeMonths: "",
     sixMonths: "",
     twelveMonths: "",
+    classPlan: "",
   });
 
   const [activePackageTab, setActivePackageTab] = useState(PACKAGE_TYPES.trainer.key);
@@ -103,13 +105,15 @@ export default function AdminPricing() {
       const threeMonths = p.three_months ?? "";
       const sixMonths = p.six_months ?? "";
       const twelveMonths = p.twelve_months ?? "";
+      const classPlan = p.class ?? p.class_price ?? p.class_plan ?? "";
 
-      setPrices({ oneMonth, threeMonths, sixMonths, twelveMonths });
+      setPrices({ oneMonth, threeMonths, sixMonths, twelveMonths, classPlan });
       setInputs({
         oneMonth: String(oneMonth),
         threeMonths: String(threeMonths),
         sixMonths: String(sixMonths),
         twelveMonths: String(twelveMonths),
+        classPlan: String(classPlan),
       });
 
       const trainerList = normalizePackageList(trainerRes.data);
@@ -182,6 +186,13 @@ export default function AdminPricing() {
           twelve_month_subscription_price: value,
         });
         setMsg({ type: "success", text: res?.data?.message || "Twelve-month price updated." });
+      }
+
+      if (type === "classPlan") {
+        const res = await axiosClient.put("/pricing/class", {
+          class_subscription_price: value,
+        });
+        setMsg({ type: "success", text: res?.data?.message || "Class price updated." });
       }
 
       clearRequestCache();
@@ -328,7 +339,7 @@ export default function AdminPricing() {
       {msg && <div className={`alert alert-${msg.type}`}>{msg.text}</div>}
 
       <div className="row g-3 mb-4">
-        <div className="col-12 col-md-3">
+        <div className="col-12 col-md-6 col-xl-3">
           <div className="card bg-dark text-light h-100 border-secondary">
             <div className="card-header border-secondary fw-semibold">One Month Plan</div>
             <div className="card-body">
@@ -356,7 +367,7 @@ export default function AdminPricing() {
           </div>
         </div>
 
-        <div className="col-12 col-md-3">
+        <div className="col-12 col-md-6 col-xl-3">
           <div className="card bg-dark text-light h-100 border-secondary">
             <div className="card-header border-secondary fw-semibold">Three Months Plan</div>
             <div className="card-body">
@@ -384,7 +395,7 @@ export default function AdminPricing() {
           </div>
         </div>
 
-        <div className="col-12 col-md-3">
+        <div className="col-12 col-md-6 col-xl-3">
           <div className="card bg-dark text-light h-100 border-secondary">
             <div className="card-header border-secondary fw-semibold">Six Months Plan</div>
             <div className="card-body">
@@ -412,7 +423,7 @@ export default function AdminPricing() {
           </div>
         </div>
 
-        <div className="col-12 col-md-3">
+        <div className="col-12 col-md-6 col-xl-3">
           <div className="card bg-dark text-light h-100 border-secondary">
             <div className="card-header border-secondary fw-semibold">Twelve Months Plan</div>
             <div className="card-body">
@@ -435,6 +446,34 @@ export default function AdminPricing() {
                 onClick={() => updatePlan("twelveMonths")}
               >
                 {busyKey === "twelveMonths" ? "Updating..." : "Update"}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="col-12 col-md-6 col-xl-3">
+          <div className="card bg-dark text-light h-100 border-secondary">
+            <div className="card-header border-secondary fw-semibold">Class Plan</div>
+            <div className="card-body">
+              <div className="admin-muted">Current class price</div>
+              <div className="fs-5 fw-bold mb-3">{moneyMMK(prices.classPlan)}</div>
+
+              <div className="input-group mb-3">
+                <input
+                  className="form-control"
+                  value={inputs.classPlan}
+                  onChange={(e) => setInputs((s) => ({ ...s, classPlan: e.target.value }))}
+                  placeholder="Enter new price"
+                />
+                <span className="input-group-text">MMK</span>
+              </div>
+
+              <button
+                className="btn btn-primary w-100"
+                disabled={busyKey === "classPlan"}
+                onClick={() => updatePlan("classPlan")}
+              >
+                {busyKey === "classPlan" ? "Updating..." : "Update"}
               </button>
             </div>
           </div>
