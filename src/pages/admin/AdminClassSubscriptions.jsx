@@ -20,7 +20,17 @@ function normalizeList(payload) {
 function isClassPlanName(name) {
   return String(name || "")
     .trim()
-    .toLowerCase() === "class";
+    .toLowerCase()
+    .includes("class");
+}
+
+function isClassPlan(plan) {
+  if (!plan) return false;
+  const type = String(plan?.type || plan?.plan_type || plan?.category || "")
+    .trim()
+    .toLowerCase();
+  if (type === "class") return true;
+  return isClassPlanName(plan?.name || plan?.plan_name || plan?.title);
 }
 
 function isClassSubscription(record) {
@@ -128,7 +138,7 @@ export default function AdminClassSubscriptions() {
       pricingRes?.data?.subscription_prices?.class_month ??
       pricingRes?.data?.subscription_prices?.class;
 
-    const filteredClassPlans = planList.filter((plan) => isClassPlanName(plan?.name || plan?.plan_name));
+    const filteredClassPlans = planList.filter(isClassPlan);
 
     const normalizedPlans = filteredClassPlans.length
       ? filteredClassPlans.map((plan) => ({
@@ -146,6 +156,10 @@ export default function AdminClassSubscriptions() {
 
     setMembers(memberList);
     setPlans(normalizedPlans);
+
+    if (!editing && normalizedPlans.length === 1) {
+      setPlanId(String(normalizedPlans[0].id || ""));
+    }
   };
 
   const openCreate = async () => {
@@ -182,23 +196,26 @@ export default function AdminClassSubscriptions() {
     if (!memberId) return setMsg({ type: "danger", text: "Please select a member." });
     if (!planId) return setMsg({ type: "danger", text: "Please select a class package." });
 
+    const parsedPlanId = Number(planId);
+    if (Number.isNaN(parsedPlanId)) {
+      return setMsg({ type: "danger", text: "Class plan is missing from options. Please create a Class plan first." });
+    }
+
     setSaving(true);
     setMsg(null);
 
     const payload = {
       member_id: Number(memberId),
-      membership_plan_id: Number.isNaN(Number(planId)) ? undefined : Number(planId),
-      class_plan_id: Number.isNaN(Number(planId)) ? undefined : Number(planId),
-      class_package_id: Number.isNaN(Number(planId)) ? undefined : Number(planId),
-      plan_id: Number.isNaN(Number(planId)) ? undefined : Number(planId),
+      membership_plan_id: parsedPlanId,
+      class_plan_id: parsedPlanId,
+      class_package_id: parsedPlanId,
+      plan_id: parsedPlanId,
     };
 
     if (startDate) payload.start_date = startDate;
     if (selectedPlan?.price !== undefined && selectedPlan?.price !== null) {
       payload.price = Number(selectedPlan.price);
     }
-
-    Object.keys(payload).forEach((key) => payload[key] === undefined && delete payload[key]);
 
     try {
       if (editing?.id) {
