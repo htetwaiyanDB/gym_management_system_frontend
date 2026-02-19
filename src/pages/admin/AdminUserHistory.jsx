@@ -24,10 +24,17 @@ function normalizeStatus(value) {
   if (!s) return "pending";
   if (s === "confirmed") return "active";
   if (s === "activated") return "active";
+  if (s === "on_hold") return "on-hold";
   if (s === "on hold") return "on-hold";
   if (s === "cancelled" || s === "canceled") return "on-hold";
   if (s === "hold") return "on-hold";
   return s;
+}
+
+function toBoolean(value) {
+  if (value === true || value === false) return value;
+  const normalized = String(value || "").trim().toLowerCase();
+  return ["1", "true", "yes", "active", "activated", "confirmed"].includes(normalized);
 }
 
 function displayDate(value) {
@@ -91,28 +98,41 @@ function buildSubscriptionEntry(source, typeLabel, nameSource) {
     source?.month_end_date ??
     source?.endDate ??
     null;
-  // Check for various active status indicators from different API endpoints
-  const isActiveFlag = source?.is_active === true || source?.active === true || source?.activated === true;
-  const hasActiveStatus = String(source?.status || "").toLowerCase() === "active";
-  const hasConfirmedStatus = String(source?.status || "").toLowerCase() === "confirmed";
-  
-  // Prioritize explicit non-pending status field over flags.
-  // For pending rows, allow activation flags to promote to active.
-  const rawStatus = source?.status;
-  const normalizedRawStatus = String(rawStatus || "").trim().toLowerCase();
+  // Keep status derivation aligned with subscription endpoints that can use different keys.
+  const rawStatus = pickFirstValue(source, [
+    "status",
+    "status_key",
+    "state",
+    "subscription_status",
+    "current_status",
+  ]);
+  const normalizedRawStatus = normalizeStatus(rawStatus);
 
-  // If status is explicitly set to active/confirmed, or active flag is set, use active
+  // Backend may expose booleans as true/false, 1/0, or strings.
+  const isActiveFlag = [
+    source?.is_active,
+    source?.isActive,
+    source?.active,
+    source?.is_activated,
+    source?.activated,
+    source?.is_confirmed,
+  ].some((value) => toBoolean(value));
+
+  const isOnHoldFlag = [source?.is_on_hold, source?.on_hold, source?.onHold].some((value) => toBoolean(value));
+  const isExpiredFlag = [source?.is_expired, source?.expired].some((value) => toBoolean(value));
+
+  // If status is explicitly active (or equivalent), or active flag is set, use active.
   let derivedStatus;
-  if (hasActiveStatus || hasConfirmedStatus || isActiveFlag) {
+  if (normalizedRawStatus === "active" || isActiveFlag) {
     derivedStatus = "active";
-  } else if (rawStatus && normalizedRawStatus !== "pending") {
-    derivedStatus = rawStatus;
-  } else if (source?.is_expired) {
+  } else if (normalizedRawStatus && normalizedRawStatus !== "pending") {
+    derivedStatus = normalizedRawStatus;
+  } else if (isExpiredFlag) {
     derivedStatus = "expired";
-  } else if (source?.is_on_hold) {
+  } else if (isOnHoldFlag) {
     derivedStatus = "on-hold";
   } else {
-    derivedStatus = rawStatus || "pending";
+    derivedStatus = normalizedRawStatus || "pending";
   }
 
   return {
