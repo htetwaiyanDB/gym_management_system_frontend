@@ -24,15 +24,16 @@ function normalizeStatus(value) {
   if (!s) return "pending";
   if (s === "confirmed") return "active";
   if (s === "activated") return "active";
-  if (s === "on_hold") return "on-hold";
-  if (s === "on hold") return "on-hold";
-  if (s === "cancelled" || s === "canceled") return "on-hold";
+  if (s === "on_hold") return "on-hold";  // underscore variant
+  if (s === "on hold") return "on-hold";  // space variant
   if (s === "hold") return "on-hold";
+  if (s === "cancelled" || s === "canceled") return "on-hold";
   return s;
 }
 
 function toBoolean(value) {
   if (value === true || value === false) return value;
+  if (value === 1 || value === 0) return Boolean(value);
   const normalized = String(value || "").trim().toLowerCase();
   return ["1", "true", "yes", "active", "activated", "confirmed"].includes(normalized);
 }
