@@ -232,8 +232,10 @@ export default function AdminTrainerBookings() {
     const s = Number(sessionsCount);
     const p = Number(pricePerSession || defaultPrice);
     if (Number.isNaN(s) || Number.isNaN(p)) return 0;
-    return Math.max(0, s) * Math.max(0, p);
-  }, [sessionsCount, pricePerSession, defaultPrice]);
+    const safePrice = Math.max(0, p);
+    if (packageGroup !== "monthly") return safePrice;
+    return Math.max(0, s) * safePrice;
+  }, [sessionsCount, pricePerSession, defaultPrice, packageGroup]);
 
   const loadBookings = async () => {
     setMsg(null);
