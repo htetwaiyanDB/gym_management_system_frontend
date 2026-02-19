@@ -19,6 +19,16 @@ function pickFirstValue(source, keys) {
   return null;
 }
 
+function pickFromObjects(sources, keys) {
+  for (const source of sources) {
+    const found = pickFirstValue(source, keys);
+    if (found !== null && found !== undefined && found !== "") {
+      return found;
+    }
+  }
+  return null;
+}
+
 function normalizeStatus(value) {
   const s = String(value || "").trim().toLowerCase();
   if (!s) return "pending";
@@ -81,12 +91,24 @@ function parseDate(value) {
 }
 
 function buildSubscriptionEntry(source, typeLabel, nameSource) {
-  const name =
+  const nestedPlanLikeObjects = [
+    source?.plan,
+    source?.package,
+    source?.membership_plan,
+    source?.class_plan,
+    source?.trainer_package,
+    source?.boxing_package,
+  ];
+  const sourceName =
     typeof nameSource === "string"
       ? nameSource
       : Array.isArray(nameSource)
-        ? pickFirstValue(source, nameSource) || "-"
-        : "-";
+        ? pickFirstValue(source, nameSource)
+        : null;
+  const name =
+    sourceName ||
+    pickFromObjects(nestedPlanLikeObjects, ["name", "title", "plan_name", "package_name"]) ||
+    "-";
   const startDate =
     source?.start_date ??
     source?.sessions_start_date ??
@@ -121,6 +143,9 @@ function buildSubscriptionEntry(source, typeLabel, nameSource) {
 
   const isOnHoldFlag = [source?.is_on_hold, source?.on_hold, source?.onHold].some((value) => toBoolean(value));
   const isExpiredFlag = [source?.is_expired, source?.expired].some((value) => toBoolean(value));
+  const startDateObj = parseDate(startDate);
+  const endDateObj = parseDate(endDate);
+  const now = new Date();
 
   // If status is explicitly active (or equivalent), or active flag is set, use active.
   let derivedStatus;
@@ -136,6 +161,15 @@ function buildSubscriptionEntry(source, typeLabel, nameSource) {
     derivedStatus = normalizedRawStatus || "pending";
   }
 
+  // Some records remain "pending" from backend while already in active date range.
+  if (derivedStatus === "pending" && startDateObj && endDateObj && startDateObj <= now && endDateObj >= now) {
+    derivedStatus = "active";
+  }
+
+  const resolvedPrice =
+    pickFirstValue(source, ["price", "total_price", "amount", "total", "fee", "subscription_price", "package_price"]) ??
+    pickFromObjects(nestedPlanLikeObjects, ["price", "amount", "total", "fee"]);
+
   return {
     id: source?.id ?? "-",
     type: typeLabel,
@@ -143,7 +177,7 @@ function buildSubscriptionEntry(source, typeLabel, nameSource) {
     status: derivedStatus ?? "pending",
     startDate,
     endDate,
-    price: source?.price ?? source?.total_price ?? null,
+    price: resolvedPrice ?? null,
   };
 }
 
