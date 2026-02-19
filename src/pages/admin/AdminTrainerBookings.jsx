@@ -896,11 +896,11 @@ export default function AdminTrainerBookings() {
                               isCompleted
                                 ? "All sessions completed"
                                 : isPending || isOnHold
-                                  ? "Mark booking as active"
-                                  : "Only pending/on-hold bookings can be activated"
+                                  ? "Resume booking"
+                                  : "Only pending/on-hold bookings can be resumed"
                             }
                           >
-                            {busyKey === `active-${b.id}` ? "..." : "Active"}
+                            {busyKey === `active-${b.id}` ? "..." : "Resume"}
                           </button>
                         )}
                         <button
