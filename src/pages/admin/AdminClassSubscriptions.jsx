@@ -42,6 +42,30 @@ function normalizeOptions(payload) {
   return { members, plans };
 }
 
+function pickDurationDays(source) {
+  const raw =
+    source?.duration_days ??
+    source?.membership_plan_duration_days ??
+    source?.plan_duration_days ??
+    source?.durationDays ??
+    source?.duration ??
+    source?.days ??
+    source?.membership_plan?.duration_days ??
+    source?.membershipPlan?.duration_days ??
+    source?.plan?.duration_days;
+
+  const num = Number(raw);
+  if (raw === null || raw === undefined || raw === "") return null;
+  if (Number.isNaN(num)) return null;
+  return num;
+}
+
+function formatDurationDays(source) {
+  const days = pickDurationDays(source);
+  if (days === null) return "-";
+  return `${days} day(s)`;
+}
+
 async function requestWithFallback(requests) {
   let latestError = null;
   for (const run of requests) {
@@ -107,13 +131,16 @@ export default function AdminClassSubscriptions() {
     const filteredClassPlans = planList.filter((plan) => isClassPlanName(plan?.name || plan?.plan_name));
 
     const normalizedPlans = filteredClassPlans.length
-      ? filteredClassPlans
+      ? filteredClassPlans.map((plan) => ({
+          ...plan,
+          duration_days: pickDurationDays(plan),
+        }))
       : [
           {
             id: "class-default",
             name: "Class",
             price: classPrice,
-            duration_days: null,
+            duration_days: 30,
           },
         ];
 
@@ -244,6 +271,7 @@ export default function AdminClassSubscriptions() {
               <th>Member Phone</th>
               <th>Plan</th>
               <th>Price</th>
+              <th>Duration</th>
               <th>Start</th>
               <th>End</th>
               <th>Status</th>
@@ -253,7 +281,7 @@ export default function AdminClassSubscriptions() {
           <tbody>
             {records.length === 0 ? (
               <tr>
-                <td colSpan="9" className="text-center text-muted py-4">{loading ? "Loading..." : "No class subscriptions found."}</td>
+                <td colSpan="10" className="text-center text-muted py-4">{loading ? "Loading..." : "No class subscriptions found."}</td>
               </tr>
             ) : (
               records.map((r) => (
@@ -263,6 +291,7 @@ export default function AdminClassSubscriptions() {
                   <td>{r.member_phone || r.user_phone || "-"}</td>
                   <td><span className="badge bg-primary">{r.class_plan_name || r.class_package_name || r.membership_plan_name || r.plan_name || "-"}</span></td>
                   <td>{moneyMMK(r.price)}</td>
+                  <td>{formatDurationDays(r)}</td>
                   <td>{r.start_date ? String(r.start_date).split("T")[0] : "-"}</td>
                   <td>{r.end_date ? String(r.end_date).split("T")[0] : "-"}</td>
                   <td><span className="badge bg-secondary text-capitalize">{r.status || "-"}</span></td>
@@ -317,7 +346,7 @@ export default function AdminClassSubscriptions() {
                   {selectedPlan && (
                     <div className="mt-3 p-3 rounded bg-dark border border-secondary-subtle">
                       <div className="fw-bold">{selectedPlan.name || selectedPlan.plan_name || "Class"}</div>
-                      <div className="text-white-50">Duration: {selectedPlan.duration_days ? `${selectedPlan.duration_days} day(s)` : "-"}</div>
+                      <div className="text-white-50">Duration: {formatDurationDays(selectedPlan)}</div>
                       <div className="text-white-50">Price: {moneyMMK(selectedPlan.price)}</div>
                     </div>
                   )}
