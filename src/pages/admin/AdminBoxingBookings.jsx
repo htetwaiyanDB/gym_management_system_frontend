@@ -188,7 +188,12 @@ export default function AdminBoxingBookings() {
   const [optionsLoading, setOptionsLoading] = useState(false);
   const [members, setMembers] = useState([]);
   const [coaches, setCoaches] = useState([]);
-  const [packageTypeOptions, setPackageTypeOptions] = useState(["personal", "monthly", "duo"]);
+  const [packageTypeOptions, setPackageTypeOptions] = useState([
+    "one to one",
+    "duo",
+    "trio",
+    "group class",
+  ]);
   const [boxingPackages, setBoxingPackages] = useState([]);
   const [packagesLoading, setPackagesLoading] = useState(false);
    const [statusOptions, setStatusOptions] = useState([
@@ -224,10 +229,17 @@ export default function AdminBoxingBookings() {
  const packageKey = (pkg) =>
     String(pkg?.id ?? pkg?.package_id ?? pkg?.packageId ?? pkg?.type ?? pkg?.name ?? "");
 
+  const PACKAGE_GROUPS = ["one to one", "duo", "trio", "group class"];
+
   const normalizePackageType = (value) => {
     const normalized = String(value || "").trim().toLowerCase();
-    if (normalized === "session" || normalized === "sessions") return "personal";
-    if (normalized === "month" || normalized === "months") return "monthly";
+    if (["one to one", "1 to 1", "one-to-one", "personal"].includes(normalized)) {
+      return "one to one";
+    }
+    if (["group class", "group", "monthly", "month", "months"].includes(normalized)) {
+      return "group class";
+    }
+    if (normalized === "session" || normalized === "sessions") return "one to one";
     return normalized;
   };
 
@@ -235,19 +247,22 @@ export default function AdminBoxingBookings() {
     const normalized = normalizePackageType(
       pkg?.package_type ?? pkg?.type ?? pkg?.packageType ?? pkg?.category
     );
-    if (["personal", "monthly", "duo"].includes(normalized)) {
+    if (PACKAGE_GROUPS.includes(normalized)) {
       return normalized;
     }
     const durationMonths = toNumber(
       pkg?.duration_months ?? pkg?.months_count ?? pkg?.month_count
     );
-    if (durationMonths !== null && durationMonths > 0) return "monthly";
+    if (durationMonths !== null && durationMonths > 0) return "group class";
     const sessions = toNumber(pkg?.sessions_count ?? pkg?.session_count);
-    if (sessions !== null && sessions > 0) return "personal";
+    if (sessions !== null && sessions > 0) return "one to one";
     const name = normalizePackageType(pkg?.name ?? pkg?.title);
     if (name.includes("duo")) return "duo";
-    if (name.includes("month")) return "monthly";
-    if (name.includes("session") || name.includes("personal")) return "personal";
+    if (name.includes("trio")) return "trio";
+    if (name.includes("group") || name.includes("month")) return "group class";
+    if (name.includes("session") || name.includes("personal") || name.includes("one to one")) {
+      return "one to one";
+    }
     return "";
   };
 
@@ -355,7 +370,7 @@ export default function AdminBoxingBookings() {
       setPackageTypeOptions(
         Array.isArray(res.data?.package_types) && res.data.package_types.length > 0
           ? res.data.package_types
-          : ["personal", "monthly", "duo"]
+          : ["one to one", "duo", "trio", "group class"]
       );
       setDefaultPrice(Number(res.data?.default_price_per_session ?? 30000));
       setStatusOptions(
@@ -591,12 +606,13 @@ export default function AdminBoxingBookings() {
 
     const packagesByType = useMemo(() => {
     if (!Array.isArray(boxingPackages)) {
-      return { personal: [], monthly: [], duo: [] };
+      return { "one to one": [], duo: [], trio: [], "group class": [] };
     }
     return {
-      personal: boxingPackages.filter((pkg) => inferPackageGroup(pkg) === "personal"),
-      monthly: boxingPackages.filter((pkg) => inferPackageGroup(pkg) === "monthly"),
+      "one to one": boxingPackages.filter((pkg) => inferPackageGroup(pkg) === "one to one"),
       duo: boxingPackages.filter((pkg) => inferPackageGroup(pkg) === "duo"),
+      trio: boxingPackages.filter((pkg) => inferPackageGroup(pkg) === "trio"),
+      "group class": boxingPackages.filter((pkg) => inferPackageGroup(pkg) === "group class"),
     };
   }, [boxingPackages]);
 
@@ -1181,21 +1197,21 @@ export default function AdminBoxingBookings() {
                     <div className="col-12">
                     <label className="form-label fw-bold">Package Type</label>
                     <div className="row g-2">
-                      <div className="col-12 col-md-4">
-                        <label className="form-label admin-muted">Personal</label>
+                      <div className="col-12 col-md-6">
+                        <label className="form-label admin-muted">One to One</label>
                         <select
                           className="form-select admin-select-dark"
-                          value={packageGroup === "personal" ? packageType : ""}
-                          onChange={handlePackageSelect("personal")}
+                          value={packageGroup === "one to one" ? packageType : ""}
+                          onChange={handlePackageSelect("one to one")}
                           disabled={optionsLoading || packagesLoading}
                         >
                            <option value="" className="fw-bold">
-                            Select personal package
+                            Select one to one package
                           </option>
                     {boxingPackages.length > 0
-                            ? renderPackageOptions(packagesByType.personal, "personal")
+                            ? renderPackageOptions(packagesByType["one to one"], "one to one")
                             : packageTypeOptions
-                              .filter((type) => normalizePackageType(type) === "personal")
+                              .filter((type) => normalizePackageType(type) === "one to one")
                               .map((type) => (
                                 <option key={type} value={type}>
                                   {type.charAt(0).toUpperCase() + type.slice(1)}
@@ -1204,30 +1220,7 @@ export default function AdminBoxingBookings() {
                         </select>
                       </div>
 
-                      <div className="col-12 col-md-4">
-                        <label className="form-label admin-muted">Monthly</label>
-                        <select
-                          className="form-select admin-select-dark"
-                          value={packageGroup === "monthly" ? packageType : ""}
-                          onChange={handlePackageSelect("monthly")}
-                          disabled={optionsLoading || packagesLoading}
-                        >
-                          <option value="" className="fw-bold">
-                            Select monthly package
-                          </option>
-                          {boxingPackages.length > 0
-                            ? renderPackageOptions(packagesByType.monthly, "monthly")
-                            : packageTypeOptions
-                              .filter((type) => normalizePackageType(type) === "monthly")
-                              .map((type) => (
-                                <option key={type} value={type}>
-                                  {type.charAt(0).toUpperCase() + type.slice(1)}
-                                </option>
-                              ))}
-                        </select>
-                      </div>
-
-                      <div className="col-12 col-md-4">
+                      <div className="col-12 col-md-6">
                         <label className="form-label admin-muted">Duo</label>
                         <select
                           className="form-select admin-select-dark"
@@ -1242,6 +1235,52 @@ export default function AdminBoxingBookings() {
                             ? renderPackageOptions(packagesByType.duo, "duo")
                             : packageTypeOptions
                               .filter((type) => normalizePackageType(type) === "duo")
+                              .map((type) => (
+                                <option key={type} value={type}>
+                                  {type.charAt(0).toUpperCase() + type.slice(1)}
+                                </option>
+                              ))}
+                        </select>
+                      </div>
+
+                      <div className="col-12 col-md-6">
+                        <label className="form-label admin-muted">Trio</label>
+                        <select
+                          className="form-select admin-select-dark"
+                          value={packageGroup === "trio" ? packageType : ""}
+                          onChange={handlePackageSelect("trio")}
+                          disabled={optionsLoading || packagesLoading}
+                        >
+                          <option value="" className="fw-bold">
+                            Select trio package
+                          </option>
+                          {boxingPackages.length > 0
+                            ? renderPackageOptions(packagesByType.trio, "trio")
+                            : packageTypeOptions
+                              .filter((type) => normalizePackageType(type) === "trio")
+                              .map((type) => (
+                                <option key={type} value={type}>
+                                  {type.charAt(0).toUpperCase() + type.slice(1)}
+                                </option>
+                              ))}
+                        </select>
+                      </div>
+
+                      <div className="col-12 col-md-6">
+                        <label className="form-label admin-muted">Group Class</label>
+                        <select
+                          className="form-select admin-select-dark"
+                          value={packageGroup === "group class" ? packageType : ""}
+                          onChange={handlePackageSelect("group class")}
+                          disabled={optionsLoading || packagesLoading}
+                        >
+                          <option value="" className="fw-bold">
+                            Select group class package
+                          </option>
+                          {boxingPackages.length > 0
+                            ? renderPackageOptions(packagesByType["group class"], "group class")
+                            : packageTypeOptions
+                              .filter((type) => normalizePackageType(type) === "group class")
                               .map((type) => (
                                 <option key={type} value={type}>
                                   {type.charAt(0).toUpperCase() + type.slice(1)}
