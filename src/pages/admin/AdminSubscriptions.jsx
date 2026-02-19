@@ -20,7 +20,17 @@ function normalizeSubscriptions(payload) {
 function isClassPlanName(name) {
   return String(name || "")
     .trim()
-    .toLowerCase() === "class";
+    .toLowerCase()
+    .includes("class");
+}
+
+function isClassPlan(plan) {
+  if (!plan) return false;
+  const type = String(plan?.type || plan?.plan_type || plan?.category || "")
+    .trim()
+    .toLowerCase();
+  if (type === "class") return true;
+  return isClassPlanName(plan?.name || plan?.plan_name || plan?.title);
 }
 
 function isClassSubscription(record) {
@@ -107,7 +117,7 @@ export default function AdminSubscriptions() {
       const res = await axiosClient.get("/subscriptions/options");
       setMembers(Array.isArray(res.data?.members) ? res.data.members : []);
       const allPlans = Array.isArray(res.data?.plans) ? res.data.plans : [];
-      setPlans(allPlans.filter((plan) => !isClassPlanName(plan?.name || plan?.plan_name)));
+      setPlans(allPlans.filter((plan) => !isClassPlan(plan)));
     } catch (e) {
       setMsg({
         type: "danger",
