@@ -345,7 +345,7 @@ export default function AdminClassSubscriptions() {
                 const isOnHold = !!r?.is_on_hold;
                 const isExpired = rawStatus.toLowerCase() === "expired" || isExpiredByDate(r?.end_date);
                 const status = isExpired ? "Expired" : rawStatus || "-";
-                const canSetActive = !isExpired && !isOnHold && rawStatus.toLowerCase() === "active";
+                const canHold = !isExpired && !isOnHold && rawStatus.toLowerCase() === "active";
                 const canResume = !isExpired && isOnHold;
 
                 return (
@@ -376,11 +376,11 @@ export default function AdminClassSubscriptions() {
                     <div className="d-flex gap-2">
                       <button
                         className="btn btn-sm btn-warning"
-                        disabled={!canSetActive || busyId === r.id}
+                        disabled={!canHold || busyId === r.id}
                         onClick={() => setRecordOnHold(r.id)}
-                        title="Set class subscription on hold"
+                        title="Place class subscription on hold"
                       >
-                        {busyId === r.id ? "..." : "Active"}
+                        {busyId === r.id ? "..." : "Hold"}
                       </button>
                       <button
                         className="btn btn-sm btn-success"
