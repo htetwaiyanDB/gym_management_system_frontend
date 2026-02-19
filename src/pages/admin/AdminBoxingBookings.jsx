@@ -276,13 +276,10 @@ export default function AdminBoxingBookings() {
   };
 
   const total = useMemo(() => {
-    const s = Number(sessionsCount);
     const p = Number(pricePerSession || defaultPrice);
-    if (Number.isNaN(s) || Number.isNaN(p)) return 0;
-    const safePrice = Math.max(0, p);
-    if (packageGroup !== "monthly") return safePrice;
-    return Math.max(0, s) * safePrice;
-  }, [sessionsCount, pricePerSession, defaultPrice, packageGroup]);
+    if (Number.isNaN(p)) return 0;
+    return Math.max(0, p);
+  }, [pricePerSession, defaultPrice]);
 
   const loadBookings = async () => {
     setMsg(null);
