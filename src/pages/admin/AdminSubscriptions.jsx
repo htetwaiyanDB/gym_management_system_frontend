@@ -17,6 +17,21 @@ function normalizeSubscriptions(payload) {
   return [];
 }
 
+function isClassPlanName(name) {
+  return String(name || "")
+    .trim()
+    .toLowerCase() === "class";
+}
+
+function isClassSubscription(record) {
+  return isClassPlanName(
+    record?.membership_plan_name ||
+      record?.plan_name ||
+      record?.class_plan_name ||
+      record?.class_package_name,
+  );
+}
+
 function parseDateOnly(value) {
   if (!value) return null;
   const s = String(value).trim();
@@ -69,7 +84,8 @@ export default function AdminSubscriptions() {
     setLoading(true);
     try {
       const res = await axiosClient.get("/subscriptions");
-      setSubs(normalizeSubscriptions(res.data));
+      const allSubscriptions = normalizeSubscriptions(res.data);
+      setSubs(allSubscriptions.filter((record) => !isClassSubscription(record)));
     } catch (e) {
       setMsg({
         type: "danger",
@@ -90,7 +106,8 @@ export default function AdminSubscriptions() {
     try {
       const res = await axiosClient.get("/subscriptions/options");
       setMembers(Array.isArray(res.data?.members) ? res.data.members : []);
-      setPlans(Array.isArray(res.data?.plans) ? res.data.plans : []);
+      const allPlans = Array.isArray(res.data?.plans) ? res.data.plans : [];
+      setPlans(allPlans.filter((plan) => !isClassPlanName(plan?.name || plan?.plan_name)));
     } catch (e) {
       setMsg({
         type: "danger",
