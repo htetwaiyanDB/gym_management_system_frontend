@@ -86,13 +86,22 @@ export default function AdminSettings() {
   }, []);
 
   const handleChange = (field) => (event) => {
-    const { value } = event.target;
+    const rawValue = event.target.value;
+    const value =
+      field === "password" || field === "passwordConfirm"
+        ? rawValue.replace(/\D/g, "").slice(0, 4)
+        : rawValue;
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     setMessage(null);
+
+    if (form.password && !/^\d{4}$/.test(form.password)) {
+      setMessage({ type: "danger", text: "Password must be exactly 4 numbers." });
+      return;
+    }
 
     if (form.password && form.password !== form.passwordConfirm) {
       setMessage({ type: "danger", text: "Passwords do not match." });
@@ -115,6 +124,7 @@ export default function AdminSettings() {
 
     if (form.password) {
       payload.password = form.password;
+      payload.password_confirmation = form.passwordConfirm;
     }
 
     setSaving(true);
@@ -237,7 +247,9 @@ export default function AdminSettings() {
               style={inputStyle}
               value={form.password}
               onChange={handleChange("password")}
-              placeholder="Enter a new password"
+              placeholder="Enter a 4-digit password"
+              inputMode="numeric"
+              maxLength={4}
               disabled={saving || loadingProfile}
             />
           </div>
@@ -251,7 +263,9 @@ export default function AdminSettings() {
               style={inputStyle}
               value={form.passwordConfirm}
               onChange={handleChange("passwordConfirm")}
-              placeholder="Confirm new password"
+              placeholder="Confirm 4-digit password"
+              inputMode="numeric"
+              maxLength={4}
               disabled={saving || loadingProfile}
             />
           </div>
