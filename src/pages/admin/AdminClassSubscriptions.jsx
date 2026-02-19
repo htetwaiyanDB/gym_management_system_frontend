@@ -109,13 +109,13 @@ export default function AdminClassSubscriptions() {
   const nav = useNavigate();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [busyId, setBusyId] = useState(null);
   const [msg, setMsg] = useState(null);
   const [records, setRecords] = useState([]);
   const [members, setMembers] = useState([]);
   const [plans, setPlans] = useState([]);
 
   const [showModal, setShowModal] = useState(false);
-  const [editing, setEditing] = useState(null);
   const [memberId, setMemberId] = useState("");
   const [planId, setPlanId] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -124,7 +124,29 @@ export default function AdminClassSubscriptions() {
     setMemberId("");
     setPlanId("");
     setStartDate("");
-    setEditing(null);
+  };
+
+  const parseDateOnly = (value) => {
+    if (!value) return null;
+    const s = String(value).trim();
+    if (!s) return null;
+    const dateOnly = s.includes("T") ? s.split("T")[0] : s.split(" ")[0];
+    const parts = dateOnly.split("-").map((part) => Number(part));
+    if (parts.length !== 3) return null;
+    const [year, month, day] = parts;
+    if (!year || !month || !day) return null;
+    const parsed = new Date(year, month - 1, day);
+    if (Number.isNaN(parsed.getTime())) return null;
+    parsed.setHours(0, 0, 0, 0);
+    return parsed;
+  };
+
+  const isExpiredByDate = (endDateValue) => {
+    const endDate = parseDateOnly(endDateValue);
+    if (!endDate) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return today > endDate;
   };
 
   const loadRecords = async () => {
@@ -165,7 +187,7 @@ export default function AdminClassSubscriptions() {
     setMembers(memberList);
     setPlans(normalizedPlans);
 
-    if (!editing && normalizedPlans.length === 1) {
+    if (normalizedPlans.length === 1) {
       setPlanId(String(normalizedPlans[0].id || ""));
     }
   };
@@ -177,19 +199,6 @@ export default function AdminClassSubscriptions() {
       await loadOptions();
     } catch (e) {
       setMsg({ type: "danger", text: e?.response?.data?.message || "Failed to load create options." });
-    }
-  };
-
-  const openEdit = async (record) => {
-    setEditing(record);
-    setMemberId(String(record?.member_id || record?.user_id || ""));
-    setPlanId(String(record?.class_plan_id || record?.class_package_id || record?.plan_id || ""));
-    setStartDate((record?.start_date || "").split("T")[0]);
-    setShowModal(true);
-    try {
-      await loadOptions();
-    } catch (e) {
-      setMsg({ type: "danger", text: e?.response?.data?.message || "Failed to load edit options." });
     }
   };
 
@@ -226,16 +235,8 @@ export default function AdminClassSubscriptions() {
     }
 
     try {
-      if (editing?.id) {
-        await requestWithFallback([
-          () => axiosClient.put(`/subscriptions/${editing.id}`, payload),
-          () => axiosClient.patch(`/subscriptions/${editing.id}`, payload),
-        ]);
-        setMsg({ type: "success", text: "Class subscription updated successfully." });
-      } else {
-        await axiosClient.post("/subscriptions", payload);
-        setMsg({ type: "success", text: "Class subscription created successfully." });
-      }
+      await axiosClient.post("/subscriptions", payload);
+      setMsg({ type: "success", text: "Class subscription created successfully." });
       closeModal();
       await loadRecords();
     } catch (e) {
@@ -245,18 +246,31 @@ export default function AdminClassSubscriptions() {
     }
   };
 
-  const deleteRecord = async (id) => {
-    if (!window.confirm("Delete this class subscription?")) return;
+  const setRecordOnHold = async (id) => {
     setMsg(null);
+    setBusyId(id);
     try {
-      await requestWithFallback([
-        () => axiosClient.delete(`/subscriptions/${id}`),
-        () => axiosClient.post(`/subscriptions/${id}/cancel`),
-      ]);
-      setMsg({ type: "success", text: "Class subscription deleted." });
+      const res = await axiosClient.post(`/subscriptions/${id}/hold`);
+      setMsg({ type: "success", text: res?.data?.message || "Class subscription placed on hold." });
       await loadRecords();
     } catch (e) {
-      setMsg({ type: "danger", text: e?.response?.data?.message || "Failed to delete class subscription." });
+      setMsg({ type: "danger", text: e?.response?.data?.message || "Failed to change class subscription status." });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const resumeRecord = async (id) => {
+    setMsg(null);
+    setBusyId(id);
+    try {
+      const res = await axiosClient.post(`/subscriptions/${id}/resume`);
+      setMsg({ type: "success", text: res?.data?.message || "Class subscription resumed." });
+      await loadRecords();
+    } catch (e) {
+      setMsg({ type: "danger", text: e?.response?.data?.message || "Failed to resume class subscription." });
+    } finally {
+      setBusyId(null);
     }
   };
 
@@ -264,12 +278,29 @@ export default function AdminClassSubscriptions() {
     loadRecords();
   }, []);
 
+  const sortedRecords = useMemo(() => {
+    const list = [...records];
+    list.sort((a, b) => {
+      const statusA = String(a?.status || "").toLowerCase();
+      const statusB = String(b?.status || "").toLowerCase();
+      const expiredA = statusA === "expired" || isExpiredByDate(a?.end_date);
+      const expiredB = statusB === "expired" || isExpiredByDate(b?.end_date);
+      const activeA = statusA === "active" && !expiredA;
+      const activeB = statusB === "active" && !expiredB;
+      const rankA = activeA ? 0 : expiredA ? 2 : 1;
+      const rankB = activeB ? 0 : expiredB ? 2 : 1;
+      if (rankA !== rankB) return rankA - rankB;
+      return (b?.id ?? 0) - (a?.id ?? 0);
+    });
+    return list;
+  }, [records]);
+
   return (
     <div className="admin-card p-4">
       <div className="d-flex align-items-center justify-content-between mb-3">
         <div>
           <h4 className="mb-1">Class Subscription Management</h4>
-          <div className="admin-muted">Track members enrolled in the class plan.</div>
+          <div className="admin-muted">Track members enrolled in the class plan and manage hold/resume status.</div>
         </div>
         <div className="d-flex gap-2">
           <button className="btn btn-outline-info" onClick={() => nav("/admin/subscriptions")}>
@@ -309,7 +340,15 @@ export default function AdminClassSubscriptions() {
                 <td colSpan="10" className="text-center text-muted py-4">{loading ? "Loading..." : "No class subscriptions found."}</td>
               </tr>
             ) : (
-              records.map((r) => (
+              sortedRecords.map((r) => {
+                const rawStatus = String(r?.status || "");
+                const isOnHold = !!r?.is_on_hold;
+                const isExpired = rawStatus.toLowerCase() === "expired" || isExpiredByDate(r?.end_date);
+                const status = isExpired ? "Expired" : rawStatus || "-";
+                const canSetActive = !isExpired && !isOnHold && rawStatus.toLowerCase() === "active";
+                const canResume = !isExpired && isOnHold;
+
+                return (
                 <tr key={r.id}>
                   <td>{r.id}</td>
                   <td>{r.member_name || r.user_name || "-"}</td>
@@ -319,15 +358,42 @@ export default function AdminClassSubscriptions() {
                   <td>{formatDurationDays(r)}</td>
                   <td>{r.start_date ? String(r.start_date).split("T")[0] : "-"}</td>
                   <td>{r.end_date ? String(r.end_date).split("T")[0] : "-"}</td>
-                  <td><span className="badge bg-secondary text-capitalize">{r.status || "-"}</span></td>
+                  <td>
+                    {status.toLowerCase() === "active" && (
+                      <span className="badge bg-success">Active</span>
+                    )}
+                    {status.toLowerCase() === "on hold" && (
+                      <span className="badge bg-warning text-dark">On Hold</span>
+                    )}
+                    {status.toLowerCase() === "expired" && (
+                      <span className="badge bg-secondary">Expired</span>
+                    )}
+                    {!['active', 'on hold', 'expired'].includes(status.toLowerCase()) && (
+                      <span className="badge bg-info text-dark">{status || '-'}</span>
+                    )}
+                  </td>
                   <td>
                     <div className="d-flex gap-2">
-                      <button className="btn btn-sm btn-warning" onClick={() => openEdit(r)}>Edit</button>
-                      <button className="btn btn-sm btn-danger" onClick={() => deleteRecord(r.id)}>Delete</button>
+                      <button
+                        className="btn btn-sm btn-warning"
+                        disabled={!canSetActive || busyId === r.id}
+                        onClick={() => setRecordOnHold(r.id)}
+                        title="Set class subscription on hold"
+                      >
+                        {busyId === r.id ? "..." : "Active"}
+                      </button>
+                      <button
+                        className="btn btn-sm btn-success"
+                        disabled={!canResume || busyId === r.id}
+                        onClick={() => resumeRecord(r.id)}
+                        title="Resume class subscription"
+                      >
+                        {busyId === r.id ? "..." : "Resume"}
+                      </button>
                     </div>
                   </td>
                 </tr>
-              ))
+              )})
             )}
           </tbody>
         </table>
@@ -339,7 +405,7 @@ export default function AdminClassSubscriptions() {
             <div className="modal-dialog modal-dialog-centered">
               <div className="modal-content bg-dark text-white">
                 <div className="modal-header">
-                  <h5 className="modal-title fw-bolder">{editing ? "Update Class Subscription" : "Create Class Subscription"}</h5>
+                  <h5 className="modal-title fw-bolder">Create Class Subscription</h5>
                   <button className="btn-close btn-close-white" onClick={closeModal} aria-label="Close"></button>
                 </div>
                 <div className="modal-body">
@@ -381,7 +447,7 @@ export default function AdminClassSubscriptions() {
                 </div>
                 <div className="modal-footer">
                   <button className="btn btn-outline-light" onClick={closeModal}>Cancel</button>
-                  <button className="btn btn-primary" onClick={save} disabled={saving}>{saving ? "Saving..." : editing ? "Update" : "Create"}</button>
+                  <button className="btn btn-primary" onClick={save} disabled={saving}>{saving ? "Saving..." : "Create"}</button>
                 </div>
               </div>
             </div>
