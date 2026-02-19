@@ -142,35 +142,25 @@ export default function AdminClassSubscriptions() {
   };
 
   const loadOptions = async () => {
-    const [optionsRes, pricingRes] = await Promise.all([
-      axiosClient.get("/subscriptions/options"),
-      axiosClient.get("/pricing"),
+    const optionsRes = await requestWithFallback([
+      () => axiosClient.get("/subscriptions/options"),
+      () => axiosClient.get("/class-subscriptions/options"),
     ]);
 
     const { members: memberList, plans: planList } = normalizeOptions(optionsRes.data);
-    const classPrice =
-      pricingRes?.data?.subscription_prices?.class_subscription_price ??
-      pricingRes?.data?.subscription_prices?.class_price ??
-      pricingRes?.data?.subscription_prices?.class_month ??
-      pricingRes?.data?.subscription_prices?.class;
 
     const filteredClassPlans = planList.filter(isClassPlan);
+    const candidatePlans = filteredClassPlans.length ? filteredClassPlans : planList;
 
-    const normalizedPlans = filteredClassPlans.length
-      ? filteredClassPlans.map((plan) => ({
-          ...plan,
-          id: planIdOf(plan),
-          name: planNameOf(plan),
-          duration_days: pickDurationDays(plan),
-        }))
-      : [
-          {
-            id: "class-default",
-            name: "Class",
-            price: classPrice,
-            duration_days: 30,
-          },
-        ];
+    const normalizedPlans = candidatePlans
+      .map((plan) => ({
+        ...plan,
+        id: planIdOf(plan),
+        name: planNameOf(plan),
+        duration_days: pickDurationDays(plan),
+      }))
+      .filter((plan) => plan.id !== null && plan.id !== undefined);
+
 
     setMembers(memberList);
     setPlans(normalizedPlans);
