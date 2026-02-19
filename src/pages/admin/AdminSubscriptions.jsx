@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import axiosClient from "../../api/axiosClient";
 
 function moneyMMK(v) {
@@ -40,6 +41,7 @@ function isExpiredByDate(endDateValue) {
 }
 
 export default function AdminSubscriptions() {
+  const nav = useNavigate();
   const [loading, setLoading] = useState(false);
   const [busyId, setBusyId] = useState(null);
   const [msg, setMsg] = useState(null);
@@ -217,6 +219,10 @@ export default function AdminSubscriptions() {
         </div>
 
         <div className="d-flex gap-2">
+          <button className="btn btn-outline-info" onClick={() => nav("/admin/subscriptions/classes")}>
+            <i className="bi bi-collection-play me-2"></i> Class Page
+          </button>
+
           <button className="btn btn-primary" onClick={openCreateModal} disabled={loading}>
             <i className="bi bi-plus-circle me-2"></i> Add New Subscription
           </button>

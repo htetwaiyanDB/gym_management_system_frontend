@@ -51,6 +51,10 @@ export default function AdminLayout() {
             <i className="bi bi-credit-card-2-front"></i> Subscriptions
           </NavLink>
 
+          <NavLink to="/admin/subscriptions/classes" className={({isActive}) => `admin-link ${isActive ? "active" : ""}`}>
+            <i className="bi bi-collection-play"></i> Class Subscriptions
+          </NavLink>
+
           <NavLink to="/admin/pricing" className={({isActive}) => `admin-link ${isActive ? "active" : ""}`}>
             <i className="bi bi-cash-coin"></i> Pricing
           </NavLink>
