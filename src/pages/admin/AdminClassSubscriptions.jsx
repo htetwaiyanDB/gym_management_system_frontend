@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import axiosClient from "../../api/axiosClient";
 
 function moneyMMK(v) {
@@ -55,6 +56,7 @@ async function requestWithFallback(requests) {
 }
 
 export default function AdminClassSubscriptions() {
+  const nav = useNavigate();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState(null);
@@ -109,7 +111,7 @@ export default function AdminClassSubscriptions() {
       : [
           {
             id: "class-default",
-            name: "Class Plan",
+            name: "Class",
             price: classPrice,
             duration_days: null,
           },
@@ -214,15 +216,19 @@ export default function AdminClassSubscriptions() {
     <div className="admin-card p-4">
       <div className="d-flex align-items-center justify-content-between mb-3">
         <div>
-          <h4 className="mb-1">Class Subscriptions</h4>
-          <div className="admin-muted">Manage class users with create, view, update, and delete flow.</div>
+          <h4 className="mb-1">Class Subscription Management</h4>
+          <div className="admin-muted">Track members enrolled in the class plan.</div>
         </div>
         <div className="d-flex gap-2">
+          <button className="btn btn-outline-info" onClick={() => nav("/admin/subscriptions")}>
+            <i className="bi bi-credit-card-2-front me-2"></i> Subscription Page
+          </button>
           <button className="btn btn-primary" onClick={openCreate}>
-            <i className="bi bi-plus-circle me-2"></i>Add Class User
+            <i className="bi bi-plus-circle me-2"></i> Add New Subscription
           </button>
           <button className="btn btn-outline-light" onClick={loadRecords} disabled={loading}>
-            <i className="bi bi-arrow-clockwise me-2"></i>{loading ? "Loading..." : "Refresh"}
+            <i className="bi bi-arrow-clockwise me-2"></i>
+            {loading ? "Loading..." : "Refresh"}
           </button>
         </div>
       </div>
@@ -235,8 +241,8 @@ export default function AdminClassSubscriptions() {
             <tr>
               <th>ID</th>
               <th>Member</th>
-              <th>Phone</th>
-              <th>Class Package</th>
+              <th>Member Phone</th>
+              <th>Plan</th>
               <th>Price</th>
               <th>Start</th>
               <th>End</th>
@@ -294,11 +300,11 @@ export default function AdminClassSubscriptions() {
                       </select>
                     </div>
                     <div className="col-md-4">
-                      <label className="form-label fw-bold">Class Package</label>
+                      <label className="form-label fw-bold">Plan</label>
                       <select className="form-select bg-dark text-white" value={planId} onChange={(e) => setPlanId(e.target.value)}>
-                        <option value="">Select class package</option>
+                        <option value="">Select plan</option>
                         {plans.map((p) => (
-                          <option key={p.id} value={p.id}>{p.name || p.plan_name || "Class Plan"}</option>
+                          <option key={p.id} value={p.id}>{p.name || p.plan_name || "Class"}</option>
                         ))}
                       </select>
                     </div>
@@ -310,7 +316,7 @@ export default function AdminClassSubscriptions() {
 
                   {selectedPlan && (
                     <div className="mt-3 p-3 rounded bg-dark border border-secondary-subtle">
-                      <div className="fw-bold">{selectedPlan.name || selectedPlan.plan_name || "Class Plan"}</div>
+                      <div className="fw-bold">{selectedPlan.name || selectedPlan.plan_name || "Class"}</div>
                       <div className="text-white-50">Duration: {selectedPlan.duration_days ? `${selectedPlan.duration_days} day(s)` : "-"}</div>
                       <div className="text-white-50">Price: {moneyMMK(selectedPlan.price)}</div>
                     </div>
