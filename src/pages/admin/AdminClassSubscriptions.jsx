@@ -30,7 +30,21 @@ function isClassPlan(plan) {
     .trim()
     .toLowerCase();
   if (type === "class") return true;
-  return isClassPlanName(plan?.name || plan?.plan_name || plan?.title);
+  return isClassPlanName(
+    plan?.name ||
+      plan?.plan_name ||
+      plan?.title ||
+      plan?.membership_plan_name ||
+      plan?.class_plan_name,
+  );
+}
+
+function planIdOf(plan) {
+  return plan?.id ?? plan?.plan_id ?? plan?.membership_plan_id ?? plan?.class_plan_id ?? plan?.class_package_id;
+}
+
+function planNameOf(plan) {
+  return plan?.name ?? plan?.plan_name ?? plan?.title ?? plan?.membership_plan_name ?? plan?.class_plan_name;
 }
 
 function isClassSubscription(record) {
@@ -46,7 +60,9 @@ function normalizeOptions(payload) {
   const members = Array.isArray(payload?.members) ? payload.members : [];
   const plans =
     (Array.isArray(payload?.class_plans) && payload.class_plans) ||
+    (Array.isArray(payload?.membership_plans) && payload.membership_plans) ||
     (Array.isArray(payload?.plans) && payload.plans) ||
+    (Array.isArray(payload?.class_packages) && payload.class_packages) ||
     (Array.isArray(payload?.packages) && payload.packages) ||
     [];
   return { members, plans };
@@ -143,6 +159,8 @@ export default function AdminClassSubscriptions() {
     const normalizedPlans = filteredClassPlans.length
       ? filteredClassPlans.map((plan) => ({
           ...plan,
+          id: planIdOf(plan),
+          name: planNameOf(plan),
           duration_days: pickDurationDays(plan),
         }))
       : [
@@ -190,7 +208,7 @@ export default function AdminClassSubscriptions() {
     resetForm();
   };
 
-  const selectedPlan = useMemo(() => plans.find((p) => String(p.id) === String(planId)) || null, [plans, planId]);
+  const selectedPlan = useMemo(() => plans.find((p) => String(planIdOf(p)) === String(planId)) || null, [plans, planId]);
 
   const save = async () => {
     if (!memberId) return setMsg({ type: "danger", text: "Please select a member." });
@@ -349,9 +367,12 @@ export default function AdminClassSubscriptions() {
                       <label className="form-label fw-bold">Plan</label>
                       <select className="form-select bg-dark text-white" value={planId} onChange={(e) => setPlanId(e.target.value)}>
                         <option value="">Select plan</option>
-                        {plans.map((p) => (
-                          <option key={p.id} value={p.id}>{p.name || p.plan_name || "Class"}</option>
-                        ))}
+                        {plans.map((p) => {
+                          const id = planIdOf(p);
+                          return (
+                            <option key={String(id)} value={String(id || "")}>{planNameOf(p) || "Class"}</option>
+                          );
+                        })}
                       </select>
                     </div>
                     <div className="col-md-4">
