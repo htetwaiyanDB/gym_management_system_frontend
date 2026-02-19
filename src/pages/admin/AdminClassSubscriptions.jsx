@@ -1,0 +1,322 @@
+import React, { useEffect, useMemo, useState } from "react";
+import axiosClient from "../../api/axiosClient";
+
+function moneyMMK(v) {
+  if (v === null || v === undefined || v === "") return "-";
+  const n = Number(v);
+  if (Number.isNaN(n)) return String(v);
+  return n.toLocaleString("en-US") + " MMK";
+}
+
+function normalizeList(payload) {
+  if (Array.isArray(payload?.class_subscriptions)) return payload.class_subscriptions;
+  if (Array.isArray(payload?.subscriptions)) return payload.subscriptions;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload)) return payload;
+  return [];
+}
+
+function normalizeOptions(payload) {
+  const members = Array.isArray(payload?.members) ? payload.members : [];
+  const plans =
+    (Array.isArray(payload?.class_plans) && payload.class_plans) ||
+    (Array.isArray(payload?.plans) && payload.plans) ||
+    (Array.isArray(payload?.packages) && payload.packages) ||
+    [];
+  return { members, plans };
+}
+
+async function requestWithFallback(requests) {
+  let latestError = null;
+  for (const run of requests) {
+    try {
+      return await run();
+    } catch (error) {
+      latestError = error;
+      if (error?.response?.status !== 404) throw error;
+    }
+  }
+  throw latestError || new Error("Request failed.");
+}
+
+export default function AdminClassSubscriptions() {
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState(null);
+  const [records, setRecords] = useState([]);
+  const [members, setMembers] = useState([]);
+  const [plans, setPlans] = useState([]);
+
+  const [showModal, setShowModal] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [memberId, setMemberId] = useState("");
+  const [planId, setPlanId] = useState("");
+  const [startDate, setStartDate] = useState("");
+
+  const resetForm = () => {
+    setMemberId("");
+    setPlanId("");
+    setStartDate("");
+    setEditing(null);
+  };
+
+  const loadRecords = async () => {
+    setLoading(true);
+    setMsg(null);
+    try {
+      const res = await requestWithFallback([
+        () => axiosClient.get("/class-subscriptions"),
+        () => axiosClient.get("/class-subscription"),
+      ]);
+      setRecords(normalizeList(res.data));
+    } catch (e) {
+      setMsg({ type: "danger", text: e?.response?.data?.message || "Failed to load class subscriptions." });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadOptions = async () => {
+    const [optionsRes, pricingRes] = await Promise.all([
+      requestWithFallback([
+        () => axiosClient.get("/class-subscriptions/options"),
+        () => axiosClient.get("/class-subscription/options"),
+        () => axiosClient.get("/subscriptions/options"),
+      ]),
+      axiosClient.get("/pricing"),
+    ]);
+
+    const { members: memberList, plans: planList } = normalizeOptions(optionsRes.data);
+    const classPrice =
+      pricingRes?.data?.subscription_prices?.class_subscription_price ??
+      pricingRes?.data?.subscription_prices?.class_price ??
+      pricingRes?.data?.subscription_prices?.class_month ??
+      pricingRes?.data?.subscription_prices?.class;
+
+    const normalizedPlans = planList.length
+      ? planList
+      : [
+          {
+            id: "class-default",
+            name: "Class Plan",
+            price: classPrice,
+            duration_days: null,
+          },
+        ];
+
+    setMembers(memberList);
+    setPlans(normalizedPlans);
+  };
+
+  const openCreate = async () => {
+    resetForm();
+    setShowModal(true);
+    try {
+      await loadOptions();
+    } catch (e) {
+      setMsg({ type: "danger", text: e?.response?.data?.message || "Failed to load create options." });
+    }
+  };
+
+  const openEdit = async (record) => {
+    setEditing(record);
+    setMemberId(String(record?.member_id || record?.user_id || ""));
+    setPlanId(String(record?.class_plan_id || record?.class_package_id || record?.plan_id || ""));
+    setStartDate((record?.start_date || "").split("T")[0]);
+    setShowModal(true);
+    try {
+      await loadOptions();
+    } catch (e) {
+      setMsg({ type: "danger", text: e?.response?.data?.message || "Failed to load edit options." });
+    }
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    resetForm();
+  };
+
+  const selectedPlan = useMemo(() => plans.find((p) => String(p.id) === String(planId)) || null, [plans, planId]);
+
+  const save = async () => {
+    if (!memberId) return setMsg({ type: "danger", text: "Please select a member." });
+    if (!planId) return setMsg({ type: "danger", text: "Please select a class package." });
+
+    setSaving(true);
+    setMsg(null);
+
+    const payload = {
+      member_id: Number(memberId),
+      class_plan_id: Number.isNaN(Number(planId)) ? undefined : Number(planId),
+      class_package_id: Number.isNaN(Number(planId)) ? undefined : Number(planId),
+      plan_id: Number.isNaN(Number(planId)) ? undefined : Number(planId),
+    };
+
+    if (startDate) payload.start_date = startDate;
+    if (selectedPlan?.price !== undefined && selectedPlan?.price !== null) {
+      payload.price = Number(selectedPlan.price);
+    }
+
+    Object.keys(payload).forEach((key) => payload[key] === undefined && delete payload[key]);
+
+    try {
+      if (editing?.id) {
+        await requestWithFallback([
+          () => axiosClient.put(`/class-subscriptions/${editing.id}`, payload),
+          () => axiosClient.put(`/class-subscription/${editing.id}`, payload),
+        ]);
+        setMsg({ type: "success", text: "Class subscription updated successfully." });
+      } else {
+        await requestWithFallback([
+          () => axiosClient.post("/class-subscriptions", payload),
+          () => axiosClient.post("/class-subscription", payload),
+        ]);
+        setMsg({ type: "success", text: "Class subscription created successfully." });
+      }
+      closeModal();
+      await loadRecords();
+    } catch (e) {
+      setMsg({ type: "danger", text: e?.response?.data?.message || "Failed to save class subscription." });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteRecord = async (id) => {
+    if (!window.confirm("Delete this class subscription?")) return;
+    setMsg(null);
+    try {
+      await requestWithFallback([
+        () => axiosClient.delete(`/class-subscriptions/${id}`),
+        () => axiosClient.delete(`/class-subscription/${id}`),
+      ]);
+      setMsg({ type: "success", text: "Class subscription deleted." });
+      await loadRecords();
+    } catch (e) {
+      setMsg({ type: "danger", text: e?.response?.data?.message || "Failed to delete class subscription." });
+    }
+  };
+
+  useEffect(() => {
+    loadRecords();
+  }, []);
+
+  return (
+    <div className="admin-card p-4">
+      <div className="d-flex align-items-center justify-content-between mb-3">
+        <div>
+          <h4 className="mb-1">Class Subscriptions</h4>
+          <div className="admin-muted">Manage class users with create, view, update, and delete flow.</div>
+        </div>
+        <div className="d-flex gap-2">
+          <button className="btn btn-primary" onClick={openCreate}>
+            <i className="bi bi-plus-circle me-2"></i>Add Class User
+          </button>
+          <button className="btn btn-outline-light" onClick={loadRecords} disabled={loading}>
+            <i className="bi bi-arrow-clockwise me-2"></i>{loading ? "Loading..." : "Refresh"}
+          </button>
+        </div>
+      </div>
+
+      {msg && <div className={`alert alert-${msg.type}`}>{msg.text}</div>}
+
+      <div className="table-responsive">
+        <table className="table table-dark table-hover align-middle mb-0">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Member</th>
+              <th>Phone</th>
+              <th>Class Package</th>
+              <th>Price</th>
+              <th>Start</th>
+              <th>End</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {records.length === 0 ? (
+              <tr>
+                <td colSpan="9" className="text-center text-muted py-4">{loading ? "Loading..." : "No class subscriptions found."}</td>
+              </tr>
+            ) : (
+              records.map((r) => (
+                <tr key={r.id}>
+                  <td>{r.id}</td>
+                  <td>{r.member_name || r.user_name || "-"}</td>
+                  <td>{r.member_phone || r.user_phone || "-"}</td>
+                  <td><span className="badge bg-primary">{r.class_plan_name || r.class_package_name || r.plan_name || "-"}</span></td>
+                  <td>{moneyMMK(r.price)}</td>
+                  <td>{r.start_date ? String(r.start_date).split("T")[0] : "-"}</td>
+                  <td>{r.end_date ? String(r.end_date).split("T")[0] : "-"}</td>
+                  <td><span className="badge bg-secondary text-capitalize">{r.status || "-"}</span></td>
+                  <td>
+                    <div className="d-flex gap-2">
+                      <button className="btn btn-sm btn-warning" onClick={() => openEdit(r)}>Edit</button>
+                      <button className="btn btn-sm btn-danger" onClick={() => deleteRecord(r.id)}>Delete</button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {showModal && (
+        <>
+          <div className="modal fade show d-block" tabIndex="-1">
+            <div className="modal-dialog modal-dialog-centered">
+              <div className="modal-content bg-dark text-white">
+                <div className="modal-header">
+                  <h5 className="modal-title fw-bolder">{editing ? "Update Class Subscription" : "Create Class Subscription"}</h5>
+                  <button className="btn-close btn-close-white" onClick={closeModal} aria-label="Close"></button>
+                </div>
+                <div className="modal-body">
+                  <div className="row g-3">
+                    <div className="col-md-4">
+                      <label className="form-label fw-bold">Member</label>
+                      <select className="form-select bg-dark text-white" value={memberId} onChange={(e) => setMemberId(e.target.value)}>
+                        <option value="">Select member</option>
+                        {members.map((m) => (
+                          <option key={m.id} value={m.id}>{m.name} {m.phone ? `- ${m.phone}` : ""}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label fw-bold">Class Package</label>
+                      <select className="form-select bg-dark text-white" value={planId} onChange={(e) => setPlanId(e.target.value)}>
+                        <option value="">Select class package</option>
+                        {plans.map((p) => (
+                          <option key={p.id} value={p.id}>{p.name || p.plan_name || "Class Plan"}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label fw-bold">Start Date</label>
+                      <input type="date" className="form-control bg-dark text-white" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                    </div>
+                  </div>
+
+                  {selectedPlan && (
+                    <div className="mt-3 p-3 rounded bg-dark border border-secondary-subtle">
+                      <div className="fw-bold">{selectedPlan.name || selectedPlan.plan_name || "Class Plan"}</div>
+                      <div className="text-white-50">Duration: {selectedPlan.duration_days ? `${selectedPlan.duration_days} day(s)` : "-"}</div>
+                      <div className="text-white-50">Price: {moneyMMK(selectedPlan.price)}</div>
+                    </div>
+                  )}
+                </div>
+                <div className="modal-footer">
+                  <button className="btn btn-outline-light" onClick={closeModal}>Cancel</button>
+                  <button className="btn btn-primary" onClick={save} disabled={saving}>{saving ? "Saving..." : editing ? "Update" : "Create"}</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="modal-backdrop fade show"></div>
+        </>
+      )}
+    </div>
+  );
+}

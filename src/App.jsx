@@ -10,6 +10,7 @@ const AdminLayout = lazy(() => import("./layouts/AdminLayout"));
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
 const AdminUsers = lazy(() => import("./pages/admin/AdminUsers"));
 const AdminSubscriptions = lazy(() => import("./pages/admin/AdminSubscriptions"));
+const AdminClassSubscriptions = lazy(() => import("./pages/admin/AdminClassSubscriptions"));
 const AdminPricing = lazy(() => import("./pages/admin/AdminPricing"));
 const AdminTrainerBookings = lazy(() =>import("./pages/admin/AdminTrainerBookings"));
 const AdminBoxingBookings = lazy(() =>import("./pages/admin/AdminBoxingBookings"));
@@ -107,6 +108,7 @@ export default function App() {
           <Route path="users/:id/history" element={<AdminUserHistory />} />
           <Route path="trainers/:id/history" element={<AdminUserHistory />} />
           <Route path="subscriptions" element={<AdminSubscriptions />} />
+          <Route path="subscriptions/classes" element={<AdminClassSubscriptions />} />
           <Route path="pricing" element={<AdminPricing />} />
           <Route path="trainer-bookings" element={<AdminTrainerBookings />} />
           <Route path="boxing-bookings" element={<AdminBoxingBookings />} />
