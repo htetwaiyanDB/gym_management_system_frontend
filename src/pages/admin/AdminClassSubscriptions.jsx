@@ -16,6 +16,21 @@ function normalizeList(payload) {
   return [];
 }
 
+function isClassPlanName(name) {
+  return String(name || "")
+    .trim()
+    .toLowerCase() === "class";
+}
+
+function isClassSubscription(record) {
+  return isClassPlanName(
+    record?.membership_plan_name ||
+      record?.plan_name ||
+      record?.class_plan_name ||
+      record?.class_package_name,
+  );
+}
+
 function normalizeOptions(payload) {
   const members = Array.isArray(payload?.members) ? payload.members : [];
   const plans =
@@ -64,11 +79,9 @@ export default function AdminClassSubscriptions() {
     setLoading(true);
     setMsg(null);
     try {
-      const res = await requestWithFallback([
-        () => axiosClient.get("/class-subscriptions"),
-        () => axiosClient.get("/class-subscription"),
-      ]);
-      setRecords(normalizeList(res.data));
+      const res = await axiosClient.get("/subscriptions");
+      const classRecords = normalizeList(res.data).filter(isClassSubscription);
+      setRecords(classRecords);
     } catch (e) {
       setMsg({ type: "danger", text: e?.response?.data?.message || "Failed to load class subscriptions." });
     } finally {
@@ -78,11 +91,7 @@ export default function AdminClassSubscriptions() {
 
   const loadOptions = async () => {
     const [optionsRes, pricingRes] = await Promise.all([
-      requestWithFallback([
-        () => axiosClient.get("/class-subscriptions/options"),
-        () => axiosClient.get("/class-subscription/options"),
-        () => axiosClient.get("/subscriptions/options"),
-      ]),
+      axiosClient.get("/subscriptions/options"),
       axiosClient.get("/pricing"),
     ]);
 
@@ -93,8 +102,10 @@ export default function AdminClassSubscriptions() {
       pricingRes?.data?.subscription_prices?.class_month ??
       pricingRes?.data?.subscription_prices?.class;
 
-    const normalizedPlans = planList.length
-      ? planList
+    const filteredClassPlans = planList.filter((plan) => isClassPlanName(plan?.name || plan?.plan_name));
+
+    const normalizedPlans = filteredClassPlans.length
+      ? filteredClassPlans
       : [
           {
             id: "class-default",
@@ -147,6 +158,7 @@ export default function AdminClassSubscriptions() {
 
     const payload = {
       member_id: Number(memberId),
+      membership_plan_id: Number.isNaN(Number(planId)) ? undefined : Number(planId),
       class_plan_id: Number.isNaN(Number(planId)) ? undefined : Number(planId),
       class_package_id: Number.isNaN(Number(planId)) ? undefined : Number(planId),
       plan_id: Number.isNaN(Number(planId)) ? undefined : Number(planId),
@@ -162,15 +174,12 @@ export default function AdminClassSubscriptions() {
     try {
       if (editing?.id) {
         await requestWithFallback([
-          () => axiosClient.put(`/class-subscriptions/${editing.id}`, payload),
-          () => axiosClient.put(`/class-subscription/${editing.id}`, payload),
+          () => axiosClient.put(`/subscriptions/${editing.id}`, payload),
+          () => axiosClient.patch(`/subscriptions/${editing.id}`, payload),
         ]);
         setMsg({ type: "success", text: "Class subscription updated successfully." });
       } else {
-        await requestWithFallback([
-          () => axiosClient.post("/class-subscriptions", payload),
-          () => axiosClient.post("/class-subscription", payload),
-        ]);
+        await axiosClient.post("/subscriptions", payload);
         setMsg({ type: "success", text: "Class subscription created successfully." });
       }
       closeModal();
@@ -187,8 +196,8 @@ export default function AdminClassSubscriptions() {
     setMsg(null);
     try {
       await requestWithFallback([
-        () => axiosClient.delete(`/class-subscriptions/${id}`),
-        () => axiosClient.delete(`/class-subscription/${id}`),
+        () => axiosClient.delete(`/subscriptions/${id}`),
+        () => axiosClient.post(`/subscriptions/${id}/cancel`),
       ]);
       setMsg({ type: "success", text: "Class subscription deleted." });
       await loadRecords();
@@ -246,7 +255,7 @@ export default function AdminClassSubscriptions() {
                   <td>{r.id}</td>
                   <td>{r.member_name || r.user_name || "-"}</td>
                   <td>{r.member_phone || r.user_phone || "-"}</td>
-                  <td><span className="badge bg-primary">{r.class_plan_name || r.class_package_name || r.plan_name || "-"}</span></td>
+                  <td><span className="badge bg-primary">{r.class_plan_name || r.class_package_name || r.membership_plan_name || r.plan_name || "-"}</span></td>
                   <td>{moneyMMK(r.price)}</td>
                   <td>{r.start_date ? String(r.start_date).split("T")[0] : "-"}</td>
                   <td>{r.end_date ? String(r.end_date).split("T")[0] : "-"}</td>
