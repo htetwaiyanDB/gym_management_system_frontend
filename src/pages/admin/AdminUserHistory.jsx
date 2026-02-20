@@ -29,6 +29,20 @@ function pickFromObjects(sources, keys) {
   return null;
 }
 
+function pickNameFromSources(sources, keys) {
+  for (const source of sources) {
+    if (typeof source === "string" || typeof source === "number") {
+      if (String(source).trim() !== "") return source;
+      continue;
+    }
+    const found = pickFirstValue(source, keys);
+    if (found !== null && found !== undefined && found !== "") {
+      return found;
+    }
+  }
+  return null;
+}
+
 function normalizeStatus(value) {
   const s = String(value || "").trim().toLowerCase();
   if (!s) return "pending";
@@ -94,10 +108,16 @@ function buildSubscriptionEntry(source, typeLabel, nameSource) {
   const nestedPlanLikeObjects = [
     source?.plan,
     source?.package,
+    source?.plan_details,
+    source?.package_details,
     source?.membership_plan,
+    source?.membershipPlan,
     source?.class_plan,
+    source?.classPlan,
     source?.trainer_package,
+    source?.trainerPackage,
     source?.boxing_package,
+    source?.boxingPackage,
   ];
   const sourceName =
     typeof nameSource === "string"
@@ -107,7 +127,27 @@ function buildSubscriptionEntry(source, typeLabel, nameSource) {
         : null;
   const name =
     sourceName ||
-    pickFromObjects(nestedPlanLikeObjects, ["name", "title", "plan_name", "package_name"]) ||
+    pickFirstValue(source, [
+      "plan_name",
+      "package_name",
+      "membership_plan_name",
+      "class_plan_name",
+      "trainer_package_name",
+      "boxing_package_name",
+      "plan_title",
+      "package_title",
+      "subscription_name",
+      "name",
+      "title",
+    ]) ||
+    pickNameFromSources(nestedPlanLikeObjects, [
+      "name",
+      "title",
+      "plan_name",
+      "package_name",
+      "plan_title",
+      "package_title",
+    ]) ||
     "-";
   const startDate =
     source?.start_date ??
