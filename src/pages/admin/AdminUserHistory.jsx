@@ -225,6 +225,20 @@ function buildSubscriptionEntry(source, typeLabel, nameSource) {
   };
 }
 
+function buildBookingEntry(source, typeLabel) {
+  const packageType =
+    pickFirstValue(source, ["package_type", "type", "package_group", "package_category"]) ??
+    pickFromObjects([source?.trainer_package, source?.boxing_package, source?.package], [
+      "package_type",
+      "type",
+      "package_group",
+      "package_category",
+    ]) ??
+    "-";
+
+  return buildSubscriptionEntry(source, typeLabel, packageType);
+}
+
 function groupSubscriptions(entries) {
   const grouped = {
     active: [],
@@ -375,26 +389,10 @@ export default function AdminUserHistory() {
             buildSubscriptionEntry(item, "Subscription", ["plan_name", "package_name", "name"]),
           ),
           ...trainerBookings.map((item) =>
-            buildSubscriptionEntry(
-              item,
-              "Trainer Package",
-              item?.package_name ||
-                item?.package_type_name ||
-                item?.package_type ||
-                item?.trainer_package?.name ||
-                item?.name,
-            ),
+            buildBookingEntry(item, "Trainer Package"),
           ),
           ...boxingBookings.map((item) =>
-            buildSubscriptionEntry(
-              item,
-              "Boxing Package",
-              item?.package_name ||
-                item?.package_type_name ||
-                item?.package_type ||
-                item?.boxing_package?.name ||
-                item?.name,
-            ),
+            buildBookingEntry(item, "Boxing Package"),
           ),
         ];
         setRecords({
