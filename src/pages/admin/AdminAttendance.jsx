@@ -7,6 +7,7 @@ import {
   scanMemberCardAttendance,
   setAttendanceScanControlStatus,
 } from "../../api/attendanceApi";
+import RfidInputListener from "../../components/RfidInputListener";
 import { isCardNotRegisteredError, normalizeCardId } from "../../utils/rfid";
 
 function parseBackendDateTime(s) {
@@ -455,7 +456,7 @@ export default function AdminAttendance() {
   }, [records]);
 
   const handleScanSubmit = async (rawValue) => {
-    if (!scannerActive || scanLoading || scanResult) return;
+    if (!scannerActive || scanLoading) return;
     const cardId = normalizeCardId(rawValue);
     if (!cardId) {
       setScanError("Please scan a valid member card.");
@@ -476,7 +477,8 @@ export default function AdminAttendance() {
         message: message || "Scan recorded successfully.",
       });
       await Promise.all([loadRecords(false), loadCheckedIn(false), loadActiveCheckins(false), loadMemberCount(false)]);
-      setScanValue(cardId);
+      setScanValue("");
+      setTimeout(() => scanInputRef.current?.focus(), 0);
     } catch (e) {
       const message = e?.response?.data?.message || "Unable to scan member card.";
       if (isCardNotRegisteredError(message)) {
@@ -534,16 +536,21 @@ export default function AdminAttendance() {
         </div>
       </div>
 
-      {!scanResult && (
-        <div className="mb-4" style={{ ...cardGlass, borderRadius: 16, padding: 18 }}>
+      <RfidInputListener
+        active={scannerActive && !scanLoading}
+        onScan={(value) => {
+          setScanValue(value);
+          handleScanSubmit(value);
+        }}
+      />
+
+      <div className="mb-4" style={{ ...cardGlass, borderRadius: 16, padding: 18 }}>
           <div className="d-flex align-items-start justify-content-between mb-2">
             <div>
               <div style={{ fontWeight: 700, fontSize: 16, color: "rgba(255,255,255,0.95)" }}>
                 Member Card Scan
               </div>
-              <div style={{ fontSize: 13, ...mutedText }}>
-                Admin can start/stop scanner control for member attendance.
-              </div>
+              <div style={{ fontSize: 13, ...mutedText }}>Admin can start/stop scanner control for member attendance.</div>
             </div>
             <span className={`badge ${scanLoading ? "bg-warning text-dark" : "bg-success"}`}>
               {scanControlSyncing ? "Syncing..." : scanLoading ? "Scanning..." : scannerActive ? "Scanner ON" : "Scanner OFF"}
@@ -626,7 +633,6 @@ export default function AdminAttendance() {
             </div>
           )}
         </div>
-      )}
 
       {scanResult && (
         <div className="mb-4" style={{ ...cardGlass, borderRadius: 16, padding: 18 }}>
@@ -635,7 +641,7 @@ export default function AdminAttendance() {
               <div style={{ fontWeight: 700, fontSize: 16, color: "rgba(255,255,255,0.95)" }}>
                 Latest Scan Result
               </div>
-              <div style={{ fontSize: 13, ...mutedText }}>Scan panel locked to prevent duplicates.</div>
+              <div style={{ fontSize: 13, ...mutedText }}>Scanner stays active and records each valid member card scan.</div>
             </div>
             <span className="badge bg-success">Success</span>
           </div>
