@@ -325,7 +325,7 @@ export default function AdminBlogs() {
                   <div className="mb-3">
                     <label className="form-label fw-bold">Title</label>
                     <input
-                      className="form-control"
+                      className="form-control text-white"
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
                       required
