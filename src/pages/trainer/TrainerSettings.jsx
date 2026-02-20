@@ -87,7 +87,11 @@ export default function TrainerSettings() {
   }, []);
 
   const handleChange = (field) => (event) => {
-    const { value } = event.target;
+    const rawValue = event.target.value;
+    const value =
+      field === "password" || field === "passwordConfirm"
+        ? rawValue.replace(/\D/g, "").slice(0, 4)
+        : rawValue;
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -95,8 +99,8 @@ export default function TrainerSettings() {
     event.preventDefault();
     setMessage(null);
 
-    if (form.password && form.password.length < 4) {
-      setMessage({ type: "danger", text: "Password must be at least 4 characters." });
+    if (form.password && !/^\d{4}$/.test(form.password)) {
+      setMessage({ type: "danger", text: "Password must be exactly 4 numbers." });
       return;
     }
 
@@ -121,6 +125,7 @@ export default function TrainerSettings() {
 
     if (form.password) {
       payload.password = form.password;
+      payload.password_confirmation = form.passwordConfirm;
     }
 
     setSaving(true);
@@ -243,7 +248,9 @@ export default function TrainerSettings() {
               style={inputStyle}
               value={form.password}
               onChange={handleChange("password")}
-              placeholder="Enter a new password"
+              placeholder="Enter a 4-digit password"
+              inputMode="numeric"
+              maxLength={4}
               disabled={saving || loadingProfile}
             />
           </div>
@@ -257,7 +264,9 @@ export default function TrainerSettings() {
               style={inputStyle}
               value={form.passwordConfirm}
               onChange={handleChange("passwordConfirm")}
-              placeholder="Confirm new password"
+              placeholder="Confirm 4-digit password"
+              inputMode="numeric"
+              maxLength={4}
               disabled={saving || loadingProfile}
             />
           </div>
