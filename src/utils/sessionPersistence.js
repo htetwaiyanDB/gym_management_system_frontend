@@ -55,27 +55,50 @@ function safeStorageRemove(storage, key) {
 }
 
 export function getStoredToken() {
+  // Prioritize localStorage as it persists better across app restarts in mobile environments
   const local = safeStorageGet(localStorage, TOKEN_KEY);
   if (local) return local;
 
-  const session = safeStorageGet(sessionStorage, TOKEN_KEY);
-  if (session) return session;
+  // Fall back to cookie storage
+  const cookie = readCookie(TOKEN_KEY);
+  if (cookie) return cookie;
 
-  return readCookie(TOKEN_KEY);
+  // Finally fall back to sessionStorage
+  return safeStorageGet(sessionStorage, TOKEN_KEY);
 }
 
 export function getStoredUser() {
-  const raw =
-    safeStorageGet(localStorage, USER_KEY) ||
-    safeStorageGet(sessionStorage, USER_KEY) ||
-    readCookie(USER_KEY);
-
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return null;
+  // Prioritize localStorage as it persists better across app restarts in mobile environments
+  const local = safeStorageGet(localStorage, USER_KEY);
+  if (local) {
+    try {
+      return JSON.parse(local);
+    } catch {
+      // If parsing fails, continue to other storage methods
+    }
   }
+
+  // Fall back to cookie storage
+  const cookie = readCookie(USER_KEY);
+  if (cookie) {
+    try {
+      return JSON.parse(cookie);
+    } catch {
+      // If parsing fails, continue to other storage methods
+    }
+  }
+
+  // Finally fall back to sessionStorage
+  const session = safeStorageGet(sessionStorage, USER_KEY);
+  if (session) {
+    try {
+      return JSON.parse(session);
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
 }
 
 export function persistSession(token, user) {
@@ -83,17 +106,24 @@ export function persistSession(token, user) {
   const userPayload = JSON.stringify(user || null);
 
   if (safeToken) {
+    // Primary storage in localStorage for better persistence in mobile environments
     safeStorageSet(localStorage, TOKEN_KEY, safeToken);
+    
+    // Also store in sessionStorage and cookies as fallbacks
     safeStorageSet(sessionStorage, TOKEN_KEY, safeToken);
     writeCookie(TOKEN_KEY, safeToken);
   }
 
+  // Primary storage in localStorage for better persistence in mobile environments
   safeStorageSet(localStorage, USER_KEY, userPayload);
+  
+  // Also store in sessionStorage and cookies as fallbacks
   safeStorageSet(sessionStorage, USER_KEY, userPayload);
   writeCookie(USER_KEY, userPayload);
 }
 
 export function clearPersistedSession() {
+  // Clear all storage methods to ensure complete logout
   safeStorageRemove(localStorage, TOKEN_KEY);
   safeStorageRemove(sessionStorage, TOKEN_KEY);
   safeStorageRemove(localStorage, USER_KEY);

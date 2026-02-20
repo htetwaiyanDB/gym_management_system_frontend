@@ -16,12 +16,22 @@ export function AuthProvider({ children }) {
   const [hydrating, setHydrating] = useState(true);
 
   const saveSession = (token, userObj) => {
-    persistSession(token, userObj);
-    setUser(userObj);
+    try {
+      persistSession(token, userObj);
+      setUser(userObj);
+    } catch (error) {
+      console.error('Error saving session:', error);
+      // Fallback to in-memory storage if persistent storage fails
+      setUser(userObj);
+    }
   };
 
   const clearSession = () => {
-    clearPersistedSession();
+    try {
+      clearPersistedSession();
+    } catch (error) {
+      console.error('Error clearing session:', error);
+    }
     setUser(null);
   };
 
@@ -59,10 +69,38 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    const onVisibility = () => {
+    const onVisibility = async () => {
       if (document.visibilityState === "visible") {
-        const stored = getStoredUser();
-        if (stored) setUser(stored);
+        const token = getStoredToken();
+        const storedUser = getStoredUser();
+        
+        if (token && storedUser) {
+          // Try to re-validate the session when app comes back to foreground
+          try {
+            const me = await meApi();
+            const resolvedUser = me?.data?.user ?? storedUser;
+            if (resolvedUser) {
+              saveSession(token, resolvedUser);
+              setUser(resolvedUser);
+            }
+          } catch {
+            // If API fails, at least restore from stored values
+            saveSession(token, storedUser);
+            setUser(storedUser);
+          }
+        } else if (token && !storedUser) {
+          // If we have a token but no user data, try to fetch user data
+          try {
+            const me = await meApi();
+            if (me?.data?.user) {
+              saveSession(token, me.data.user);
+              setUser(me.data.user);
+            }
+          } catch {
+            // Token might be invalid, clear session
+            clearSession();
+          }
+        }
       }
     };
     document.addEventListener("visibilitychange", onVisibility);

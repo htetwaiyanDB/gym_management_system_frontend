@@ -28,6 +28,12 @@ body {
   place-items: center;
   min-width: 320px;
   min-height: 100vh;
+  /* Allow body to receive focus for keyboard events in mobile environments */
+  outline: none;
+}
+
+body:focus {
+  outline: none;
 }
 
 h1 {
