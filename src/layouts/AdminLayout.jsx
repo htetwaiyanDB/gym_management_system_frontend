@@ -2,6 +2,7 @@ import React from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { logoutApi } from "../api/authApi";
 import { clearRequestCache } from "../api/axiosClient";
+import { clearAuthSession } from "../utils/authSession";
 import "./AdminLayout.css";
 
 export default function AdminLayout() {
@@ -9,10 +10,7 @@ export default function AdminLayout() {
 
   const logout = async () => {
     try { await logoutApi(); } catch {}
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    sessionStorage.removeItem("token");
-    sessionStorage.removeItem("user");
+    clearAuthSession();
     clearRequestCache();
     nav("/login");
   };

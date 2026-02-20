@@ -1,4 +1,5 @@
 import axios from "axios";
+import { clearAuthSession, getPersistedToken, hydrateAuthSession } from "../utils/authSession";
 
 // ✅ Always point to API base (include /api)
 const API_BASE_URL =
@@ -18,7 +19,7 @@ const axiosClient = axios.create({
 });
 
 function getToken() {
-  return localStorage.getItem("token") || sessionStorage.getItem("token");
+  return getPersistedToken();
 }
 
 export function clearRequestCache() {
@@ -26,15 +27,12 @@ export function clearRequestCache() {
 }
 
 function clearAuth() {
-  // ✅ clear the same key you actually use
-  localStorage.removeItem("token");
-  sessionStorage.removeItem("token");
-  localStorage.removeItem("user");
-  sessionStorage.removeItem("user");
+  clearAuthSession();
   clearRequestCache();
 }
 
 axiosClient.interceptors.request.use((config) => {
+  hydrateAuthSession();
   const token = getToken();
   if (token) config.headers.Authorization = `Bearer ${token}`;
 

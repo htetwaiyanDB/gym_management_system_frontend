@@ -1,33 +1,37 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { loginApi, meApi, logoutApi } from "../api/authApi";
 import { clearRequestCache } from "../api/axiosClient";
+import { clearAuthSession, hydrateAuthSession, persistAuthSession } from "../utils/authSession";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => {
-    const raw = localStorage.getItem("user");
-    return raw ? JSON.parse(raw) : null;
-  });
+  const [user, setUser] = useState(() => hydrateAuthSession().user);
   const [loading, setLoading] = useState(false);
 
   const saveSession = (token, userObj) => {
-    localStorage.setItem("token", token);
-    localStorage.setItem("user", JSON.stringify(userObj));
+    persistAuthSession(token, userObj);
     setUser(userObj);
   };
 
   const clearSession = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+    clearAuthSession();
     setUser(null);
   };
 
+
+  useEffect(() => {
+    const hydrated = hydrateAuthSession();
+    if (hydrated?.user) {
+      setUser(hydrated.user);
+    }
+  }, []);
+
   const login = async ({ identifier, password }) => {
-    // backend expects { email: "...", password: "..." }
+    // backend accepts identifier (email or phone) + password
     setLoading(true);
     try {
-      const res = await loginApi({ email: identifier, password });
+      const res = await loginApi({ identifier, password });
       saveSession(res.data.token, res.data.user);
 
       // optional: refresh full user from /user

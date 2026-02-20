@@ -112,6 +112,7 @@ export default function UserScan() {
   const [latest, setLatest] = useState(null);
   const [checkInTime, setCheckInTime] = useState(null);
   const [checkOutTime, setCheckOutTime] = useState(null);
+  const [manualCardId, setManualCardId] = useState("");
 
   const nextAction = useMemo(() => {
     const a = getAction(latest);
@@ -194,6 +195,17 @@ export default function UserScan() {
 
   // Scanner is active only when Admin has enabled it globally
   const effectiveScannerActive = scanAllowedByAdmin;
+
+  const submitManualCard = async () => {
+    const normalized = normalizeCardId(manualCardId);
+    if (!normalized) {
+      setStatusMsg({ type: "warning", text: "Enter a valid RFID card ID." });
+      return;
+    }
+
+    await handleRfidScan(normalized);
+    setManualCardId("");
+  };
 
   const handleRfidScan = async (rawCardId) => {
     if (!scanAllowedByAdmin) {
@@ -445,6 +457,30 @@ export default function UserScan() {
       )}
 
       <RfidInputListener active={effectiveScannerActive} onScan={handleRfidScan} />
+
+      <div className="mt-3" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: 12 }}>
+        <div className="small mb-2" style={{ opacity: 0.85 }}>
+          Manual RFID fallback (for WebView/scanner event issues)
+        </div>
+        <div className="d-flex gap-2">
+          <input
+            className="form-control"
+            value={manualCardId}
+            placeholder="Enter/scan RFID card ID"
+            onChange={(e) => setManualCardId(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                submitManualCard();
+              }
+            }}
+          />
+          <button className="btn btn-primary" type="button" onClick={submitManualCard}>
+            Submit
+          </button>
+        </div>
+      </div>
+
       <QrScanner onDecode={handleQrScan} active={effectiveScannerActive} cooldownMs={1500} />
 
       <div

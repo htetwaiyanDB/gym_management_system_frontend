@@ -1,5 +1,6 @@
 import React, { Suspense, lazy } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
+import { getPersistedToken, getPersistedUser, hydrateAuthSession } from "./utils/authSession";
 
 const Login = lazy(() => import("./pages/public/Login"));
 const Register = lazy(() => import("./pages/public/Register"));
@@ -44,11 +45,12 @@ const UserMessages = lazy(() => import("./pages/user/UserMessages"));
 const UserSettings = lazy(() => import("./pages/user/UserSettings"));
 
 function getToken() {
-  return localStorage.getItem("token") || sessionStorage.getItem("token");
+  hydrateAuthSession();
+  return getPersistedToken();
 }
 function getUser() {
-  const raw = localStorage.getItem("user") || sessionStorage.getItem("user");
-  return raw ? JSON.parse(raw) : null;
+  hydrateAuthSession();
+  return getPersistedUser();
 }
 
 function normRole(role) {

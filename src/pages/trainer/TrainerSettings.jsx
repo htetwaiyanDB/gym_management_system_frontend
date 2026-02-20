@@ -3,12 +3,12 @@ import React, { useEffect, useMemo, useState } from "react";
 import { FaLongArrowAltRight } from "react-icons/fa";
 import axiosClient from "../../api/axiosClient";
 import { getUserProfile, updateUserProfile } from "../../api/userApi";
+import { clearAuthSession, getPersistedUser, updatePersistedUser } from "../../utils/authSession";
 
 export default function TrainerSettings() {
   const storedUser = useMemo(() => {
     try {
-      const raw = localStorage.getItem("user") || sessionStorage.getItem("user");
-      return raw ? JSON.parse(raw) : null;
+      return getPersistedUser();
     } catch {
       return null;
     }
@@ -134,14 +134,7 @@ export default function TrainerSettings() {
       const data = res?.data?.user || res?.data?.data || res?.data;
 
       if (data) {
-        const merged = { ...(storedUser || {}), ...data };
-        const serialized = JSON.stringify(merged);
-        if (localStorage.getItem("user")) {
-          localStorage.setItem("user", serialized);
-        }
-        if (sessionStorage.getItem("user")) {
-          sessionStorage.setItem("user", serialized);
-        }
+        updatePersistedUser(data);
       }
 
       setForm((prev) => ({
@@ -169,8 +162,7 @@ export default function TrainerSettings() {
     }
 
     // clear auth data
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+    clearAuthSession();
 
     // redirect to login
     window.location.href = "/login";
