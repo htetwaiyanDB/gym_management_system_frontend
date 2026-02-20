@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { FaLongArrowAltRight } from "react-icons/fa";
 import axiosClient from "../../api/axiosClient";
+import { clearPersistedSession } from "../../utils/sessionPersistence";
 import { getUserProfile, updateUserProfile } from "../../api/userApi";
 
 export default function TrainerSettings() {
@@ -169,8 +170,7 @@ export default function TrainerSettings() {
     }
 
     // clear auth data
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+    clearPersistedSession();
 
     // redirect to login
     window.location.href = "/login";

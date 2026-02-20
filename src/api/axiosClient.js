@@ -1,4 +1,5 @@
 import axios from "axios";
+import { clearPersistedSession, getStoredToken } from "../utils/sessionPersistence";
 
 // ✅ Always point to API base (include /api)
 const API_BASE_URL =
@@ -17,25 +18,18 @@ const axiosClient = axios.create({
   withCredentials: false, // ✅ Bearer token auth (no cookies)
 });
 
-function getToken() {
-  return localStorage.getItem("token") || sessionStorage.getItem("token");
-}
-
 export function clearRequestCache() {
   requestCache.clear();
 }
 
 function clearAuth() {
   // ✅ clear the same key you actually use
-  localStorage.removeItem("token");
-  sessionStorage.removeItem("token");
-  localStorage.removeItem("user");
-  sessionStorage.removeItem("user");
+  clearPersistedSession();
   clearRequestCache();
 }
 
 axiosClient.interceptors.request.use((config) => {
-  const token = getToken();
+  const token = getStoredToken();
   if (token) config.headers.Authorization = `Bearer ${token}`;
 
   const method = config.method?.toLowerCase();
@@ -87,9 +81,8 @@ axiosClient.interceptors.response.use(
   },
 
   (err) => {
-    if (err?.response?.status === 401) {
+    if (err?.response?.status === 401 && err?.config?.url?.includes("/logout")) {
       clearAuth();
-      window.location.href = "/login";
     }
     return Promise.reject(err);
   }

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import axiosClient from "../../api/axiosClient";
+import { persistSession } from "../../utils/sessionPersistence";
 import "./AuthGlass.css";
 
 export default function Login() {
@@ -61,8 +62,7 @@ export default function Login() {
 
       // IMPORTANT: your axiosClient must read the same key.
       // If axiosClient reads "token", keep this.
-      localStorage.setItem("token", token);
-      localStorage.setItem("user", JSON.stringify(user));
+      persistSession(token, user);
 
       const role = String(user?.role || "").toLowerCase();
 

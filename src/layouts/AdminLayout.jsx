@@ -3,16 +3,14 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { logoutApi } from "../api/authApi";
 import { clearRequestCache } from "../api/axiosClient";
 import "./AdminLayout.css";
+import { clearPersistedSession } from "../utils/sessionPersistence";
 
 export default function AdminLayout() {
   const nav = useNavigate();
 
   const logout = async () => {
     try { await logoutApi(); } catch {}
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    sessionStorage.removeItem("token");
-    sessionStorage.removeItem("user");
+    clearPersistedSession();
     clearRequestCache();
     nav("/login");
   };

@@ -1,4 +1,5 @@
 import axios from "axios";
+import { clearPersistedSession, getStoredToken } from "../utils/sessionPersistence";
 
 const axiosClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -18,7 +19,7 @@ const axiosClient = axios.create({
 // Add bearer token if exists
 axiosClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("token");
+    const token = getStoredToken();
     if (token) config.headers.Authorization = `Bearer ${token}`;
     return config;
   },
@@ -30,9 +31,7 @@ axiosClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error?.response?.status === 401) {
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      window.location.href = "/login";
+      clearPersistedSession();
     }
     return Promise.reject(error);
   }

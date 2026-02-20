@@ -1,5 +1,6 @@
 import React, { Suspense, lazy } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
+import { getStoredToken, getStoredUser } from "./utils/sessionPersistence";
 
 const Login = lazy(() => import("./pages/public/Login"));
 const Register = lazy(() => import("./pages/public/Register"));
@@ -43,25 +44,17 @@ const UserSubsBookings = lazy(() => import("./pages/user/UserSubsBookings"));
 const UserMessages = lazy(() => import("./pages/user/UserMessages"));
 const UserSettings = lazy(() => import("./pages/user/UserSettings"));
 
-function getToken() {
-  return localStorage.getItem("token") || sessionStorage.getItem("token");
-}
-function getUser() {
-  const raw = localStorage.getItem("user") || sessionStorage.getItem("user");
-  return raw ? JSON.parse(raw) : null;
-}
-
 function normRole(role) {
   return String(role || "").trim().toLowerCase();
 }
 
 function Protected({ children }) {
-  const token = getToken();
+  const token = getStoredToken();
   return token ? children : <Navigate to="/login" replace />;
 }
 
 function RoleOnly({ role, children }) {
-  const user = getUser();
+  const user = getStoredUser();
   if (!user) return <Navigate to="/login" replace />;
 
   const need = normRole(role);
