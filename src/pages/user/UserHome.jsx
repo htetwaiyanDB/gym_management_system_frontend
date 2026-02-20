@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axiosClient from "../../api/axiosClient";
+import useRealtimePolling from "../../hooks/useRealtimePolling";
 
 /* ---------- helpers ---------- */
 
@@ -188,61 +189,45 @@ export default function UserHome() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    let alive = true;
+  const fetchBlogs = useCallback(async ({ silent = false } = {}) => {
+    try {
+      if (!silent) setLoading(true);
+      setError("");
 
-    (async () => {
-      try {
-        setLoading(true);
-        setError("");
+      const [homeRes, blogsRes] = await Promise.allSettled([
+        axiosClient.get("/user/home"),
+        axiosClient.get("/blogs"),
+      ]);
 
-       const [homeRes, blogsRes] = await Promise.allSettled([
-          axiosClient.get("/user/home"),
-          axiosClient.get("/blogs"),
-        ]);
+      const homeData = homeRes.status === "fulfilled" ? homeRes.value?.data : null;
+      const blogsData = blogsRes.status === "fulfilled" ? blogsRes.value?.data : null;
 
-       const homeData =
-          homeRes.status === "fulfilled" ? homeRes.value?.data : null;
-       const blogsData =
-          blogsRes.status === "fulfilled" ? blogsRes.value?.data : null;
+      const homeList = normalizeBlogList(homeData);
+      const blogsList = normalizeBlogList(blogsData);
 
-       const homeList = normalizeBlogList(homeData);
-       const blogsList = normalizeBlogList(blogsData);
+      const blogById = new Map(blogsList.map((blog, idx) => [getBlogId(blog, idx), blog]));
+      const list = homeList.map((blog, idx) => mergeBlogImages(blog, blogById.get(getBlogId(blog, idx))));
 
-        const blogById = new Map(
-          blogsList.map((blog, idx) => [getBlogId(blog, idx), blog])
-        );
+      const sorted = [...list].sort((a, b) => {
+        const da = new Date(getBlogDate(a) || 0).getTime();
+        const db = new Date(getBlogDate(b) || 0).getTime();
+        return db - da;
+      });
 
-       const list = homeList.map((blog, idx) =>
-          mergeBlogImages(blog, blogById.get(getBlogId(blog, idx)))
-        );
-
-        const sorted = [...list].sort((a, b) => {
-          const da = new Date(getBlogDate(a) || 0).getTime();
-          const db = new Date(getBlogDate(b) || 0).getTime();
-          return db - da;
-        });
-
-        if (alive) setBlogs(sorted);
-      } catch (e) {
-        console.log("GET /user/home ERROR:", e?.response?.data || e);
-        if (alive) {
-          const status = e?.response?.status;
-          if (status === 401) {
-            setError("Unauthorized. Please login again.");
-          } else {
-            setError(e?.response?.data?.message || "Failed to load blogs.");
-          }
-        }
-      } finally {
-        if (alive) setLoading(false);
+      setBlogs(sorted);
+    } catch (e) {
+      const status = e?.response?.status;
+      if (status === 401) {
+        setError("Unauthorized. Please login again.");
+      } else {
+        setError(e?.response?.data?.message || "Failed to load blogs.");
       }
-    })();
-
-    return () => {
-      alive = false;
-    };
+    } finally {
+      if (!silent) setLoading(false);
+    }
   }, []);
+
+  useRealtimePolling(fetchBlogs, 15000, []);
 
   const emptyText = useMemo(() => {
     if (loading) return "";

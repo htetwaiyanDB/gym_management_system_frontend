@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getBlogs } from "../../api/trainerApi";
+import useRealtimePolling from "../../hooks/useRealtimePolling";
 
 function normalizeList(payload) {
   if (Array.isArray(payload)) return payload;
@@ -119,40 +120,28 @@ export default function TrainerHome() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
-  useEffect(() => {
-    let alive = true;
+  const fetchBlogs = useCallback(async ({ silent = false } = {}) => {
+    try {
+      if (!silent) setLoading(true);
+      setErr("");
 
-    (async () => {
-      try {
-        setLoading(true);
-        setErr("");
+      const res = await getBlogs();
+      const list = normalizeList(res.data);
+      const sorted = [...list].sort((a, b) => {
+        const da = new Date(a?.published_at || a?.publish_date || a?.updated_at || 0).getTime();
+        const db = new Date(b?.published_at || b?.publish_date || b?.updated_at || 0).getTime();
+        return db - da;
+      });
 
-        const res = await getBlogs();
-        const list = normalizeList(res.data);
-
-        // ✅ debug: check what fields the API list actually returns
-        if (import.meta.env.DEV && list?.[0]) {
-          console.log("BLOG[0] from GET /blogs:", list[0]);
-        }
-
-        const sorted = [...list].sort((a, b) => {
-          const da = new Date(a?.published_at || a?.publish_date || a?.updated_at || 0).getTime();
-          const db = new Date(b?.published_at || b?.publish_date || b?.updated_at || 0).getTime();
-          return db - da;
-        });
-
-        if (alive) setBlogs(sorted);
-      } catch (e) {
-        if (alive) setErr(e?.response?.data?.message || "Failed to load blogs.");
-      } finally {
-        if (alive) setLoading(false);
-      }
-    })();
-
-    return () => {
-      alive = false;
-    };
+      setBlogs(sorted);
+    } catch (e) {
+      setErr(e?.response?.data?.message || "Failed to load blogs.");
+    } finally {
+      if (!silent) setLoading(false);
+    }
   }, []);
+
+  useRealtimePolling(fetchBlogs, 15000, []);
 
   return (
     <div>

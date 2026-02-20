@@ -1,0 +1,44 @@
+:root {
+  --app-text: #f5f7fa;
+  --app-muted: rgba(245, 247, 250, 0.82);
+  --app-input-bg: rgba(9, 12, 16, 0.58);
+  --app-input-border: rgba(255, 255, 255, 0.2);
+}
+
+.user-shell,
+.trainer-shell,
+.user-shell .card,
+.trainer-shell .card {
+  color: var(--app-text);
+}
+
+.user-shell p,
+.trainer-shell p,
+.user-shell .text-muted,
+.trainer-shell .text-muted {
+  color: var(--app-muted) !important;
+}
+
+.user-shell .form-control,
+.user-shell .form-select,
+.trainer-shell .form-control,
+.trainer-shell .form-select {
+  background: var(--app-input-bg);
+  border-color: var(--app-input-border);
+  color: var(--app-text);
+}
+
+.user-shell .form-control::placeholder,
+.trainer-shell .form-control::placeholder {
+  color: rgba(245, 247, 250, 0.7);
+}
+
+.user-shell .form-control:focus,
+.user-shell .form-select:focus,
+.trainer-shell .form-control:focus,
+.trainer-shell .form-select:focus {
+  border-color: rgba(13, 110, 253, 0.55);
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.2);
+  background: rgba(9, 12, 16, 0.72);
+  color: var(--app-text);
+}

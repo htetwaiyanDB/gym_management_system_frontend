@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import axiosClient from "../../api/axiosClient";
+import useRealtimePolling from "../../hooks/useRealtimePolling";
 import { FaCalendar, FaClock, FaPhoneAlt, FaUser } from "react-icons/fa";
 
 function getMemberName(b) {
@@ -183,8 +184,8 @@ export default function TrainerBooking() {
     setBoxingBookings(extractBookings(res?.data));
   }, []);
 
-  const fetchBookings = useCallback(async () => {
-    setLoading(true);
+  const fetchBookings = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setLoading(true);
     setError(null);
     setMsg(null);
 
@@ -193,13 +194,11 @@ export default function TrainerBooking() {
     } catch (e) {
       setError(e?.response?.data?.message || "Failed to load bookings.");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [fetchTrainerBookings, fetchBoxingBookings]);
 
-  useEffect(() => {
-    fetchBookings();
-  }, [fetchBookings]);
+  useRealtimePolling(fetchBookings, 12000, [fetchBookings]);
 
   useEffect(() => {
     setSelectedId(null);

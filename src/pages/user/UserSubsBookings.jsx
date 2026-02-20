@@ -1,5 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import axiosClient from "../../api/axiosClient";
+import useRealtimePolling from "../../hooks/useRealtimePolling";
 import UserBookings from "./UserBookings";
 import UserSubscriptions from "./UserSubscriptions";
 import { FaCalendar, FaClock, FaPhoneAlt, FaUser } from "react-icons/fa";
@@ -189,8 +190,8 @@ function UserBoxingBookings() {
   const [search, setSearch] = useState("");
   const [date, setDate] = useState("");
 
-  const fetchBookings = useCallback(async () => {
-    setLoading(true);
+  const fetchBookings = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setLoading(true);
     setError(null);
     setMsg(null);
 
@@ -201,13 +202,11 @@ function UserBoxingBookings() {
     } catch (e) {
       setError(e?.response?.data?.message || "Failed to load boxing bookings.");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    fetchBookings();
-  }, [fetchBookings]);
+  useRealtimePolling(fetchBookings, 12000, [fetchBookings]);
 
   const confirmSession = async (bookingId) => {
     if (!bookingId) return;
