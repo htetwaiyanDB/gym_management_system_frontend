@@ -22,6 +22,24 @@ function pick(obj, keys) {
   return null;
 }
 
+function hasStarted(value) {
+  if (!value) return false;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return false;
+  const now = new Date();
+  now.setHours(23, 59, 59, 999);
+  return d.getTime() <= now.getTime();
+}
+
+function resolveBookingStatus(booking) {
+  const rawStatus = String(pick(booking, ["status", "state"]) || "").toLowerCase();
+  const startDate = pick(booking, ["start_date", "starts_at", "start_time", "date"]);
+  if (rawStatus === "pending" && hasStarted(startDate)) {
+    return "active";
+  }
+  return rawStatus || "—";
+}
+
 function toText(v) {
   // ✅ Convert objects safely to readable text (prevents React crash)
   if (v === null || v === undefined) return "—";
@@ -100,7 +118,7 @@ function StatusBadge({ status }) {
   const s = String(status || "").toLowerCase();
 
   const cls =
-    s === "approved" || s === "confirmed"
+    s === "approved" || s === "confirmed" || s === "active"
       ? "bg-success"
       : s === "pending"
       ? "bg-warning text-dark"
@@ -197,7 +215,7 @@ export default function UserBookings() {
   const filtered = useMemo(() => {
     if (filter === "all") return items;
     return items.filter((b) => {
-      const s = String(pick(b, ["status", "state"]) || "").toLowerCase();
+      const s = resolveBookingStatus(b);
       return s === filter;
     });
   }, [items, filter]);
@@ -217,6 +235,7 @@ export default function UserBookings() {
           <option value="pending">Pending</option>
           <option value="approved">Approved</option>
           <option value="confirmed">Confirmed</option>
+          <option value="active">Active</option>
           <option value="rejected">Rejected</option>
           <option value="cancelled">Cancelled</option>
           <option value="completed">Completed</option>
@@ -238,7 +257,7 @@ export default function UserBookings() {
       <div style={{ display: "grid", gap: 12 }}>
         {filtered.map((b, idx) => {
           const id = pick(b, ["id", "booking_id", "reference_id"]) ?? idx;
-          const status = pick(b, ["status", "state"]) || "—";
+          const status = resolveBookingStatus(b);
 
           // Trainer might be object: {id,name,phone,email}
           const trainerObj = pick(b, ["trainer"]) || b?.trainer;

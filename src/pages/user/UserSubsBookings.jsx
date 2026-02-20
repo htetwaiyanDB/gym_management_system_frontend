@@ -39,6 +39,26 @@ function isCompletedStatus(value) {
   return s.includes("complete") || s.includes("completed") || s.includes("done");
 }
 
+
+function hasStarted(value) {
+  if (!value) return false;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return false;
+  const now = new Date();
+  now.setHours(23, 59, 59, 999);
+  return d.getTime() <= now.getTime();
+}
+
+function resolveBookingStatus(booking) {
+  const rawStatus = String(booking?.status || booking?.state || "").toLowerCase();
+  const startDate =
+    booking?.start_date || booking?.starts_at || booking?.start_time || booking?.session_datetime;
+  if (rawStatus === "pending" && hasStarted(startDate)) {
+    return "active";
+  }
+  return rawStatus || booking?.status || booking?.state || "—";
+}
+
 function getSessionProgress(booking) {
   const total = toNumber(
     booking?.sessions_count ?? booking?.session_count ?? booking?.sessions
@@ -332,7 +352,7 @@ function UserBoxingBookings() {
             const bookingId = b?.id ?? i;
             const { total: totalSessions, remaining: remainingSessions } = getSessionProgress(b);
             const isCompleted =
-              remainingSessions === 0 || isCompletedStatus(b?.status);
+              remainingSessions === 0 || isCompletedStatus(resolveBookingStatus(b));
             return (
               <div
                 key={bookingId}
@@ -350,8 +370,8 @@ function UserBoxingBookings() {
               >
                 <div className="d-flex justify-content-between">
                   <div style={{ fontWeight: 900 }}>{getCoachName(b)}</div>
-                  <span style={statusPill(b.status)}>
-                    {String(b.status || "ACTIVE").toUpperCase()}
+                  <span style={statusPill(resolveBookingStatus(b))}>
+                    {String(resolveBookingStatus(b) || "ACTIVE").toUpperCase()}
                   </span>
                 </div>
 
@@ -408,7 +428,7 @@ function UserBoxingBookings() {
                       </div>
                       <div className="d-flex justify-content-between">
                         <span style={{ opacity: 0.8 }}>Status</span>
-                        <span>{String(b?.status || "—")}</span>
+                        <span>{String(resolveBookingStatus(b) || "—")}</span>
                       </div>
                       <div className="d-flex justify-content-between align-items-center">
                         <span style={{ opacity: 0.8 }}>Session confirmation</span>

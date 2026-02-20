@@ -47,6 +47,24 @@ function pick(obj, keys) {
   return null;
 }
 
+function hasStarted(value) {
+  if (!value) return false;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return false;
+  const now = new Date();
+  now.setHours(23, 59, 59, 999);
+  return d.getTime() <= now.getTime();
+}
+
+function resolveSubscriptionStatus(sub) {
+  const rawStatus = String(pick(sub, ["status", "state"]) || "").toLowerCase();
+  const startDate = pick(sub, ["start_date", "starts_at", "start"]);
+  if (rawStatus === "pending" && hasStarted(startDate)) {
+    return "active";
+  }
+  return rawStatus || "—";
+}
+
 function StatusBadge({ status }) {
   const s = String(status || "").toLowerCase();
   const cls =
@@ -86,8 +104,8 @@ export default function UserSubscriptions() {
 
         // Sort: active first, then latest start date
         const sorted = [...list].sort((a, b) => {
-          const sa = String(pick(a, ["status", "state"]) || "").toLowerCase();
-          const sb = String(pick(b, ["status", "state"]) || "").toLowerCase();
+          const sa = resolveSubscriptionStatus(a);
+          const sb = resolveSubscriptionStatus(b);
           const rank = (s) => (s === "active" ? 0 : s === "pending" ? 1 : 2);
           const ra = rank(sa);
           const rb = rank(sb);
@@ -143,7 +161,7 @@ export default function UserSubscriptions() {
             pick(sub?.package, ["name", "title"]) ||
             "Subscription";
 
-          const status = pick(sub, ["status", "state"]) || "—";
+          const status = resolveSubscriptionStatus(sub);
 
           const price =
             pick(sub, ["price", "amount", "total", "fee"]) ||
