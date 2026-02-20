@@ -323,9 +323,9 @@ export default function AdminBlogs() {
               <div className="card-body p-4">
                 <form onSubmit={submit}>
                   <div className="mb-3">
-                    <label className="form-label fw-bold">Title</label>
+                    <label className="form-label text-light fw-bold">Title</label>
                     <input
-                      className="form-control text-white"
+                      className="form-control "
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
                       required
@@ -334,7 +334,7 @@ export default function AdminBlogs() {
                   </div>
 
                   <div className="mb-3">
-                    <label className="form-label fw-bold">Summary</label>
+                    <label className="form-label text-light fw-bold">Summary</label>
                     <textarea
                       className="form-control"
                       rows={3}
@@ -346,7 +346,7 @@ export default function AdminBlogs() {
                   </div>
 
                   <div className="mb-3">
-                    <label className="form-label fw-bold">Content</label>
+                    <label className="form-label text-light fw-bold">Content</label>
                     <textarea
                       className="form-control"
                       rows={8}
