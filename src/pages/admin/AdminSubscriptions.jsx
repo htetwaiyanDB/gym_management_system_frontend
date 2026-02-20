@@ -288,7 +288,7 @@ export default function AdminSubscriptions() {
                 </td>
               </tr>
             ) : (
-              sortedSubscriptions.map((s) => {
+              sortedSubscriptions.map((s, index) => {
                 const rawStatus = String(s?.status || "");
                 const isOnHold = !!s?.is_on_hold;
                 const isExpired = rawStatus.toLowerCase() === "expired" || isExpiredByDate(s?.end_date);
@@ -298,7 +298,7 @@ export default function AdminSubscriptions() {
 
                 return (
                   <tr key={s.id}>
-                    <td>{s.id}</td>
+                    <td>{index + 1}</td>
                     <td>{s.member_name || "-"}</td>
                     <td>{s.member_phone || "-"}</td>
                     <td>
