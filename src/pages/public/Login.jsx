@@ -170,6 +170,12 @@ export default function Login() {
               Register
             </Link>
           </div>
+
+          <div className="text-center mt-3">
+            <Link to="/attendance/scan" className="btn btn-outline-light btn-sm">
+              Open Attendance Scanner (No Login)
+            </Link>
+          </div>
         </form>
       </div>
     </div>
