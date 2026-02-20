@@ -131,13 +131,40 @@ export const scanRfidAttendance = (cardId, options = {}) =>
     attendance_event: options?.action,
   });
 
-export const scanMemberCardAttendance = (memberCardId, options = {}) =>
-  axiosClient.post("/attendance/scan", {
-    member_card_id: String(memberCardId),
-    action: options?.action,
-    scan_type: options?.action,
-    attendance_event: options?.action,
-  });
+export const scanMemberCardAttendance = async (memberCardId, options = {}) => {
+  const normalizedCardId = String(memberCardId).trim();
+
+  const payloads = [
+    {
+      member_card_id: normalizedCardId,
+      action: options?.action,
+      scan_type: options?.action,
+      attendance_event: options?.action,
+    },
+    {
+      card_id: normalizedCardId,
+      action: options?.action,
+      scan_type: options?.action,
+      attendance_event: options?.action,
+    },
+  ];
+
+  const endpoints = ["/attendance/scan", "/attendance/rfid/scan"];
+
+  let lastError;
+
+  for (const url of endpoints) {
+    for (const data of payloads) {
+      try {
+        return await axiosClient.post(url, data);
+      } catch (error) {
+        lastError = error;
+      }
+    }
+  }
+
+  throw lastError;
+};
 
 export const registerRfidCard = (userId, cardId) =>
   axiosClient.post("/attendance/rfid/register", {
