@@ -109,6 +109,7 @@ export default function UserScan() {
   const [statusMsg, setStatusMsg] = useState(null);
   const [rfidWarning, setRfidWarning] = useState(false);
   const [pendingCardId, setPendingCardId] = useState("");
+  const [manualCardId, setManualCardId] = useState("");
   const [latest, setLatest] = useState(null);
   const [checkInTime, setCheckInTime] = useState(null);
   const [checkOutTime, setCheckOutTime] = useState(null);
@@ -283,6 +284,16 @@ export default function UserScan() {
     }
   };
 
+
+  const handleManualSubmit = (event) => {
+    event.preventDefault();
+    if (!manualCardId.trim()) {
+      setStatusMsg({ type: "warning", text: "Enter a card ID before submitting." });
+      return;
+    }
+    handleRfidScan(manualCardId);
+    setManualCardId("");
+  };
   const handleQrScan = async (decodedText) => {
     if (!scanAllowedByAdmin) {
       setStatusMsg({ type: "warning", text: "Scanner is stopped by admin." });
@@ -444,8 +455,33 @@ export default function UserScan() {
         </div>
       )}
 
-      <RfidInputListener active={effectiveScannerActive} onScan={handleRfidScan} />
+      <RfidInputListener
+        active={effectiveScannerActive}
+        onScan={handleRfidScan}
+        captureOnEditable
+        submitOnIdle
+      />
       <QrScanner onDecode={handleQrScan} active={effectiveScannerActive} cooldownMs={1500} />
+
+      <form className="mt-3" onSubmit={handleManualSubmit}>
+        <label className="form-label small" style={{ opacity: 0.85 }}>
+          Manual RFID fallback
+        </label>
+        <div className="input-group">
+          <input
+            className="form-control"
+            value={manualCardId}
+            onChange={(e) => setManualCardId(e.target.value)}
+            placeholder="Enter/scan card ID"
+            autoCapitalize="off"
+            autoComplete="off"
+            autoCorrect="off"
+          />
+          <button className="btn btn-primary" type="submit" disabled={!effectiveScannerActive}>
+            Submit
+          </button>
+        </div>
+      </form>
 
       <div
         className="mt-3"
