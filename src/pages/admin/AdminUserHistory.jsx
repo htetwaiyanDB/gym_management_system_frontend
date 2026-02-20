@@ -130,6 +130,8 @@ function buildSubscriptionEntry(source, typeLabel, nameSource) {
     pickFirstValue(source, [
       "plan_name",
       "package_name",
+      "package_type_name",
+      "package_type",
       "membership_plan_name",
       "class_plan_name",
       "trainer_package_name",
@@ -145,6 +147,8 @@ function buildSubscriptionEntry(source, typeLabel, nameSource) {
       "title",
       "plan_name",
       "package_name",
+      "package_type_name",
+      "package_type",
       "plan_title",
       "package_title",
     ]) ||
@@ -374,14 +378,22 @@ export default function AdminUserHistory() {
             buildSubscriptionEntry(
               item,
               "Trainer Package",
-              item?.package_name || item?.trainer_package?.name || item?.name,
+              item?.package_name ||
+                item?.package_type_name ||
+                item?.package_type ||
+                item?.trainer_package?.name ||
+                item?.name,
             ),
           ),
           ...boxingBookings.map((item) =>
             buildSubscriptionEntry(
               item,
               "Boxing Package",
-              item?.package_name || item?.boxing_package?.name || item?.name,
+              item?.package_name ||
+                item?.package_type_name ||
+                item?.package_type ||
+                item?.boxing_package?.name ||
+                item?.name,
             ),
           ),
         ];
