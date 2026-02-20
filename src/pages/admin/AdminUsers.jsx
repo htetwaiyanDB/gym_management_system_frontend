@@ -449,7 +449,7 @@ export default function AdminUsers() {
 
         <div className="col-md-6 d-flex justify-content-md-end gap-2">
           <div className="d-flex align-items-center gap-2">
-            <span className="text-muted small">Rows</span>
+            <span className="text-white small">Rows</span>
             <select
               className="form-select form-select-sm bg-dark"
               style={{ width: 90 }}
@@ -463,7 +463,7 @@ export default function AdminUsers() {
             </select>
           </div>
 
-          <div className="text-muted small align-self-center">
+          <div className="text-white small align-self-center">
             Total: <b>{filtered.length}</b>
           </div>
         </div>
@@ -578,7 +578,7 @@ export default function AdminUsers() {
 
       {/* Pagination */}
       <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3">
-        <div className="text-muted small">
+        <div className="text-white small">
           Page <b>{page}</b> of <b>{totalPages}</b>
         </div>
 
