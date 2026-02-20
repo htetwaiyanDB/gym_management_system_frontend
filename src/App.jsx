@@ -1,4 +1,5 @@
 import React, { Suspense, lazy } from "react";
+import { getAuthToken, getStoredUser, hydrateAuthSessionFromCookie } from "./utils/authStorage";
 import { Routes, Route, Navigate } from "react-router-dom";
 
 const Login = lazy(() => import("./pages/public/Login"));
@@ -43,12 +44,13 @@ const UserSubsBookings = lazy(() => import("./pages/user/UserSubsBookings"));
 const UserMessages = lazy(() => import("./pages/user/UserMessages"));
 const UserSettings = lazy(() => import("./pages/user/UserSettings"));
 
+hydrateAuthSessionFromCookie();
+
 function getToken() {
-  return localStorage.getItem("token") || sessionStorage.getItem("token");
+  return getAuthToken();
 }
 function getUser() {
-  const raw = localStorage.getItem("user") || sessionStorage.getItem("user");
-  return raw ? JSON.parse(raw) : null;
+  return getStoredUser();
 }
 
 function normRole(role) {

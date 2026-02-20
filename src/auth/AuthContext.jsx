@@ -1,27 +1,29 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { loginApi, meApi, logoutApi } from "../api/authApi";
 import { clearRequestCache } from "../api/axiosClient";
+import { clearAuthSession, getStoredUser, saveAuthSession, hydrateAuthSessionFromCookie } from "../utils/authStorage";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => {
-    const raw = localStorage.getItem("user");
-    return raw ? JSON.parse(raw) : null;
-  });
+  const [user, setUser] = useState(() => getStoredUser());
   const [loading, setLoading] = useState(false);
 
   const saveSession = (token, userObj) => {
-    localStorage.setItem("token", token);
-    localStorage.setItem("user", JSON.stringify(userObj));
+    saveAuthSession(token, userObj);
     setUser(userObj);
   };
 
   const clearSession = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+    clearAuthSession();
     setUser(null);
   };
+
+
+  useEffect(() => {
+    const restored = hydrateAuthSessionFromCookie();
+    if (restored?.user) setUser(restored.user);
+  }, []);
 
   const login = async ({ identifier, password }) => {
     // backend expects { email: "...", password: "..." }

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import axiosClient from "../../api/axiosClient";
 import "./AuthGlass.css";
+import { saveAuthSession } from "../../utils/authStorage";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -61,8 +62,7 @@ export default function Login() {
 
       // IMPORTANT: your axiosClient must read the same key.
       // If axiosClient reads "token", keep this.
-      localStorage.setItem("token", token);
-      localStorage.setItem("user", JSON.stringify(user));
+      saveAuthSession(token, user);
 
       const role = String(user?.role || "").toLowerCase();
 

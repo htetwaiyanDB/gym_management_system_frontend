@@ -1,4 +1,5 @@
 import axios from "axios";
+import { clearAuthSession, getAuthToken, hydrateAuthSessionFromCookie } from "../utils/authStorage";
 
 // ✅ Always point to API base (include /api)
 const API_BASE_URL =
@@ -17,9 +18,6 @@ const axiosClient = axios.create({
   withCredentials: false, // ✅ Bearer token auth (no cookies)
 });
 
-function getToken() {
-  return localStorage.getItem("token") || sessionStorage.getItem("token");
-}
 
 export function clearRequestCache() {
   requestCache.clear();
@@ -27,16 +25,17 @@ export function clearRequestCache() {
 
 function clearAuth() {
   // ✅ clear the same key you actually use
-  localStorage.removeItem("token");
-  sessionStorage.removeItem("token");
-  localStorage.removeItem("user");
-  sessionStorage.removeItem("user");
+  clearAuthSession();
   clearRequestCache();
 }
 
 axiosClient.interceptors.request.use((config) => {
-  const token = getToken();
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+  const token = getAuthToken();
+  if (!token) {
+    hydrateAuthSessionFromCookie();
+  }
+  const authToken = token || getAuthToken();
+  if (authToken) config.headers.Authorization = `Bearer ${authToken}`;
 
   const method = config.method?.toLowerCase();
   const cacheEnabled = method === "get" && config.cache;

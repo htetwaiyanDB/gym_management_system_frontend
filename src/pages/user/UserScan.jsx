@@ -109,6 +109,7 @@ export default function UserScan() {
   const [statusMsg, setStatusMsg] = useState(null);
   const [rfidWarning, setRfidWarning] = useState(false);
   const [pendingCardId, setPendingCardId] = useState("");
+  const [manualCardId, setManualCardId] = useState("");
   const [latest, setLatest] = useState(null);
   const [checkInTime, setCheckInTime] = useState(null);
   const [checkOutTime, setCheckOutTime] = useState(null);
@@ -283,6 +284,16 @@ export default function UserScan() {
     }
   };
 
+  const handleManualSubmit = async (e) => {
+    e.preventDefault();
+    if (!manualCardId.trim()) {
+      setStatusMsg({ type: "warning", text: "Please enter RFID card ID." });
+      return;
+    }
+    await handleRfidScan(manualCardId);
+    setManualCardId("");
+  };
+
   const handleQrScan = async (decodedText) => {
     if (!scanAllowedByAdmin) {
       setStatusMsg({ type: "warning", text: "Scanner is stopped by admin." });
@@ -443,6 +454,28 @@ export default function UserScan() {
           </div>
         </div>
       )}
+
+      <form onSubmit={handleManualSubmit} className="mb-3">
+        <label className="form-label" style={{ opacity: 0.9 }}>
+          Manual RFID input (for WebView/Web Share app)
+        </label>
+        <div className="d-flex gap-2">
+          <input
+            className="form-control"
+            placeholder="Enter card ID then tap Submit"
+            value={manualCardId}
+            onChange={(e) => setManualCardId(e.target.value)}
+            disabled={!effectiveScannerActive || busyRef.current}
+          />
+          <button
+            type="submit"
+            className="btn btn-outline-light"
+            disabled={!effectiveScannerActive || busyRef.current || !manualCardId.trim()}
+          >
+            Submit
+          </button>
+        </div>
+      </form>
 
       <RfidInputListener active={effectiveScannerActive} onScan={handleRfidScan} />
       <QrScanner onDecode={handleQrScan} active={effectiveScannerActive} cooldownMs={1500} />
