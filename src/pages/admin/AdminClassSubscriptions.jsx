@@ -340,7 +340,7 @@ export default function AdminClassSubscriptions() {
                 <td colSpan="10" className="text-center text-muted py-4">{loading ? "Loading..." : "No class subscriptions found."}</td>
               </tr>
             ) : (
-              sortedRecords.map((r) => {
+              sortedRecords.map((r, index) => {
                 const rawStatus = String(r?.status || "");
                 const isOnHold = !!r?.is_on_hold;
                 const isExpired = rawStatus.toLowerCase() === "expired" || isExpiredByDate(r?.end_date);
@@ -350,7 +350,7 @@ export default function AdminClassSubscriptions() {
 
                 return (
                 <tr key={r.id}>
-                  <td>{r.id}</td>
+                  <td>{index + 1}</td>
                   <td>{r.member_name || r.user_name || "-"}</td>
                   <td>{r.member_phone || r.user_phone || "-"}</td>
                   <td><span className="badge bg-primary">{r.class_plan_name || r.class_package_name || r.membership_plan_name || r.plan_name || "-"}</span></td>
