@@ -654,23 +654,23 @@ export default function AdminAttendance() {
 
           <div className="mt-3">
             <div className="d-flex justify-content-between mb-2" style={bodyText}>
+              <span>Member ID</span>
+              <strong>
+                {scanResult.user?.member_id ||
+                  scanResult.user?.memberId ||
+                  scanResult.user?.id ||
+                  scanResult.attendance?.member_id ||
+                  scanResult.attendance?.user_id ||
+                  "—"}
+              </strong>
+            </div>
+            <div className="d-flex justify-content-between mb-2" style={bodyText}>
               <span>Username</span>
               <strong>{scanResult.user?.username || scanResult.user?.name || "—"}</strong>
             </div>
             <div className="d-flex justify-content-between mb-2" style={bodyText}>
               <span>Status</span>
               <strong>{normalizeScanStatus(scanResult.attendance)}</strong>
-            </div>
-            <div className="d-flex justify-content-between" style={bodyText}>
-              <span>Time</span>
-              <strong>
-                {formatDateTimeVideoStyle(
-                  scanResult.attendance?.scanned_at ||
-                    scanResult.attendance?.created_at ||
-                    scanResult.attendance?.timestamp ||
-                    scanResult.attendance?.time
-                )}
-              </strong>
             </div>
           </div>
 
