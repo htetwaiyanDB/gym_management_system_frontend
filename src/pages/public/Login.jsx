@@ -164,6 +164,10 @@ export default function Login() {
             {loading ? "Signing in..." : "Sign in"}
           </button>
 
+          <Link to="/rfid-scan" className="btn btn-outline-light w-100 mt-2">
+            Scan with RFID card (No login)
+          </Link>
+
           <div className="text-center mt-3">
             <span className="link-muted">Don’t have an account?</span>{" "}
             <Link to="/register" className="link-muted text-decoration-none">

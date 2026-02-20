@@ -5,6 +5,7 @@ import { getStoredToken, getStoredUser } from "./utils/sessionPersistence";
 const Login = lazy(() => import("./pages/public/Login"));
 const Register = lazy(() => import("./pages/public/Register"));
 const VerifyEmail = lazy(() => import("./pages/public/VerifyEmail"));
+const RfidKioskScan = lazy(() => import("./pages/public/RfidKioskScan"));
 
 /* Admin */
 const AdminLayout = lazy(() => import("./layouts/AdminLayout"));
@@ -83,6 +84,7 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
+        <Route path="/rfid-scan" element={<RfidKioskScan />} />
 
         {/* Admin */}
         <Route
