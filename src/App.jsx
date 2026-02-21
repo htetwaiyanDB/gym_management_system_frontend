@@ -4,7 +4,6 @@ import { Routes, Route, Navigate } from "react-router-dom";
 const Login = lazy(() => import("./pages/public/Login"));
 const Register = lazy(() => import("./pages/public/Register"));
 const VerifyEmail = lazy(() => import("./pages/public/VerifyEmail"));
-const PublicAttendanceScan = lazy(() => import("./pages/public/PublicAttendanceScan"));
 
 /* Admin */
 const AdminLayout = lazy(() => import("./layouts/AdminLayout"));
@@ -128,8 +127,6 @@ export default function App() {
         />
         <Route path="/register" element={<Register />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
-        <Route path="/attendance/scan" element={<PublicAttendanceScan />} />
-
         {/* Admin */}
         <Route
           path="/admin"
