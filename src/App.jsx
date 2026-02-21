@@ -49,16 +49,37 @@ function getToken() {
 }
 function getUser() {
   const raw = localStorage.getItem("user") || sessionStorage.getItem("user");
-  return raw ? JSON.parse(raw) : null;
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
 }
 
 function normRole(role) {
   return String(role || "").trim().toLowerCase();
 }
 
+function getDefaultRouteByRole(user) {
+  const role = normRole(user?.role);
+
+  if (role === "administrator" || role === "admin") return "/admin/dashboard";
+  if (role === "trainer") return "/trainer/home";
+  return "/user/home";
+}
+
 function Protected({ children }) {
   const token = getToken();
   return token ? children : <Navigate to="/login" replace />;
+}
+
+function PublicOnly({ children }) {
+  const token = getToken();
+  if (!token) return children;
+
+  const user = getUser();
+  return <Navigate to={getDefaultRouteByRole(user)} replace />;
 }
 
 function RoleOnly({ role, children }) {
@@ -85,10 +106,26 @@ export default function App() {
       }
     >
       <Routes>
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route
+          path="/"
+          element={
+            getToken() ? (
+              <Navigate to={getDefaultRouteByRole(getUser())} replace />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
 
         {/* Public */}
-        <Route path="/login" element={<Login />} />
+        <Route
+          path="/login"
+          element={
+            <PublicOnly>
+              <Login />
+            </PublicOnly>
+          }
+        />
         <Route path="/register" element={<Register />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/attendance/scan" element={<PublicAttendanceScan />} />
