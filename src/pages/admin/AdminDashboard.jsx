@@ -28,8 +28,6 @@ const API = {
   GROWTH_SUMMARY: "/dashboard/growth-summary",
   EXPORT_EXCEL: "/dashboard/export/excel",
   EXPORT_JSON: "/dashboard/export/json",
-  SUBSCRIPTIONS: "/subscriptions",
-  BOXING_BOOKINGS: "/boxing-bookings",
 };
 
 const POLL_GROWTH_EVERY_MS = 30000; // 30s (set to 0 to disable)
@@ -62,71 +60,6 @@ const lastVal = (arr = []) => (arr.length ? n(arr[arr.length - 1]) : 0);
 const normalizeMonthLabel = (value) => {
   if (value === undefined || value === null) return "";
   return String(value).trim();
-};
-
-const parseDateLike = (value) => {
-  if (!value) return null;
-  const raw = String(value).trim();
-  if (!raw) return null;
-  const normalized = raw.includes("T") ? raw : raw.replace(" ", "T");
-  const date = new Date(normalized);
-  return Number.isNaN(date.getTime()) ? null : date;
-};
-
-const monthKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-
-const keyToLabel = (key) => {
-  const [y, m] = String(key).split("-").map(Number);
-  if (!y || !m) return key;
-  const d = new Date(y, m - 1, 1);
-  return d.toLocaleString("en-US", { month: "short" });
-};
-
-const isClassSubscription = (record) => {
-  const name = String(
-    record?.membership_plan_name ||
-      record?.plan_name ||
-      record?.class_plan_name ||
-      record?.class_package_name ||
-      ""
-  )
-    .trim()
-    .toLowerCase();
-  return name.includes("class");
-};
-
-const aggregateMonthlyCounts = ({ records = [], labels = [], dateKeys = [], filterFn = null }) => {
-  const countsByMonth = new Map();
-
-  for (const item of records) {
-    if (filterFn && !filterFn(item)) continue;
-    const rawDate = deepPick(item, dateKeys, null);
-    const parsed = parseDateLike(rawDate);
-    if (!parsed) continue;
-
-    const key = monthKey(parsed);
-    countsByMonth.set(key, (countsByMonth.get(key) || 0) + 1);
-  }
-
-  if (labels.length) {
-    const keyed = labels.map((label, index) => {
-      const key = normalizeMonthLabel(label);
-      const foundByLabel = Array.from(countsByMonth.entries()).find(
-        ([k]) => keyToLabel(k).toLowerCase() === key.toLowerCase()
-      );
-      return {
-        name: key || `M${index + 1}`,
-        value: n(foundByLabel?.[1] || 0),
-      };
-    });
-
-    // if label mapping failed (e.g. locale differences), fallback to latest months from dataset
-    if (keyed.some((p) => p.value > 0)) return keyed;
-  }
-
-  return Array.from(countsByMonth.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([k, value]) => ({ name: keyToLabel(k), value: n(value) }));
 };
 
 const getSeriesDataByKeys = (payload, keys = []) => {
@@ -361,49 +294,10 @@ export default function AdminDashboard() {
         "boxing_booking_growth",
       ]);
 
-      let nextSubscriptionsData = normalizeGrowthSeries(labels, subscriptionsSeries);
-      let nextBoxingBookingsData = normalizeGrowthSeries(labels, boxingBookingsSeries);
-
-      const hasSubscriptionSeries = Array.isArray(subscriptionsSeries) ||
-        (subscriptionsSeries && typeof subscriptionsSeries === "object");
-      const hasBoxingSeries = Array.isArray(boxingBookingsSeries) ||
-        (boxingBookingsSeries && typeof boxingBookingsSeries === "object");
-
-      if (!hasSubscriptionSeries || !hasBoxingSeries) {
-        const [subscriptionsRes, boxingRes] = await Promise.all([
-          !hasSubscriptionSeries
-            ? axiosClient.get(API.SUBSCRIPTIONS, { signal: abortRef.current?.signal, cache: false })
-            : Promise.resolve(null),
-          !hasBoxingSeries
-            ? axiosClient.get(API.BOXING_BOOKINGS, { signal: abortRef.current?.signal, cache: false })
-            : Promise.resolve(null),
-        ]);
-
-        if (!hasSubscriptionSeries) {
-          const subscriptionsList =
-            subscriptionsRes?.data?.subscriptions ?? subscriptionsRes?.data?.data ?? subscriptionsRes?.data ?? [];
-          nextSubscriptionsData = aggregateMonthlyCounts({
-            records: Array.isArray(subscriptionsList) ? subscriptionsList : [],
-            labels,
-            dateKeys: ["created_at", "start_date", "subscribed_at", "createdAt"],
-            filterFn: (record) => !isClassSubscription(record),
-          });
-        }
-
-        if (!hasBoxingSeries) {
-          const boxingList = boxingRes?.data?.bookings ?? boxingRes?.data?.data ?? boxingRes?.data ?? [];
-          nextBoxingBookingsData = aggregateMonthlyCounts({
-            records: Array.isArray(boxingList) ? boxingList : [],
-            labels,
-            dateKeys: ["created_at", "booking_date", "start_date", "createdAt"],
-          });
-        }
-      }
-
       setUsersGrowthData(normalizeGrowthSeries(labels, usersSeries));
-      setSubscriptionsData(nextSubscriptionsData);
+      setSubscriptionsData(normalizeGrowthSeries(labels, subscriptionsSeries));
       setTrainerBookingsData(normalizeGrowthSeries(labels, trainerBookingsSeries));
-      setBoxingBookingsData(nextBoxingBookingsData);
+      setBoxingBookingsData(normalizeGrowthSeries(labels, boxingBookingsSeries));
     } catch (e) {
       if (e?.name === "CanceledError" || e?.code === "ERR_CANCELED") return;
 
