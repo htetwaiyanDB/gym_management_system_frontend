@@ -521,11 +521,19 @@ export default function AdminBoxingBookings() {
       setMsg({ type: "danger", text: "Session count must be greater than 0." });
       return;
     }
+
+    const currentTotal = toNumber(booking?.sessions_count ?? booking?.session_count ?? booking?.sessions) ?? 0;
+    const adjustment = totalValue - currentTotal;
+
+    if (adjustment === 0) {
+      return;
+    }
+
     setMsg(null);
     setBusyKey(`sessions-${booking.id}`);
     try {
       const res = await axiosClient.patch(`/boxing-bookings/session/${booking.id}/sessions`, {
-        sessions_count: totalValue,
+        adjustment,
       });
       setMsg({ type: "success", text: res?.data?.message || "Sessions updated." });
       await loadBookings();
