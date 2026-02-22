@@ -42,6 +42,7 @@ const UserAttendance = lazy(() => import("./pages/user/UserAttendance"));
 const UserSubsBookings = lazy(() => import("./pages/user/UserSubsBookings"));
 const UserMessages = lazy(() => import("./pages/user/UserMessages"));
 const UserSettings = lazy(() => import("./pages/user/UserSettings"));
+const UserClassSubscriptions = lazy(() => import("./pages/user/UserClassSubscriptions"));
 
 function getToken() {
   return localStorage.getItem("token") || sessionStorage.getItem("token");
@@ -172,6 +173,7 @@ export default function App() {
           <Route path="blogs/:id" element={<UserBlogDetails />} />
           <Route path="attendance" element={<UserAttendance />} />
           <Route path="subs-books" element={<UserSubsBookings />} />
+          <Route path="class-subscriptions" element={<UserClassSubscriptions />} />
           <Route path="subscriptions" element={<Navigate to="/user/subs-books" replace />} />
           <Route path="bookings" element={<Navigate to="/user/subs-books" replace />} />
           <Route path="notifications" element={<Notifications />} />

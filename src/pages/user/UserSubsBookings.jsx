@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import axiosClient from "../../api/axiosClient";
 import useRealtimePolling from "../../hooks/useRealtimePolling";
 import UserBookings from "./UserBookings";
@@ -466,13 +467,15 @@ export default function UserSubsBookings() {
   const tabs = [
     { id: "subscriptions", label: "Subscriptions" },
     { id: "bookings", label: "Trainer Bookings" },
-    { id: "boxing", label: "Boxing Bookings" },
   ];
 
   return (
     <div>
       <div className="d-flex align-items-center justify-content-between" style={{ gap: 12 }}>
         <h2 style={{ marginBottom: 12 }}>Subs & Books</h2>
+        <Link to="/user/class-subscriptions" className="btn btn-sm btn-outline-info">
+          Class Subscriptions
+        </Link>
       </div>
 
       <div className="d-flex gap-2 flex-wrap" style={{ marginBottom: 16 }}>
@@ -490,7 +493,6 @@ export default function UserSubsBookings() {
 
       {activeTab === "subscriptions" && <UserSubscriptions />}
       {activeTab === "bookings" && <UserBookings />}
-      {activeTab === "boxing" && <UserBoxingBookings />}
     </div>
   );
 }

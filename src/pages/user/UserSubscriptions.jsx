@@ -47,6 +47,28 @@ function pick(obj, keys) {
   return null;
 }
 
+function isClassSubscription(sub) {
+  const name = String(
+    pick(sub, ["plan_name", "package_name", "name", "title", "membership_plan_name"]) ||
+      pick(sub?.plan, ["name", "title", "plan_name"]) ||
+      pick(sub?.package, ["name", "title", "plan_name"]) ||
+      "",
+  )
+    .trim()
+    .toLowerCase();
+
+  const type = String(
+    pick(sub, ["type", "plan_type", "category", "package_type"]) ||
+      pick(sub?.plan, ["type", "plan_type", "category", "package_type"]) ||
+      pick(sub?.package, ["type", "plan_type", "category", "package_type"]) ||
+      "",
+  )
+    .trim()
+    .toLowerCase();
+
+  return type === "class" || name.includes("class");
+}
+
 function hasStarted(value) {
   if (!value) return false;
   const d = new Date(value);
@@ -103,7 +125,9 @@ export default function UserSubscriptions() {
         const list = normalizeSubscriptions(res?.data);
 
         // Sort: active first, then latest start date
-        const sorted = [...list].sort((a, b) => {
+        const normalSubscriptions = list.filter((sub) => !isClassSubscription(sub));
+
+        const sorted = [...normalSubscriptions].sort((a, b) => {
           const sa = resolveSubscriptionStatus(a);
           const sb = resolveSubscriptionStatus(b);
           const rank = (s) => (s === "active" ? 0 : s === "pending" ? 1 : 2);
