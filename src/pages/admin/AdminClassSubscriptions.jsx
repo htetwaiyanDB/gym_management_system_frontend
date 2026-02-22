@@ -236,8 +236,6 @@ export default function AdminClassSubscriptions() {
   const loadClassTimetable = async () => {
     try {
       const res = await requestWithFallback([
-        () => axiosClient.get("/class-timetable"),
-        () => axiosClient.get("/class-timetables"),
         () => axiosClient.get("/classes"),
       ]);
       setClassRows(normalizeClassTimetable(res?.data));
@@ -282,15 +280,11 @@ export default function AdminClassSubscriptions() {
     try {
       if (editingClassId) {
         await requestWithFallback([
-          () => axiosClient.put(`/class-timetable/${editingClassId}`, payload),
-          () => axiosClient.put(`/class-timetables/${editingClassId}`, payload),
           () => axiosClient.put(`/classes/${editingClassId}`, payload),
         ]);
         setMsg({ type: "success", text: "Class updated successfully." });
       } else {
         await requestWithFallback([
-          () => axiosClient.post("/class-timetable", payload),
-          () => axiosClient.post("/class-timetables", payload),
           () => axiosClient.post("/classes", payload),
         ]);
         setMsg({ type: "success", text: "Class created successfully." });
@@ -309,8 +303,6 @@ export default function AdminClassSubscriptions() {
     setMsg(null);
     try {
       await requestWithFallback([
-        () => axiosClient.delete(`/class-timetable/${id}`),
-        () => axiosClient.delete(`/class-timetables/${id}`),
         () => axiosClient.delete(`/classes/${id}`),
       ]);
       setMsg({ type: "success", text: "Class deleted successfully." });
