@@ -1,9 +1,10 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import axiosClient from "../../api/axiosClient";
 import useRealtimePolling from "../../hooks/useRealtimePolling";
 import UserBookings from "./UserBookings";
 import UserSubscriptions from "./UserSubscriptions";
 import { FaCalendar, FaClock, FaPhoneAlt, FaUser } from "react-icons/fa";
+import { getClasses } from "../../api/adminApi";
 
 function pick(obj, keys) {
   for (const k of keys) {
@@ -460,6 +461,70 @@ function UserBoxingBookings() {
   );
 }
 
+function UserClassSchedule() {
+  const [loading, setLoading] = useState(true);
+  const [classes, setClasses] = useState([]);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const list = await getClasses();
+        setClasses(list);
+      } catch (e) {
+        setError(e?.response?.data?.message || "Failed to load class schedule.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
+
+  const pick = (obj, keys) => {
+    for (const key of keys) {
+      const value = obj?.[key];
+      if (value !== undefined && value !== null && String(value).trim() !== "") return value;
+    }
+    return "-";
+  };
+
+  return (
+    <div>
+      {error && <div className="alert alert-danger">{error}</div>}
+      <div className="table-responsive">
+        <table className="table table-dark table-hover align-middle">
+          <thead>
+            <tr>
+              <th>Class</th>
+              <th>Date</th>
+              <th>Time</th>
+              <th>Coach</th>
+              <th>Location</th>
+            </tr>
+          </thead>
+          <tbody>
+            {classes.length === 0 ? (
+              <tr>
+                <td colSpan="5" className="text-center text-muted py-4">{loading ? "Loading..." : "No schedule yet."}</td>
+              </tr>
+            ) : classes.map((item) => (
+              <tr key={item.id}>
+                <td>{pick(item, ["name", "title"])}</td>
+                <td>{pick(item, ["schedule_date", "date"])}</td>
+                <td>{pick(item, ["start_time", "time_from"])} - {pick(item, ["end_time", "time_to"])}</td>
+                <td>{pick(item, ["coach_name", "trainer_name"])}</td>
+                <td>{pick(item, ["location", "room_name"])}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 export default function UserSubsBookings() {
   const [activeTab, setActiveTab] = useState("subscriptions");
 
@@ -467,6 +532,7 @@ export default function UserSubsBookings() {
     { id: "subscriptions", label: "Subscriptions" },
     { id: "bookings", label: "Trainer Bookings" },
     { id: "boxing", label: "Boxing Bookings" },
+    { id: "classes", label: "Class Schedule" },
   ];
 
   return (
@@ -491,6 +557,7 @@ export default function UserSubsBookings() {
       {activeTab === "subscriptions" && <UserSubscriptions />}
       {activeTab === "bookings" && <UserBookings />}
       {activeTab === "boxing" && <UserBoxingBookings />}
+      {activeTab === "classes" && <UserClassSchedule />}
     </div>
   );
 }

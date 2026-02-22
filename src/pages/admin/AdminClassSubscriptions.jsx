@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axiosClient from "../../api/axiosClient";
+import { createClass, deleteClass, getClasses, updateClass } from "../../api/adminApi";
 
 function moneyMMK(v) {
   if (v === null || v === undefined || v === "") return "-";
@@ -114,6 +115,22 @@ export default function AdminClassSubscriptions() {
   const [records, setRecords] = useState([]);
   const [members, setMembers] = useState([]);
   const [plans, setPlans] = useState([]);
+  const [classSchedules, setClassSchedules] = useState([]);
+  const [classLoading, setClassLoading] = useState(false);
+  const [classSaving, setClassSaving] = useState(false);
+  const [classBusyId, setClassBusyId] = useState(null);
+  const [classForm, setClassForm] = useState({
+    name: "",
+    description: "",
+    coach_name: "",
+    schedule_date: "",
+    start_time: "",
+    end_time: "",
+    capacity: "",
+    location: "",
+    photo: null,
+  });
+  const [editingClassId, setEditingClassId] = useState(null);
 
   const [showModal, setShowModal] = useState(false);
   const [memberId, setMemberId] = useState("");
@@ -276,6 +293,133 @@ export default function AdminClassSubscriptions() {
 
   useEffect(() => {
     loadRecords();
+    loadClasses();
+  }, []);
+
+  const resetClassForm = () => {
+    setClassForm({
+      name: "",
+      description: "",
+      coach_name: "",
+      schedule_date: "",
+      start_time: "",
+      end_time: "",
+      capacity: "",
+      location: "",
+      photo: null,
+    });
+    setEditingClassId(null);
+  };
+
+  const pickField = (obj, keys) => {
+    for (const key of keys) {
+      const value = obj?.[key];
+      if (value !== undefined && value !== null && String(value).trim() !== "") return value;
+    }
+    return "";
+  };
+
+  const loadClasses = async () => {
+    setClassLoading(true);
+    try {
+      const list = await getClasses();
+      setClassSchedules(list);
+    } catch (e) {
+      setMsg({ type: "danger", text: e?.response?.data?.message || "Failed to load class schedules." });
+    } finally {
+      setClassLoading(false);
+    }
+  };
+
+  const handleClassSubmit = async () => {
+    if (!classForm.name || !classForm.schedule_date) {
+      setMsg({ type: "danger", text: "Class name and schedule date are required." });
+      return;
+    }
+
+    setClassSaving(true);
+    setMsg(null);
+    try {
+      const payload = {
+        name: classForm.name,
+        description: classForm.description,
+        coach_name: classForm.coach_name,
+        schedule_date: classForm.schedule_date,
+        start_time: classForm.start_time,
+        end_time: classForm.end_time,
+        capacity: classForm.capacity,
+        location: classForm.location,
+        photo: classForm.photo,
+      };
+
+      if (editingClassId) {
+        await updateClass(editingClassId, payload);
+        setMsg({ type: "success", text: "Class updated successfully." });
+      } else {
+        await createClass(payload);
+        setMsg({ type: "success", text: "Class created successfully." });
+      }
+      resetClassForm();
+      await loadClasses();
+    } catch (e) {
+      setMsg({ type: "danger", text: e?.response?.data?.message || "Failed to save class." });
+    } finally {
+      setClassSaving(false);
+    }
+  };
+
+  const startEditClass = (item) => {
+    setEditingClassId(item?.id);
+    setClassForm({
+      name: pickField(item, ["name", "title"]),
+      description: pickField(item, ["description", "details"]),
+      coach_name: pickField(item, ["coach_name", "trainer_name"]),
+      schedule_date: pickField(item, ["schedule_date", "date"]),
+      start_time: pickField(item, ["start_time", "time_from"]),
+      end_time: pickField(item, ["end_time", "time_to"]),
+      capacity: pickField(item, ["capacity", "max_members"]),
+      location: pickField(item, ["location", "room_name"]),
+      photo: null,
+    });
+  };
+
+  const removeClass = async (id) => {
+    setClassBusyId(id);
+    setMsg(null);
+    try {
+      await deleteClass(id);
+      setMsg({ type: "success", text: "Class deleted." });
+      await loadClasses();
+    } catch (e) {
+      setMsg({ type: "danger", text: e?.response?.data?.message || "Failed to delete class." });
+    } finally {
+      setClassBusyId(null);
+    }
+  };
+
+  const calendarData = useMemo(() => {
+    const map = new Map();
+    classSchedules.forEach((item) => {
+      const dateKey = pickField(item, ["schedule_date", "date"]);
+      if (!dateKey) return;
+      if (!map.has(dateKey)) map.set(dateKey, []);
+      map.get(dateKey).push(item);
+    });
+    return map;
+  }, [classSchedules]);
+
+  const monthDays = useMemo(() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth();
+    const firstDay = new Date(y, m, 1).getDay();
+    const totalDays = new Date(y, m + 1, 0).getDate();
+    const cells = [];
+    for (let i = 0; i < firstDay; i += 1) cells.push(null);
+    for (let d = 1; d <= totalDays; d += 1) {
+      cells.push(`${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`);
+    }
+    return cells;
   }, []);
 
   const sortedRecords = useMemo(() => {
@@ -397,6 +541,125 @@ export default function AdminClassSubscriptions() {
             )}
           </tbody>
         </table>
+      </div>
+
+      <hr className="my-4" />
+      <div className="d-flex align-items-center justify-content-between mb-3">
+        <div>
+          <h4 className="mb-1">Class Schedule CRUD</h4>
+          <div className="admin-muted">Create, update, delete class schedule and attach class photo.</div>
+        </div>
+        <button className="btn btn-outline-light" onClick={loadClasses} disabled={classLoading}>
+          <i className="bi bi-arrow-clockwise me-2"></i>
+          {classLoading ? "Loading..." : "Refresh Classes"}
+        </button>
+      </div>
+
+      <div className="row g-4">
+        <div className="col-lg-5">
+          <div className="border rounded p-3 h-100">
+            <h6>{editingClassId ? "Edit Class" : "Add New Class"}</h6>
+            <div className="mb-2">
+              <label className="form-label">Class Name</label>
+              <input className="form-control bg-dark text-white" value={classForm.name} onChange={(e) => setClassForm((prev) => ({ ...prev, name: e.target.value }))} />
+            </div>
+            <div className="mb-2">
+              <label className="form-label">Coach</label>
+              <input className="form-control bg-dark text-white" value={classForm.coach_name} onChange={(e) => setClassForm((prev) => ({ ...prev, coach_name: e.target.value }))} />
+            </div>
+            <div className="mb-2">
+              <label className="form-label">Description</label>
+              <textarea className="form-control bg-dark text-white" rows={2} value={classForm.description} onChange={(e) => setClassForm((prev) => ({ ...prev, description: e.target.value }))} />
+            </div>
+            <div className="row g-2">
+              <div className="col-6">
+                <label className="form-label">Date</label>
+                <input type="date" className="form-control bg-dark text-white" value={classForm.schedule_date} onChange={(e) => setClassForm((prev) => ({ ...prev, schedule_date: e.target.value }))} />
+              </div>
+              <div className="col-3">
+                <label className="form-label">Start</label>
+                <input type="time" className="form-control bg-dark text-white" value={classForm.start_time} onChange={(e) => setClassForm((prev) => ({ ...prev, start_time: e.target.value }))} />
+              </div>
+              <div className="col-3">
+                <label className="form-label">End</label>
+                <input type="time" className="form-control bg-dark text-white" value={classForm.end_time} onChange={(e) => setClassForm((prev) => ({ ...prev, end_time: e.target.value }))} />
+              </div>
+            </div>
+            <div className="row g-2 mt-1">
+              <div className="col-6">
+                <label className="form-label">Capacity</label>
+                <input type="number" className="form-control bg-dark text-white" value={classForm.capacity} onChange={(e) => setClassForm((prev) => ({ ...prev, capacity: e.target.value }))} />
+              </div>
+              <div className="col-6">
+                <label className="form-label">Location</label>
+                <input className="form-control bg-dark text-white" value={classForm.location} onChange={(e) => setClassForm((prev) => ({ ...prev, location: e.target.value }))} />
+              </div>
+            </div>
+            <div className="mt-2">
+              <label className="form-label">Attach Photo</label>
+              <input type="file" accept="image/*" className="form-control bg-dark text-white" onChange={(e) => setClassForm((prev) => ({ ...prev, photo: e.target.files?.[0] || null }))} />
+            </div>
+            <div className="d-flex gap-2 mt-3">
+              <button className="btn btn-primary" onClick={handleClassSubmit} disabled={classSaving}>{classSaving ? "Saving..." : editingClassId ? "Update" : "Create"}</button>
+              {editingClassId && <button className="btn btn-outline-light" onClick={resetClassForm}>Cancel edit</button>}
+            </div>
+          </div>
+        </div>
+
+        <div className="col-lg-7">
+          <div className="table-responsive border rounded p-2">
+            <table className="table table-dark table-hover align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Class</th>
+                  <th>Date</th>
+                  <th>Time</th>
+                  <th>Coach</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {classSchedules.length === 0 ? (
+                  <tr><td colSpan="5" className="text-center text-muted py-3">{classLoading ? "Loading..." : "No classes found."}</td></tr>
+                ) : classSchedules.map((item) => (
+                  <tr key={item.id}>
+                    <td>{pickField(item, ["name", "title"]) || "-"}</td>
+                    <td>{pickField(item, ["schedule_date", "date"]) || "-"}</td>
+                    <td>{`${pickField(item, ["start_time", "time_from"]) || "-"} - ${pickField(item, ["end_time", "time_to"]) || "-"}`}</td>
+                    <td>{pickField(item, ["coach_name", "trainer_name"]) || "-"}</td>
+                    <td>
+                      <div className="d-flex gap-2">
+                        <button className="btn btn-sm btn-warning" onClick={() => startEditClass(item)}>Edit</button>
+                        <button className="btn btn-sm btn-danger" disabled={classBusyId === item.id} onClick={() => removeClass(item.id)}>{classBusyId === item.id ? "..." : "Delete"}</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 border rounded p-3">
+        <h5>Class Calendar (This Month)</h5>
+        <div className="row row-cols-7 g-2">
+          {monthDays.map((day, idx) => (
+            <div key={`${day || "blank"}-${idx}`} className="col">
+              <div className="border rounded p-2 h-100" style={{ minHeight: 96, background: "rgba(255,255,255,0.03)" }}>
+                {day ? (
+                  <>
+                    <div className="small fw-bold">{day.split("-")[2]}</div>
+                    <div className="small text-info">{calendarData.get(day)?.length || 0} class(es)</div>
+                    {(calendarData.get(day) || []).slice(0, 2).map((item) => (
+                      <div key={item.id} className="small text-white-50 text-truncate">• {pickField(item, ["name", "title"])}</div>
+                    ))}
+                  </>
+                ) : <div className="small text-muted">&nbsp;</div>}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {showModal && (
