@@ -92,6 +92,17 @@ function formatDurationDays(source) {
   return `${days} day(s)`;
 }
 
+function parsePriceNumber(value) {
+  if (value === null || value === undefined || value === "") return null;
+  if (typeof value === "number") return Number.isNaN(value) ? null : value;
+
+  const cleaned = String(value).replace(/[^\d.-]/g, "");
+  if (!cleaned) return null;
+
+  const parsed = Number(cleaned);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
 async function requestWithFallback(requests) {
   let latestError = null;
   for (const run of requests) {
@@ -342,8 +353,13 @@ export default function AdminClassSubscriptions() {
     };
 
     if (startDate) payload.start_date = startDate;
-    if (selectedPlan?.price !== undefined && selectedPlan?.price !== null) {
-      payload.price = Number(selectedPlan.price);
+    const selectedPlanPrice =
+      parsePriceNumber(selectedPlan?.price) ??
+      parsePriceNumber(selectedPlan?.membership_plan_price) ??
+      parsePriceNumber(selectedPlan?.plan_price);
+
+    if (selectedPlanPrice !== null) {
+      payload.price = selectedPlanPrice;
     }
 
     try {
