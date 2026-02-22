@@ -13,7 +13,7 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: rgba(0,0,0,0.70);
+  background: var(--overlay-bg);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   z-index: 0;
@@ -24,20 +24,20 @@
   position: relative;
   z-index: 1;
   width: 210px;
-  background: rgba(18, 18, 20, 0.55);
-  border-right: 1px solid rgba(255,255,255,0.12);
+  background: var(--glass-bg);
+  border-right: 1px solid var(--glass-border);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
 }
 
 .admin-brand {
-  color: rgba(255,255,255,0.95);
+  color: var(--text-primary);
   font-weight: 700;
   letter-spacing: 0.5px;
 }
 
 .admin-subtitle {
-  color: rgba(255,255,255,0.65);
+  color: var(--text-secondary);
   font-size: 0.9rem;
 }
 
@@ -48,21 +48,21 @@
   gap: 10px;
   padding: 10px 12px;
   border-radius: 12px;
-  color: rgba(255,255,255,0.80);
+  color: var(--text-secondary);
   text-decoration: none;
   border: 1px solid transparent;
 }
 
 .admin-link:hover {
-  color: rgba(255,255,255,0.95);
-  background: rgba(255,255,255,0.08);
-  border-color: rgba(255,255,255,0.10);
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--glass-bg) 75%, transparent);
+  border-color: var(--glass-border);
 }
 
 .admin-link.active {
-  color: rgba(255,255,255,0.98);
-  background: rgba(255,255,255,0.12);
-  border-color: rgba(255,255,255,0.16);
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--glass-bg) 90%, transparent);
+  border-color: var(--glass-border);
 }
 
 /* Main content glass panel */
@@ -74,28 +74,28 @@
 }
 
 .admin-topbar {
-  background: rgba(18, 18, 20, 0.55);
-  border: 1px solid rgba(255,255,255,0.12);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
   border-radius: 16px;
   padding: 12px 14px;
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  color: rgba(255,255,255,0.92);
+  color: var(--text-primary);
 }
 
 /* Card style for admin pages */
 .admin-card {
-  background: rgba(18, 18, 20, 0.55);
-  border: 1px solid rgba(255,255,255,0.12);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
   border-radius: 16px;
   box-shadow: 0 18px 40px rgba(0,0,0,0.45);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  color: rgba(255,255,255,0.92);
+  color: var(--text-primary);
 }
 
 .admin-muted {
-  color: rgba(255,255,255,0.65);
+  color: var(--text-secondary);
 }
 
 

@@ -4,8 +4,8 @@
   flex-direction: column;
   background: radial-gradient(
     circle at top,
-    rgba(40, 40, 45, 0.95),
-    rgba(10, 10, 15, 1)
+    color-mix(in srgb, var(--app-bg) 70%, #2d3340),
+    var(--app-bg)
   );
 }
 
@@ -18,14 +18,14 @@
 }
 
 .user-content > div {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--glass-bg);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border-radius: 16px;
   padding: 18px;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #f1f1f1;
+  border: 1px solid var(--glass-border);
+  color: var(--text-primary);
 }
 
 /* ✅ Bottom Nav */
@@ -46,11 +46,11 @@
 
   background: linear-gradient(
     180deg,
-    rgba(24, 26, 32, 0.92),
-    rgba(12, 13, 16, 0.92)
+    color-mix(in srgb, var(--app-bg) 80%, #242b39),
+    var(--app-bg)
   );
 
-  border: 1px solid rgba(255, 255, 255, 0.10);
+  border: 1px solid var(--glass-border);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
 
   backdrop-filter: blur(14px);
@@ -70,7 +70,7 @@
   justify-content: center;
 
   text-decoration: none;
-  color: rgba(255, 255, 255, 0.72);
+  color: var(--text-secondary);
 
   border-radius: 14px;
   transition: transform 120ms ease, background 120ms ease, color 120ms ease;
@@ -90,9 +90,9 @@
 }
 
 .user-nav-item.active {
-  color: #ffffff;
+  color: var(--text-primary);
   background: rgba(255, 255, 255, 0.10);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--glass-border);
 }
 
 .user-nav-item:active {

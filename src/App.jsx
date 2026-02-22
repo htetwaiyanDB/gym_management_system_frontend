@@ -1,5 +1,6 @@
-import React, { Suspense, lazy } from "react";
+import React, { Suspense, lazy, useEffect, useState } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
+import "./theme-toggle.css";
 
 const Login = lazy(() => import("./pages/public/Login"));
 const Register = lazy(() => import("./pages/public/Register"));
@@ -96,112 +97,135 @@ function RoleOnly({ role, children }) {
 }
 
 export default function App() {
+  const [theme, setTheme] = useState(() => localStorage.getItem("theme") || "dark");
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("theme", theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((currentTheme) => (currentTheme === "dark" ? "light" : "dark"));
+  };
+
   return (
-    <Suspense
-      fallback={
-        <div className="d-flex min-vh-100 align-items-center justify-content-center">
-          <div className="text-muted">Loading...</div>
-        </div>
-      }
-    >
-      <Routes>
-        <Route
-          path="/"
-          element={
-            getToken() ? (
-              <Navigate to={getDefaultRouteByRole(getUser())} replace />
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          }
-        />
+    <>
+      <button
+        type="button"
+        className="theme-toggle-btn"
+        onClick={toggleTheme}
+        aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+        title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+      >
+        <i className={`bi ${theme === "dark" ? "bi-sun-fill" : "bi-moon-stars-fill"}`}></i>
+      </button>
 
-        {/* Public */}
-        <Route
-          path="/login"
-          element={
-            <PublicOnly>
-              <Login />
-            </PublicOnly>
-          }
-        />
-        <Route path="/register" element={<Register />} />
-        <Route path="/verify-email" element={<VerifyEmail />} />
-        {/* Admin */}
-        <Route
-          path="/admin"
-          element={
-            <Protected>
-              <RoleOnly role="administrator">
-                <AdminLayout />
-              </RoleOnly>
-            </Protected>
-          }
-        >
-          <Route index element={<Navigate to="/admin/dashboard" replace />} />
-          <Route path="dashboard" element={<AdminDashboard />} />
-          <Route path="users" element={<AdminUsers />} />
-          <Route path="users/:id/history" element={<AdminUserHistory />} />
-          <Route path="trainers/:id/history" element={<AdminUserHistory />} />
-          <Route path="subscriptions" element={<AdminSubscriptions />} />
-          <Route path="subscriptions/classes" element={<AdminClassSubscriptions />} />
-          <Route path="pricing" element={<AdminPricing />} />
-          <Route path="trainer-bookings" element={<AdminTrainerBookings />} />
-          <Route path="boxing-bookings" element={<AdminBoxingBookings />} />
-          <Route path="attendance" element={<AdminAttendance />} />
-          <Route path="attendance/rfid-register" element={<AdminRfidRegister />} />
-          <Route path="messages" element={<AdminMessages />} />
-          <Route path="blogs" element={<AdminBlogs />} />
-          <Route path="settings" element={<AdminSettings />} />
-        </Route>
+      <Suspense
+        fallback={
+          <div className="d-flex min-vh-100 align-items-center justify-content-center">
+            <div className="text-muted">Loading...</div>
+          </div>
+        }
+      >
+        <Routes>
+          <Route
+            path="/"
+            element={
+              getToken() ? (
+                <Navigate to={getDefaultRouteByRole(getUser())} replace />
+              ) : (
+                <Navigate to="/login" replace />
+              )
+            }
+          />
 
-        {/* User ✅ FIXED (nested routes correctly under /user) */}
-        <Route
-          path="/user"
-          element={
-            <Protected>
-              <RoleOnly role="user">
-                <UserLayout />
-              </RoleOnly>
-            </Protected>
-          }
-        >
-          <Route index element={<Navigate to="/user/home" replace />} />
-          <Route path="home" element={<UserHome />} />
-          <Route path="scan" element={<UserScan />} />
-          <Route path="blogs/:id" element={<UserBlogDetails />} />
-          <Route path="attendance" element={<UserAttendance />} />
-          <Route path="subs-books" element={<UserSubsBookings />} />
-          <Route path="subscriptions" element={<Navigate to="/user/subs-books" replace />} />
-          <Route path="bookings" element={<Navigate to="/user/subs-books" replace />} />
-          <Route path="notifications" element={<Notifications />} />
-          <Route path="messages" element={<UserMessages />} />
-          <Route path="settings" element={<UserSettings />} />
-        </Route>
+          {/* Public */}
+          <Route
+            path="/login"
+            element={
+              <PublicOnly>
+                <Login />
+              </PublicOnly>
+            }
+          />
+          <Route path="/register" element={<Register />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
+          {/* Admin */}
+          <Route
+            path="/admin"
+            element={
+              <Protected>
+                <RoleOnly role="administrator">
+                  <AdminLayout />
+                </RoleOnly>
+              </Protected>
+            }
+          >
+            <Route index element={<Navigate to="/admin/dashboard" replace />} />
+            <Route path="dashboard" element={<AdminDashboard />} />
+            <Route path="users" element={<AdminUsers />} />
+            <Route path="users/:id/history" element={<AdminUserHistory />} />
+            <Route path="trainers/:id/history" element={<AdminUserHistory />} />
+            <Route path="subscriptions" element={<AdminSubscriptions />} />
+            <Route path="subscriptions/classes" element={<AdminClassSubscriptions />} />
+            <Route path="pricing" element={<AdminPricing />} />
+            <Route path="trainer-bookings" element={<AdminTrainerBookings />} />
+            <Route path="boxing-bookings" element={<AdminBoxingBookings />} />
+            <Route path="attendance" element={<AdminAttendance />} />
+            <Route path="attendance/rfid-register" element={<AdminRfidRegister />} />
+            <Route path="messages" element={<AdminMessages />} />
+            <Route path="blogs" element={<AdminBlogs />} />
+            <Route path="settings" element={<AdminSettings />} />
+          </Route>
 
-        {/* Trainer */}
-        <Route
-          path="/trainer"
-          element={
-            <Protected>
-              <RoleOnly role="trainer">
-                <TrainerLayout />
-              </RoleOnly>
-            </Protected>
-          }
-        >
-          <Route index element={<Navigate to="/trainer/home" replace />} />
-          <Route path="home" element={<TrainerHome />} />
-          <Route path="scan" element={<TrainerScan />} />
-          <Route path="messages" element={<TrainerMessages />} />
-          <Route path="bookings" element={<TrainerBookings />} />
-          <Route path="blogs/:id" element={<TrainerBlogDetails />} />
-          <Route path="notifications" element={<Notifications />} />
-          <Route path="settings" element={<TrainerSettings />} />
-        </Route>
+          {/* User ✅ FIXED (nested routes correctly under /user) */}
+          <Route
+            path="/user"
+            element={
+              <Protected>
+                <RoleOnly role="user">
+                  <UserLayout />
+                </RoleOnly>
+              </Protected>
+            }
+          >
+            <Route index element={<Navigate to="/user/home" replace />} />
+            <Route path="home" element={<UserHome />} />
+            <Route path="scan" element={<UserScan />} />
+            <Route path="blogs/:id" element={<UserBlogDetails />} />
+            <Route path="attendance" element={<UserAttendance />} />
+            <Route path="subs-books" element={<UserSubsBookings />} />
+            <Route path="subscriptions" element={<Navigate to="/user/subs-books" replace />} />
+            <Route path="bookings" element={<Navigate to="/user/subs-books" replace />} />
+            <Route path="notifications" element={<Notifications />} />
+            <Route path="messages" element={<UserMessages />} />
+            <Route path="settings" element={<UserSettings />} />
+          </Route>
 
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
-    </Suspense>
+          {/* Trainer */}
+          <Route
+            path="/trainer"
+            element={
+              <Protected>
+                <RoleOnly role="trainer">
+                  <TrainerLayout />
+                </RoleOnly>
+              </Protected>
+            }
+          >
+            <Route index element={<Navigate to="/trainer/home" replace />} />
+            <Route path="home" element={<TrainerHome />} />
+            <Route path="scan" element={<TrainerScan />} />
+            <Route path="messages" element={<TrainerMessages />} />
+            <Route path="bookings" element={<TrainerBookings />} />
+            <Route path="blogs/:id" element={<TrainerBlogDetails />} />
+            <Route path="notifications" element={<Notifications />} />
+            <Route path="settings" element={<TrainerSettings />} />
+          </Route>
+
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </Suspense>
+    </>
   );
 }
