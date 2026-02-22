@@ -127,7 +127,7 @@ export default function AdminClassSubscriptions() {
   const [planId, setPlanId] = useState("");
   const [startDate, setStartDate] = useState("");
 
-  const weekDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+  const weekDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
   const resetForm = () => {
     setMemberId("");
@@ -275,7 +275,7 @@ export default function AdminClassSubscriptions() {
 
     setClassSaving(true);
     setMsg(null);
-    const payload = { class_name: classNameInput.trim(), day: classDayInput };
+    const payload = { class_name: classNameInput.trim(), class_day: classDayInput };
 
     try {
       if (editingClassId) {
