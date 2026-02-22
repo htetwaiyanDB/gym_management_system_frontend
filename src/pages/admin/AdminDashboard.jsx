@@ -62,11 +62,26 @@ const normalizeMonthLabel = (value) => {
   return String(value).trim();
 };
 
+const normalizeLookupKey = (value) => String(value ?? "").replace(/[^a-z0-9]/gi, "").toLowerCase();
+
 const getSeriesDataByKeys = (payload, keys = []) => {
+  if (!payload || typeof payload !== "object") return undefined;
+
   for (const key of keys) {
     const candidate = payload?.[key];
     if (candidate !== undefined && candidate !== null) return candidate;
   }
+
+  const normalizedPayloadEntries = Object.entries(payload).map(([key, value]) => [normalizeLookupKey(key), value]);
+
+  for (const key of keys) {
+    const normalizedKey = normalizeLookupKey(key);
+    const normalizedMatch = normalizedPayloadEntries.find(([entryKey]) => entryKey === normalizedKey);
+    if (normalizedMatch?.[1] !== undefined && normalizedMatch?.[1] !== null) {
+      return normalizedMatch[1];
+    }
+  }
+
   return undefined;
 };
 
@@ -292,6 +307,10 @@ export default function AdminDashboard() {
         "boxingBookings",
         "boxing",
         "boxing_booking_growth",
+        "boxing_booking",
+        "boxing_subscriptions",
+        "boxing_bookings_growth",
+        "Boxing Bookings",
       ]);
 
       setUsersGrowthData(normalizeGrowthSeries(labels, usersSeries));
