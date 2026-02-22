@@ -116,9 +116,18 @@ export default function AdminClassSubscriptions() {
   const [plans, setPlans] = useState([]);
 
   const [showModal, setShowModal] = useState(false);
+  const [showClassModal, setShowClassModal] = useState(false);
+  const [classSaving, setClassSaving] = useState(false);
+  const [classBusyId, setClassBusyId] = useState(null);
+  const [classRows, setClassRows] = useState([]);
+  const [editingClassId, setEditingClassId] = useState(null);
+  const [classNameInput, setClassNameInput] = useState("");
+  const [classDayInput, setClassDayInput] = useState("Monday");
   const [memberId, setMemberId] = useState("");
   const [planId, setPlanId] = useState("");
   const [startDate, setStartDate] = useState("");
+
+  const weekDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
   const resetForm = () => {
     setMemberId("");
@@ -202,6 +211,117 @@ export default function AdminClassSubscriptions() {
     }
   };
 
+  const normalizeClassTimetable = (payload) => {
+    const list = Array.isArray(payload?.classes)
+      ? payload.classes
+      : Array.isArray(payload?.class_timetables)
+        ? payload.class_timetables
+        : Array.isArray(payload?.timetables)
+          ? payload.timetables
+          : Array.isArray(payload?.data)
+            ? payload.data
+            : Array.isArray(payload)
+              ? payload
+              : [];
+
+    return list
+      .map((item) => ({
+        id: item?.id ?? item?.class_id ?? item?.timetable_id,
+        name: item?.class_name ?? item?.name ?? item?.title,
+        day: item?.day ?? item?.weekday ?? item?.class_day,
+      }))
+      .filter((item) => item.id !== undefined && item.id !== null);
+  };
+
+  const loadClassTimetable = async () => {
+    try {
+      const res = await requestWithFallback([
+        () => axiosClient.get("/class-timetable"),
+        () => axiosClient.get("/class-timetables"),
+        () => axiosClient.get("/classes"),
+      ]);
+      setClassRows(normalizeClassTimetable(res?.data));
+    } catch (e) {
+      setMsg({ type: "danger", text: e?.response?.data?.message || "Failed to load class timetable." });
+    }
+  };
+
+  const resetClassForm = () => {
+    setEditingClassId(null);
+    setClassNameInput("");
+    setClassDayInput("Monday");
+  };
+
+  const openCreateClass = () => {
+    resetClassForm();
+    setShowClassModal(true);
+  };
+
+  const openEditClass = (row) => {
+    setEditingClassId(row.id);
+    setClassNameInput(row.name || "");
+    setClassDayInput(weekDays.includes(row.day) ? row.day : "Monday");
+    setShowClassModal(true);
+  };
+
+  const closeClassModal = () => {
+    setShowClassModal(false);
+    resetClassForm();
+  };
+
+  const saveClass = async () => {
+    if (!classNameInput.trim()) {
+      setMsg({ type: "danger", text: "Please enter class name." });
+      return;
+    }
+
+    setClassSaving(true);
+    setMsg(null);
+    const payload = { class_name: classNameInput.trim(), day: classDayInput };
+
+    try {
+      if (editingClassId) {
+        await requestWithFallback([
+          () => axiosClient.put(`/class-timetable/${editingClassId}`, payload),
+          () => axiosClient.put(`/class-timetables/${editingClassId}`, payload),
+          () => axiosClient.put(`/classes/${editingClassId}`, payload),
+        ]);
+        setMsg({ type: "success", text: "Class updated successfully." });
+      } else {
+        await requestWithFallback([
+          () => axiosClient.post("/class-timetable", payload),
+          () => axiosClient.post("/class-timetables", payload),
+          () => axiosClient.post("/classes", payload),
+        ]);
+        setMsg({ type: "success", text: "Class created successfully." });
+      }
+      closeClassModal();
+      await loadClassTimetable();
+    } catch (e) {
+      setMsg({ type: "danger", text: e?.response?.data?.message || "Failed to save class." });
+    } finally {
+      setClassSaving(false);
+    }
+  };
+
+  const deleteClass = async (id) => {
+    setClassBusyId(id);
+    setMsg(null);
+    try {
+      await requestWithFallback([
+        () => axiosClient.delete(`/class-timetable/${id}`),
+        () => axiosClient.delete(`/class-timetables/${id}`),
+        () => axiosClient.delete(`/classes/${id}`),
+      ]);
+      setMsg({ type: "success", text: "Class deleted successfully." });
+      await loadClassTimetable();
+    } catch (e) {
+      setMsg({ type: "danger", text: e?.response?.data?.message || "Failed to delete class." });
+    } finally {
+      setClassBusyId(null);
+    }
+  };
+
   const closeModal = () => {
     setShowModal(false);
     resetForm();
@@ -276,6 +396,7 @@ export default function AdminClassSubscriptions() {
 
   useEffect(() => {
     loadRecords();
+    loadClassTimetable();
   }, []);
 
   const sortedRecords = useMemo(() => {
@@ -317,6 +438,52 @@ export default function AdminClassSubscriptions() {
       </div>
 
       {msg && <div className={`alert alert-${msg.type}`}>{msg.text}</div>}
+
+      <div className="admin-card p-3 mb-4 border border-secondary-subtle">
+        <div className="d-flex align-items-center justify-content-between mb-3">
+          <h5 className="mb-0">Class Timetable</h5>
+          <button className="btn btn-primary" onClick={openCreateClass}>
+            <i className="bi bi-plus-circle me-2"></i>Create Class
+          </button>
+        </div>
+        <div className="table-responsive">
+          <table className="table table-dark table-hover align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Class Name</th>
+                <th>Days</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {classRows.length === 0 ? (
+                <tr>
+                  <td colSpan="3" className="text-center text-muted py-4">No classes found.</td>
+                </tr>
+              ) : (
+                classRows.map((row) => (
+                  <tr key={row.id}>
+                    <td>{row.name || "-"}</td>
+                    <td>{row.day || "-"}</td>
+                    <td>
+                      <div className="d-flex gap-2">
+                        <button className="btn btn-sm btn-warning" onClick={() => openEditClass(row)}>Edit</button>
+                        <button
+                          className="btn btn-sm btn-danger"
+                          onClick={() => deleteClass(row.id)}
+                          disabled={classBusyId === row.id}
+                        >
+                          {classBusyId === row.id ? "..." : "Delete"}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       <div className="table-responsive">
         <table className="table table-dark table-hover align-middle mb-0">
@@ -448,6 +615,52 @@ export default function AdminClassSubscriptions() {
                 <div className="modal-footer">
                   <button className="btn btn-outline-light" onClick={closeModal}>Cancel</button>
                   <button className="btn btn-primary" onClick={save} disabled={saving}>{saving ? "Saving..." : "Create"}</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="modal-backdrop fade show"></div>
+        </>
+      )}
+
+      {showClassModal && (
+        <>
+          <div className="modal fade show d-block" tabIndex="-1">
+            <div className="modal-dialog modal-dialog-centered">
+              <div className="modal-content bg-dark text-white">
+                <div className="modal-header">
+                  <h5 className="modal-title fw-bolder">{editingClassId ? "Edit Class" : "Create Class"}</h5>
+                  <button className="btn-close btn-close-white" onClick={closeClassModal} aria-label="Close"></button>
+                </div>
+                <div className="modal-body">
+                  <div className="mb-3">
+                    <label className="form-label fw-bold">Class Name</label>
+                    <input
+                      type="text"
+                      className="form-control bg-dark text-white"
+                      placeholder="Enter class name"
+                      value={classNameInput}
+                      onChange={(e) => setClassNameInput(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label fw-bold">Day</label>
+                    <select
+                      className="form-select bg-dark text-white"
+                      value={classDayInput}
+                      onChange={(e) => setClassDayInput(e.target.value)}
+                    >
+                      {weekDays.map((day) => (
+                        <option key={day} value={day}>{day}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="modal-footer">
+                  <button className="btn btn-outline-light" onClick={closeClassModal}>Cancel</button>
+                  <button className="btn btn-primary" onClick={saveClass} disabled={classSaving}>
+                    {classSaving ? "Saving..." : editingClassId ? "Update" : "Create"}
+                  </button>
                 </div>
               </div>
             </div>
