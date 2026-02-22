@@ -86,6 +86,10 @@ function isCompletedStatus(value) {
   return s.includes("complete") || s.includes("completed") || s.includes("done");
 }
 
+function isMonthlyPackageType(value) {
+  const s = String(value || "").toLowerCase();
+  return s.includes("month");
+}
 
 function getSessionProgress(booking) {
   const total = toNumber(pick(booking, ["sessions_count", "session_count", "sessions"]));
@@ -286,6 +290,7 @@ export default function UserBookings() {
             pick(b?.package_detail, ["type", "package_type", "package_kind", "package_category"]) ||
             "—";
 
+          const isMonthlyPackage = isMonthlyPackageType(packageType);
 
           const sessionDateTime =
             pick(b, [
@@ -387,17 +392,19 @@ export default function UserBookings() {
                   </div>
 
                   
-                  <div className="d-flex justify-content-between align-items-center" style={{ gap: 12 }}>
-                    <span style={{ opacity: 0.8 }}>Session confirmation</span>
-                    <button
-                      className="btn btn-sm btn-outline-info"
-                     onClick={(event) => confirmSession(id, event)}
-                      disabled={isCompleted || busyKey === `confirm-${id}`}
-                      title={isCompleted ? "All sessions completed" : "Confirm this session"}
-                    >
-                      {busyKey === `confirm-${id}` ? "..." : "Confirm"}
-                    </button>
-                  </div>
+                    {!isMonthlyPackage && (
+                    <div className="d-flex justify-content-between align-items-center" style={{ gap: 12 }}>
+                      <span style={{ opacity: 0.8 }}>Session confirmation</span>
+                      <button
+                        className="btn btn-sm btn-outline-info"
+                        onClick={(event) => confirmSession(id, event)}
+                        disabled={isCompleted || busyKey === `confirm-${id}`}
+                        title={isCompleted ? "All sessions completed" : "Confirm this session"}
+                      >
+                        {busyKey === `confirm-${id}` ? "..." : "Confirm"}
+                      </button>
+                    </div>
+                  )}
              
 
                 {note ? (

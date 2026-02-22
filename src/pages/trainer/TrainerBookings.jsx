@@ -87,6 +87,11 @@ function getPackageType(booking) {
   );
 }
 
+function isMonthlyPackageType(value) {
+  const s = String(value || "").toLowerCase();
+  return s.includes("month");
+}
+
 function getDate(b) {
   const dtRaw =
     b?.session_datetime ||
@@ -380,6 +385,8 @@ export default function TrainerBooking() {
         <div className="d-flex flex-column gap-2">
           {filtered.map((b, i) => {
             const bookingId = b?.id ?? i;
+            const packageType = getPackageType(b);
+            const isMonthlyPackage = isMonthlyPackageType(packageType);
             const { total: totalSessions, remaining: remainingSessions } = getSessionProgress(b);
             const isCompleted =
               remainingSessions === 0 || isCompletedStatus(b?.status);
@@ -448,7 +455,7 @@ export default function TrainerBooking() {
                       </div>
                       <div className="d-flex justify-content-between">
                         <span style={{ opacity: 0.8 }}>Package type</span>
-                        <span>{getPackageType(b)}</span>
+                        <span>{packageType}</span>
                       </div>
                       <div className="d-flex justify-content-between">
                         <span style={{ opacity: 0.8 }}>Session Count</span>
@@ -465,24 +472,26 @@ export default function TrainerBooking() {
                         <span>{String(b?.status || "—")}</span>
                       </div>
 
-                      <div className="d-flex justify-content-between align-items-center">
-                        <span style={{ opacity: 0.8 }}>Session confirmation</span>
-                        <button
-                          className="btn btn-sm btn-outline-info"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (activeTab === "trainer") {
-                              confirmSession(bookingId);
-                            } else {
-                              confirmBoxingSession(bookingId);
-                            }
-                          }}
-                          disabled={isCompleted || busyKey === `confirm-${bookingId}` || busyKey === `confirm-boxing-${bookingId}`}
-                          title={isCompleted ? "All sessions completed" : "Confirm this session"}
-                        >
-                          {busyKey === `confirm-${bookingId}` || busyKey === `confirm-boxing-${bookingId}` ? "..." : "Confirm"}
-                        </button>
-                      </div>
+                        {!isMonthlyPackage && (
+                        <div className="d-flex justify-content-between align-items-center">
+                          <span style={{ opacity: 0.8 }}>Session confirmation</span>
+                          <button
+                            className="btn btn-sm btn-outline-info"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (activeTab === "trainer") {
+                                confirmSession(bookingId);
+                              } else {
+                                confirmBoxingSession(bookingId);
+                              }
+                            }}
+                            disabled={isCompleted || busyKey === `confirm-${bookingId}` || busyKey === `confirm-boxing-${bookingId}`}
+                            title={isCompleted ? "All sessions completed" : "Confirm this session"}
+                          >
+                            {busyKey === `confirm-${bookingId}` || busyKey === `confirm-boxing-${bookingId}` ? "..." : "Confirm"}
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     {b?.notes && (
