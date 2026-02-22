@@ -83,6 +83,13 @@ function fmtDate(v) {
   return d.toLocaleDateString();
 }
 
+function fmtMoney(v) {
+  if (v === null || v === undefined || v === "") return "—";
+  const n = Number(v);
+  if (Number.isNaN(n)) return String(v);
+  return n.toLocaleString();
+}
+
 function fmtTime(v) {
   if (!v) return null;
   const s = String(v).trim();
@@ -138,6 +145,42 @@ function timetableFromSubscriptions(subscriptions) {
   });
 
   return rows;
+}
+
+function hasStarted(value) {
+  if (!value) return false;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return false;
+  const now = new Date();
+  now.setHours(23, 59, 59, 999);
+  return d.getTime() <= now.getTime();
+}
+
+function resolveSubscriptionStatus(sub) {
+  const rawStatus = String(pick(sub, ["status", "state"]) || "").toLowerCase();
+  const startDate = pick(sub, ["start_date", "starts_at", "start"]);
+  if (rawStatus === "pending" && hasStarted(startDate)) {
+    return "active";
+  }
+  return rawStatus || "—";
+}
+
+function StatusBadge({ status }) {
+  const s = String(status || "").toLowerCase();
+  const cls =
+    s === "active"
+      ? "bg-success"
+      : s === "expired" || s === "inactive"
+        ? "bg-secondary"
+        : s === "pending"
+          ? "bg-warning text-dark"
+          : "bg-info";
+
+  return (
+    <span className={`badge ${cls}`} style={{ textTransform: "capitalize" }}>
+      {status || "—"}
+    </span>
+  );
 }
 
 export default function UserClassSubscriptions({ embedded = false }) {
@@ -220,6 +263,22 @@ export default function UserClassSubscriptions({ embedded = false }) {
               "Class Plan";
             const startDate = pick(sub, ["start_date", "starts_at", "start"]);
             const endDate = pick(sub, ["end_date", "ends_at", "end", "expire_at", "expires_at"]);
+            const duration =
+              pick(sub, ["duration", "duration_days", "days", "months"]) ||
+              pick(sub?.plan, ["duration", "duration_days"]) ||
+              pick(sub?.package, ["duration", "duration_days"]);
+            const price =
+              pick(sub, ["price", "amount", "total", "fee"]) ||
+              pick(sub?.plan, ["price", "amount"]) ||
+              pick(sub?.package, ["price", "amount"]);
+            const status = resolveSubscriptionStatus(sub);
+
+            const fields = [
+              ["Duration", duration ? String(duration) : null],
+              ["Price", price !== null ? fmtMoney(price) : null],
+              ["Start Date", fmtDate(startDate)],
+              ["End Date", fmtDate(endDate)],
+            ].filter(([, value]) => value !== null);
 
             return (
               <div
@@ -231,17 +290,23 @@ export default function UserClassSubscriptions({ embedded = false }) {
                   padding: 14,
                 }}
               >
-                <div style={{ fontWeight: 800 }}>{planName}</div>
-                <div className="small" style={{ opacity: 0.8 }}>
-                  Subscription ID: {String(id)}
+                <div className="d-flex justify-content-between align-items-start" style={{ gap: 10 }}>
+                  <div>
+                    <div style={{ fontWeight: 800, fontSize: 16 }}>{planName}</div>
+                    <div className="small" style={{ opacity: 0.8 }}>
+                      ID: {String(id)}
+                    </div>
+                  </div>
+                  <StatusBadge status={status} />
                 </div>
-                <div className="mt-2 d-flex justify-content-between">
-                  <span style={{ opacity: 0.8 }}>Start Date</span>
-                  <b>{fmtDate(startDate)}</b>
-                </div>
-                <div className="d-flex justify-content-between">
-                  <span style={{ opacity: 0.8 }}>End Date</span>
-                  <b>{fmtDate(endDate)}</b>
+
+                <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
+                  {fields.map(([label, value]) => (
+                    <div key={label} className="d-flex justify-content-between" style={{ gap: 12 }}>
+                      <span style={{ opacity: 0.8 }}>{label}</span>
+                      <b style={{ textAlign: "right" }}>{value}</b>
+                    </div>
+                  ))}
                 </div>
               </div>
             );
