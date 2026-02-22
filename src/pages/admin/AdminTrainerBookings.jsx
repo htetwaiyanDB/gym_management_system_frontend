@@ -478,7 +478,7 @@ export default function AdminTrainerBookings() {
     setMsg(null);
     setBusyKey(`sessions-${booking.id}`);
     try {
-      const res = await axiosClient.patch(`/trainer-bookings/${booking.id}/sessions`, {
+      const res = await axiosClient.patch(`/trainer-bookings/session/${booking.id}/sessions`, {
         sessions_count: totalValue,
       });
       setMsg({ type: "success", text: res?.data?.message || "Sessions updated." });
