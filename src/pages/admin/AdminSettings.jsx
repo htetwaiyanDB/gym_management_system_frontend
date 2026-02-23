@@ -126,7 +126,7 @@ export default function AdminSettings() {
 
   useEffect(() => {
     checkBackendStatus();
-    const timer = setInterval(checkBackendStatus, 15000);
+    const timer = setInterval(checkBackendStatus, 60000);
     return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
