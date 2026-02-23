@@ -1,7 +1,8 @@
-import { useCallback, useState } from "react";
+import { memo, useCallback, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getBlogs } from "../../api/trainerApi";
 import useRealtimePolling from "../../hooks/useRealtimePolling";
+import "./TrainerHome.css";
 
 function normalizeList(payload) {
   if (Array.isArray(payload)) return payload;
@@ -81,41 +82,31 @@ function resolveBlogImage(blog) {
   );
 }
 
-function BlogCardImage({ src, alt }) {
+const BlogCardImage = memo(function BlogCardImage({ src, alt }) {
   const [failed, setFailed] = useState(false);
 
   return (
-    <div
-      style={{
-        width: "100%",
-        height: 160,
-        overflow: "hidden",
-        background: "rgba(255,255,255,0.04)",
-        borderBottom: "1px solid rgba(255,255,255,0.08)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
+    <div className="trainer-home-blog-image-wrap">
       {src && !failed ? (
         <img
           src={src}
           alt={alt}
-          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+          className="trainer-home-blog-image"
           loading="lazy"
           onError={() => setFailed(true)}
         />
       ) : (
-        <span style={{ fontSize: 13, opacity: 0.75 }}>
+        <span className="trainer-home-blog-empty-image">
           {src ? "Image failed to load" : "No image"}
         </span>
       )}
     </div>
   );
-}
+});
 
 export default function TrainerHome() {
   const navigate = useNavigate();
+  const blogsSignatureRef = useRef("");
   const [blogs, setBlogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
@@ -133,7 +124,19 @@ export default function TrainerHome() {
         return db - da;
       });
 
-      setBlogs(sorted);
+      const signature = sorted
+        .map((blog, idx) => {
+          const id = blog?.id ?? idx;
+          const date = blog?.published_at || blog?.publish_date || blog?.updated_at || "";
+          const title = blog?.title || "Untitled";
+          return `${id}:${date}:${title}`;
+        })
+        .join("|");
+
+      if (signature !== blogsSignatureRef.current) {
+        blogsSignatureRef.current = signature;
+        setBlogs(sorted);
+      }
     } catch (e) {
       setErr(e?.response?.data?.message || "Failed to load blogs.");
     } finally {
@@ -145,15 +148,15 @@ export default function TrainerHome() {
 
   return (
     <div>
-      <h2 style={{ marginBottom: 12 }}>Trainer Dashboard</h2>
+      <h2 className="trainer-home-title">Trainer Dashboard</h2>
 
-      <h3 style={{ marginBottom: 10, fontSize: 16 }}>Blogs</h3>
+      <h3 className="trainer-home-subtitle">Blogs</h3>
 
       {loading && <p>Loading blogs...</p>}
-      {!loading && err && <p style={{ color: "#ffb4b4" }}>{err}</p>}
+      {!loading && err && <p className="trainer-home-error">{err}</p>}
       {!loading && !err && blogs.length === 0 && <p>No blogs available.</p>}
 
-      <div style={{ display: "grid", gap: 12 }}>
+      <div className="trainer-home-blog-grid">
         {blogs.map((b) => {
           const id = b?.id;
           const title = b?.title || "Untitled";
@@ -162,30 +165,21 @@ export default function TrainerHome() {
           const date = b?.published_at || b?.publish_date || b?.updated_at || "";
 
           return (
-            <div
-              key={id || title}
-              style={{
-                border: "1px solid rgba(255,255,255,0.12)",
-                borderRadius: 14,
-                overflow: "hidden",
-                background: "rgba(255,255,255,0.06)",
-                backdropFilter: "blur(10px)",
-              }}
-            >
+            <div key={id || title} className="trainer-home-blog-card">
               {/* ✅ always render image area, show placeholder if missing/failed */}
               <BlogCardImage src={img} alt={title} />
 
-              <div style={{ padding: 14 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                  <h4 style={{ margin: 0, fontSize: 16 }}>{title}</h4>
+              <div className="trainer-home-blog-body">
+                <div className="trainer-home-blog-header">
+                  <h4 className="trainer-home-blog-title">{title}</h4>
                   {date ? (
-                    <span style={{ fontSize: 12, opacity: 0.75, whiteSpace: "nowrap" }}>
+                    <span className="trainer-home-blog-date">
                       {String(date).slice(0, 10)}
                     </span>
                   ) : null}
                 </div>
 
-                <p style={{ marginTop: 8, marginBottom: 12, opacity: 0.85 }}>
+                <p className="trainer-home-blog-summary">
                   {summary
                     ? summary.length > 120
                       ? summary.slice(0, 120) + "..."
@@ -201,16 +195,7 @@ export default function TrainerHome() {
                     if (!id) return;
                     navigate(`/trainer/blogs/${id}`, { state: { blog: b } });
                   }}
-                  style={{
-                    width: "100%",
-                    padding: "10px 12px",
-                    borderRadius: 12,
-                    border: "1px solid rgba(255,255,255,0.18)",
-                    background: "rgba(255,255,255,0.10)",
-                    color: "#fff",
-                    cursor: "pointer",
-                    fontWeight: 600,
-                  }}
+                  className="trainer-home-blog-btn"
                 >
                   Read more
                 </button>

@@ -1,7 +1,8 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axiosClient from "../../api/axiosClient";
 import useRealtimePolling from "../../hooks/useRealtimePolling";
+import "./UserHome.css";
 
 /* ---------- helpers ---------- */
 
@@ -184,6 +185,7 @@ function getBlogDate(blog) {
 
 export default function UserHome() {
   const navigate = useNavigate();
+  const blogsSignatureRef = useRef("");
 
   const [blogs, setBlogs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -214,7 +216,19 @@ export default function UserHome() {
         return db - da;
       });
 
-      setBlogs(sorted);
+      const signature = sorted
+        .map((blog, idx) => {
+          const id = getBlogId(blog, idx);
+          const date = getBlogDate(blog) || "";
+          const title = getBlogTitle(blog);
+          return `${id}:${date}:${title}`;
+        })
+        .join("|");
+
+      if (signature !== blogsSignatureRef.current) {
+        blogsSignatureRef.current = signature;
+        setBlogs(sorted);
+      }
     } catch (e) {
       const status = e?.response?.status;
       if (status === 401) {
@@ -237,9 +251,9 @@ export default function UserHome() {
 
   return (
     <div>
-      <h2 style={{ marginBottom: 12 }}>User Home</h2>
+      <h2 className="home-title">User Home</h2>
 
-      <h3 style={{ marginBottom: 10, fontSize: 16 }}>Blogs</h3>
+      <h3 className="home-subtitle">Blogs</h3>
 
       {loading && <p>Loading blogs...</p>}
 
@@ -251,7 +265,7 @@ export default function UserHome() {
 
       {!loading && !error && blogs.length === 0 && <p>{emptyText}</p>}
 
-      <div style={{ display: "grid", gap: 12 }}>
+      <div className="home-blog-grid">
         {blogs.map((blog, idx) => {
           const id = getBlogId(blog, idx);
           const title = getBlogTitle(blog);
@@ -260,50 +274,34 @@ export default function UserHome() {
           const date = getBlogDate(blog);
 
           return (
-            <div
-              key={id}
-              style={{
-                border: "1px solid rgba(255,255,255,0.12)",
-                borderRadius: 14,
-                overflow: "hidden",
-                background: "rgba(255,255,255,0.06)",
-              }}
-            >
-              <div
-                style={{
-                  height: 160,
-                  background: "rgba(255,255,255,0.04)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
+            <div key={id} className="home-blog-card">
+              <div className="home-blog-image-wrap">
                 {image ? (
                   <img
                     src={image}
                     alt={title}
-                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    className="home-blog-image"
                     loading="lazy"
                     onError={(e) => {
                       e.currentTarget.style.display = "none";
                     }}
                   />
                 ) : (
-                  <span style={{ fontSize: 13, opacity: 0.75 }}>No image</span>
+                  <span className="home-blog-empty-image">No image</span>
                 )}
               </div>
 
-              <div style={{ padding: 14 }}>
-                <div className="d-flex justify-content-between" style={{ gap: 10 }}>
-                  <h4 style={{ margin: 0, fontSize: 16 }}>{title}</h4>
+              <div className="home-blog-body">
+                <div className="d-flex justify-content-between home-blog-header">
+                  <h4 className="home-blog-title">{title}</h4>
                   {date ? (
-                    <span style={{ fontSize: 12, opacity: 0.75, whiteSpace: "nowrap" }}>
+                    <span className="home-blog-date">
                       {String(date).slice(0, 10)}
                     </span>
                   ) : null}
                 </div>
 
-                <p style={{ marginTop: 8, opacity: 0.85 }}>
+                <p className="home-blog-summary">
                   {summary
                     ? summary.length > 120
                       ? summary.slice(0, 120) + "..."
@@ -315,15 +313,7 @@ export default function UserHome() {
                   onClick={() =>
                     navigate(`/user/blogs/${id}`, { state: { blog } })
                   }
-                  style={{
-                    width: "100%",
-                    padding: "10px 12px",
-                    borderRadius: 12,
-                    border: "1px solid rgba(255,255,255,0.18)",
-                    background: "rgba(255,255,255,0.10)",
-                    color: "#fff",
-                    fontWeight: 600,
-                  }}
+                  className="home-blog-btn"
                 >
                   Read more
                 </button>
