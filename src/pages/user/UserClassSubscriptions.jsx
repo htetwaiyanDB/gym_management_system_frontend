@@ -156,8 +156,8 @@ export default function UserClassSubscriptions({ embedded = false }) {
 
         try {
           const timetableRes = await requestWithFallback([
-            () => axiosClient.get("/user/class-timetable"),
-            () => axiosClient.get("/user/classes"),
+            () => axiosClient.get("/class-timetable"),
+            () => axiosClient.get("/classes"),
           ]);
           if (!alive) return;
           setTimetableRows(normalizeClassTimetable(timetableRes?.data));
