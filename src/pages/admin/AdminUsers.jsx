@@ -420,11 +420,12 @@ export default function AdminUsers() {
             className="form-control admin-search"
             placeholder="Search name / email / phone / role"
             value={query}
-            autoComplete="off"
+            autoComplete="new-password"
             autoCorrect="off"
             autoCapitalize="none"
             spellCheck={false}
             name="user-search"
+            id="admin-user-search"
             onChange={(e) => setQuery(e.target.value)}
           />
 
@@ -609,6 +610,8 @@ export default function AdminUsers() {
                       inputMode="numeric"
                       pattern="[0-9]*"
                       maxLength={5}
+                      autoComplete="off"
+                      name="create-user-id"
                       value={createForm.user_id}
                       onChange={(e) => handleCreateUserIdChange(e.target.value)}
                       placeholder="Up to 5 digits"
@@ -620,6 +623,8 @@ export default function AdminUsers() {
                     <label className="form-label fw-bold">Name</label>
                     <input
                       className="form-control"
+                      autoComplete="off"
+                      name="create-name"
                       value={createForm.name}
                       onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
                     />
@@ -630,6 +635,8 @@ export default function AdminUsers() {
                     <input
                       className="form-control"
                       value={createForm.card_id}
+                      autoComplete="off"
+                      name="create-card-id"
                       onChange={(e) => setCreateForm({ ...createForm, card_id: e.target.value })}
                       placeholder="RFID card ID (optional)"
                     />
@@ -640,7 +647,8 @@ export default function AdminUsers() {
                     <input
                       className="form-control"
                       value={createForm.email}
-                      autoComplete="off"
+                      autoComplete="new-password"
+                      name="create-email"
                       onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
                     />
                   </div>
@@ -649,6 +657,8 @@ export default function AdminUsers() {
                     <label className="form-label fw-bold">Phone</label>
                     <input
                       className="form-control"
+                      autoComplete="new-password"
+                      name="create-phone"
                       value={createForm.phone}
                       onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value })}
                     />
