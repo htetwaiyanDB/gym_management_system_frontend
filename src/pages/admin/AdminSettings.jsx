@@ -23,6 +23,11 @@ export default function AdminSettings() {
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
+  const [backendStatus, setBackendStatus] = useState({
+    level: "fair",
+    label: "Checking...",
+    detail: "Please wait",
+  });
 
   const card = {
     borderRadius: 16,
@@ -60,6 +65,40 @@ export default function AdminSettings() {
     marginBottom: 6,
   };
 
+  const statusMeta = {
+    good: { color: "#22c55e", text: "Good" },
+    fair: { color: "#facc15", text: "Fair" },
+    disconnected: { color: "#ef4444", text: "Disconnected" },
+  };
+
+  const checkBackendStatus = async () => {
+    const startedAt = Date.now();
+    try {
+      await getUserProfile();
+      const latency = Date.now() - startedAt;
+
+      if (latency <= 900) {
+        setBackendStatus({
+          level: "good",
+          label: statusMeta.good.text,
+          detail: `${latency}ms`,
+        });
+      } else {
+        setBackendStatus({
+          level: "fair",
+          label: statusMeta.fair.text,
+          detail: `${latency}ms`,
+        });
+      }
+    } catch {
+      setBackendStatus({
+        level: "disconnected",
+        label: statusMeta.disconnected.text,
+        detail: "Cannot reach server",
+      });
+    }
+  };
+
   const loadProfile = async () => {
     setLoadingProfile(true);
     try {
@@ -82,6 +121,13 @@ export default function AdminSettings() {
 
   useEffect(() => {
     loadProfile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    checkBackendStatus();
+    const timer = setInterval(checkBackendStatus, 15000);
+    return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -182,6 +228,27 @@ export default function AdminSettings() {
         <div style={{ fontSize: 18, fontWeight: 900 }}>Settings</div>
         <div className="small" style={{ opacity: 0.9, marginTop: 6 }}>
           Admin account
+        </div>
+      </div>
+
+      <div style={card} className="mb-3">
+        <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 10 }}>
+          Backend Server Status
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span
+            aria-label={`Backend status: ${backendStatus.label}`}
+            style={{
+              width: 12,
+              height: 12,
+              borderRadius: "50%",
+              background: statusMeta[backendStatus.level]?.color || statusMeta.fair.color,
+              boxShadow: `0 0 10px ${statusMeta[backendStatus.level]?.color || statusMeta.fair.color}`,
+              display: "inline-block",
+            }}
+          />
+          <span style={{ fontWeight: 700 }}>{backendStatus.label}</span>
+          <span style={{ opacity: 0.8, fontSize: 13 }}>({backendStatus.detail})</span>
         </div>
       </div>
 
