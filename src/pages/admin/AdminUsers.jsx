@@ -339,16 +339,8 @@ export default function AdminUsers() {
 
     setMsg(null);
     try {
-      try {
-        await axiosClient.delete(`/users/${id}`);
-      } catch (softDeleteError) {
-        if (softDeleteError?.response?.status !== 404) {
-          console.warn("Soft delete failed, attempting force delete anyway.", softDeleteError);
-        }
-      }
-
       await axiosClient.delete(`/users/${id}/force`);
-      setMsg({ type: "success", text: "User deleted." });
+      setMsg({ type: "success", text: "User deleted successfully." });
       await load();
     } catch (e) {
       setMsg({ type: "danger", text: e?.response?.data?.message || "Delete failed." });
