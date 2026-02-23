@@ -1,14 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import axiosClient from "../../api/axiosClient";
 
-const USER_CLASS_TIMETABLE = [
-  { id: "mon", day: "Monday", classNames: ["Yoga", "HIIT"] },
-  { id: "tue", day: "Tuesday", classNames: ["Zumba", "Strength Training"] },
-  { id: "wed", day: "Wednesday", classNames: ["Pilates", "Boxing Fitness"] },
-  { id: "thu", day: "Thursday", classNames: ["CrossFit", "Core Conditioning"] },
-  { id: "fri", day: "Friday", classNames: ["Cardio Blast", "Body Pump"] },
-];
-
 function pick(obj, keys) {
   for (const k of keys) {
     const v = obj?.[k];
@@ -53,14 +45,14 @@ function isClassSubscription(sub) {
 }
 
 function fmtDate(v) {
-  if (!v) return "—";
+  if (!v) return "-";
   const d = new Date(v);
   if (Number.isNaN(d.getTime())) return String(v);
   return d.toLocaleDateString();
 }
 
 function fmtMoney(v) {
-  if (v === null || v === undefined || v === "") return "—";
+  if (v === null || v === undefined || v === "") return "-";
   const n = Number(v);
   if (Number.isNaN(n)) return String(v);
   return n.toLocaleString();
@@ -94,7 +86,29 @@ function resolveSubscriptionStatus(sub) {
   if (rawStatus === "pending" && hasStarted(startDate)) {
     return "active";
   }
-  return rawStatus || "—";
+  return rawStatus || "-";
+}
+
+function normalizeClassTimetable(payload) {
+  const list = Array.isArray(payload?.classes)
+    ? payload.classes
+    : Array.isArray(payload?.class_timetables)
+      ? payload.class_timetables
+      : Array.isArray(payload?.timetables)
+        ? payload.timetables
+        : Array.isArray(payload?.data)
+          ? payload.data
+          : Array.isArray(payload)
+            ? payload
+            : [];
+
+  return list
+    .map((item) => ({
+      id: item?.id ?? item?.class_id ?? item?.timetable_id,
+      name: item?.class_name ?? item?.name ?? item?.title,
+      day: item?.day ?? item?.weekday ?? item?.class_day,
+    }))
+    .filter((item) => item.id !== undefined && item.id !== null);
 }
 
 function StatusBadge({ status }) {
@@ -110,13 +124,14 @@ function StatusBadge({ status }) {
 
   return (
     <span className={`badge ${cls}`} style={{ textTransform: "capitalize" }}>
-      {status || "—"}
+      {status || "-"}
     </span>
   );
 }
 
 export default function UserClassSubscriptions({ embedded = false }) {
   const [subscriptions, setSubscriptions] = useState([]);
+  const [timetableRows, setTimetableRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -138,6 +153,20 @@ export default function UserClassSubscriptions({ embedded = false }) {
         const allSubs = normalizeSubscriptions(subsRes?.data);
         const onlyClassSubs = allSubs.filter(isClassSubscription);
         setSubscriptions(onlyClassSubs);
+
+        try {
+          const timetableRes = await requestWithFallback([
+            () => axiosClient.get("/user/class-timetable"),
+            () => axiosClient.get("/user/classes"),
+            () => axiosClient.get("/classes"),
+            () => axiosClient.get("/class-timetables"),
+          ]);
+          if (!alive) return;
+          setTimetableRows(normalizeClassTimetable(timetableRes?.data));
+        } catch {
+          if (!alive) return;
+          setTimetableRows([]);
+        }
       } catch (e) {
         if (!alive) return;
         setError(e?.response?.data?.message || "Failed to load class subscriptions.");
@@ -228,7 +257,20 @@ export default function UserClassSubscriptions({ embedded = false }) {
 
       <h3 style={{ marginBottom: 10 }}>Class Timetable</h3>
       <div style={{ display: "grid", gap: 10 }}>
-          {USER_CLASS_TIMETABLE.map((row) => (
+        {timetableRows.length === 0 ? (
+          <div
+            style={{
+              border: "1px solid rgba(255,255,255,0.12)",
+              borderRadius: 12,
+              background: "rgba(0,0,0,0.25)",
+              padding: "10px 12px",
+              opacity: 0.85,
+            }}
+          >
+            No class timetable available.
+          </div>
+        ) : (
+          timetableRows.map((row) => (
             <div
               key={row.id}
               style={{
@@ -238,13 +280,12 @@ export default function UserClassSubscriptions({ embedded = false }) {
                 padding: "10px 12px",
               }}
             >
-              <div style={{ fontWeight: 700 }}>{row.day}</div>
-              <div style={{ opacity: 0.85 }}>
-                {row.classNames.join(", ")}
-              </div>
+              <div style={{ fontWeight: 700 }}>{row.day || "-"}</div>
+              <div style={{ opacity: 0.85 }}>{row.name || "-"}</div>
             </div>
-          ))}
-        </div>
+          ))
+        )}
+      </div>
     </div>
   );
 }
