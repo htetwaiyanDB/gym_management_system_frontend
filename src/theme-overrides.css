@@ -54,3 +54,25 @@ body {
   background: rgba(9, 12, 16, 0.72);
   color: var(--app-text);
 }
+
+/*
+  Keep native <select> dropdown options readable in dark themed pages.
+  Some browsers open the option list on a light popup; with text-white classes
+  this makes options appear blank until a full page refresh/theme recalculation.
+*/
+.form-select.bg-dark,
+.form-select.text-white,
+.user-shell .form-select,
+.trainer-shell .form-select,
+.admin-shell .form-select {
+  color-scheme: dark;
+}
+
+.form-select.bg-dark option,
+.form-select.text-white option,
+.user-shell .form-select option,
+.trainer-shell .form-select option,
+.admin-shell .form-select option {
+  background-color: #212529;
+  color: #ffffff;
+}
