@@ -20,10 +20,10 @@ export default function UserLayout() {
       const res = await axiosClient.get("/notifications", { cache: { ttlMs: 12000 } });
       const list = Array.isArray(res?.data) ? res.data : res?.data?.data || res?.data?.notifications || [];
       const unread = list.filter((item) => !item?.read_at).length;
-      setUnreadCount(unread);
+      setUnreadCount((prev) => (prev === unread ? prev : unread));
     } catch (err) {
       // Silently fail - don't show badge if we can't fetch
-      setUnreadCount(0);
+      setUnreadCount((prev) => (prev === 0 ? prev : 0));
     }
   }, []);
 
@@ -59,7 +59,10 @@ export default function UserLayout() {
   }, [fetchUnreadCount]);
 
   useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth <= 767);
+    const check = () => {
+      const next = window.innerWidth <= 767;
+      setIsMobile((prev) => (prev === next ? prev : next));
+    };
     check();
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
