@@ -26,14 +26,17 @@ export default function AdminLayout() {
           <div className="p-3">
             <div className="mb-3">
               <div className="d-flex align-items-center gap-2">
-                <div className="rounded-circle d-flex align-items-center justify-content-center"
-                     style={{
-                       width: 42, height: 42,
-                       background: "rgba(255,255,255,0.12)",
-                       border: "1px solid rgba(255,255,255,0.16)"
-                     }}>
-                  <i className="bi bi-activity text-white"></i>
-                </div>
+              <img
+              src="/UNITY LOGO.jpg"
+              alt="Unity Fitness Gym"
+              className="rounded-circle"
+              style={{
+                width: 42,
+                height: 42,
+                objectFit: "cover",
+                border: "1px solid rgba(255,255,255,0.16)",
+              }}
+            />
                 <div>
                   <div className="admin-brand">UNITY FITNESS</div>
                   <div className="admin-subtitle">Admin Dashboard</div>
