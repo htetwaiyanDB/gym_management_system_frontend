@@ -27,8 +27,14 @@
   min-width: 210px;
   height: 100vh;
   overflow-y: auto;
-  background: rgba(18, 18, 20, 0.55);
-  border-right: 1px solid rgba(255,255,255,0.12);
+  background: linear-gradient(
+    180deg,
+    rgba(10, 12, 16, 0.32) 0%,
+    rgba(10, 12, 16, 0.18) 100%
+  );
+  border-right: 1px solid rgba(255,255,255,0.08);
+  backdrop-filter: blur(10px) saturate(120%);
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
 }
 
 .admin-brand {
@@ -56,14 +62,14 @@
 
 .admin-link:hover {
   color: rgba(255,255,255,0.95);
-  background: rgba(255,255,255,0.08);
-  border-color: rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.07);
+  border-color: rgba(255,255,255,0.12);
 }
 
 .admin-link.active {
   color: rgba(255,255,255,0.98);
-  background: rgba(255,255,255,0.12);
-  border-color: rgba(255,255,255,0.16);
+  background: rgba(255,255,255,0.10);
+  border-color: rgba(255,255,255,0.14);
 }
 
 /* Main content glass panel */
