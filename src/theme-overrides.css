@@ -5,6 +5,18 @@
   --app-input-border: rgba(255, 255, 255, 0.2);
 }
 
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: #0b0d11;
+  color: var(--app-text);
+}
+
 .user-shell,
 .trainer-shell,
 .user-shell .card,

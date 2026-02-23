@@ -6,6 +6,9 @@ import 'bootstrap/dist/css/bootstrap.min.css'
 import 'bootstrap/dist/js/bootstrap.bundle.min.js'
 import 'bootstrap-icons/font/bootstrap-icons.css'
 import "bootstrap-icons/font/bootstrap-icons.css";
+import './layouts/AdminLayout.css'
+import './layouts/UserLayout.css'
+import './layouts/TrainerLayout.css'
 import './theme-overrides.css'
 
 
