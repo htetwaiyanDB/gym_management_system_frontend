@@ -205,68 +205,6 @@ export default function UserClassSubscriptions({ embedded = false }) {
       {!loading && error && <div className="alert alert-danger">{error}</div>}
       {hasNoData && <p>No class subscription data available.</p>}
 
-      {subscriptions.length > 0 && (
-        <div style={{ display: "grid", gap: 12, marginBottom: 18 }}>
-          {subscriptions.map((sub, idx) => {
-            const id = pick(sub, ["id", "subscription_id", "user_subscription_id"]) ?? idx;
-            const planName =
-              pick(sub, ["plan_name", "package_name", "name", "title", "membership_plan_name"]) ||
-              pick(sub?.plan, ["name", "title"]) ||
-              pick(sub?.package, ["name", "title"]) ||
-              "Class Plan";
-            const startDate = pick(sub, ["start_date", "starts_at", "start"]);
-            const endDate = pick(sub, ["end_date", "ends_at", "end", "expire_at", "expires_at"]);
-            const duration =
-              pick(sub, ["duration", "duration_days", "days", "months"]) ||
-              pick(sub?.plan, ["duration", "duration_days"]) ||
-              pick(sub?.package, ["duration", "duration_days"]);
-            const price =
-              pick(sub, ["price", "amount", "total", "fee"]) ||
-              pick(sub?.plan, ["price", "amount"]) ||
-              pick(sub?.package, ["price", "amount"]);
-            const status = resolveSubscriptionStatus(sub);
-
-            const fields = [
-              ["Duration", duration ? String(duration) : null],
-              ["Price", price !== null ? fmtMoney(price) : null],
-              ["Start Date", fmtDate(startDate)],
-              ["End Date", fmtDate(endDate)],
-            ].filter(([, value]) => value !== null);
-
-            return (
-              <div
-                key={id}
-                style={{
-                  border: "1px solid rgba(255,255,255,0.12)",
-                  borderRadius: 14,
-                  background: "rgba(255,255,255,0.06)",
-                  padding: 14,
-                }}
-              >
-                <div className="d-flex justify-content-between align-items-start" style={{ gap: 10 }}>
-                  <div>
-                    <div style={{ fontWeight: 800, fontSize: 16 }}>{planName}</div>
-                    <div className="small" style={{ opacity: 0.8 }}>
-                      ID: {String(id)}
-                    </div>
-                  </div>
-                  <StatusBadge status={status} />
-                </div>
-
-                <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
-                  {fields.map(([label, value]) => (
-                    <div key={label} className="d-flex justify-content-between" style={{ gap: 12 }}>
-                      <span style={{ opacity: 0.8 }}>{label}</span>
-                      <b style={{ textAlign: "right" }}>{value}</b>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
       <h3 style={{ marginBottom: 10 }}>Class Timetable</h3>
       <div
         style={{
@@ -275,6 +213,7 @@ export default function UserClassSubscriptions({ embedded = false }) {
           overflowX: "auto",
           paddingBottom: 4,
           scrollbarWidth: "thin",
+          marginBottom: 18,
         }}
       >
         {timetableRows.length === 0 ? (
@@ -338,6 +277,68 @@ export default function UserClassSubscriptions({ embedded = false }) {
           ))
         )}
       </div>
+
+      {subscriptions.length > 0 && (
+        <div style={{ display: "grid", gap: 12, marginBottom: 18 }}>
+          {subscriptions.map((sub, idx) => {
+            const id = pick(sub, ["id", "subscription_id", "user_subscription_id"]) ?? idx;
+            const planName =
+              pick(sub, ["plan_name", "package_name", "name", "title", "membership_plan_name"]) ||
+              pick(sub?.plan, ["name", "title"]) ||
+              pick(sub?.package, ["name", "title"]) ||
+              "Class Plan";
+            const startDate = pick(sub, ["start_date", "starts_at", "start"]);
+            const endDate = pick(sub, ["end_date", "ends_at", "end", "expire_at", "expires_at"]);
+            const duration =
+              pick(sub, ["duration", "duration_days", "days", "months"]) ||
+              pick(sub?.plan, ["duration", "duration_days"]) ||
+              pick(sub?.package, ["duration", "duration_days"]);
+            const price =
+              pick(sub, ["price", "amount", "total", "fee"]) ||
+              pick(sub?.plan, ["price", "amount"]) ||
+              pick(sub?.package, ["price", "amount"]);
+            const status = resolveSubscriptionStatus(sub);
+
+            const fields = [
+              ["Duration", duration ? String(duration) : null],
+              ["Price", price !== null ? fmtMoney(price) : null],
+              ["Start Date", fmtDate(startDate)],
+              ["End Date", fmtDate(endDate)],
+            ].filter(([, value]) => value !== null);
+
+            return (
+              <div
+                key={id}
+                style={{
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  borderRadius: 14,
+                  background: "rgba(255,255,255,0.06)",
+                  padding: 14,
+                }}
+              >
+                <div className="d-flex justify-content-between align-items-start" style={{ gap: 10 }}>
+                  <div>
+                    <div style={{ fontWeight: 800, fontSize: 16 }}>{planName}</div>
+                    <div className="small" style={{ opacity: 0.8 }}>
+                      ID: {String(id)}
+                    </div>
+                  </div>
+                  <StatusBadge status={status} />
+                </div>
+
+                <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
+                  {fields.map(([label, value]) => (
+                    <div key={label} className="d-flex justify-content-between" style={{ gap: 12 }}>
+                      <span style={{ opacity: 0.8 }}>{label}</span>
+                      <b style={{ textAlign: "right" }}>{value}</b>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
