@@ -11,6 +11,18 @@ body,
   min-height: 100%;
 }
 
+html,
+body,
+.admin-shell,
+.admin-main {
+  scroll-behavior: smooth;
+}
+
+.admin-main {
+  -webkit-overflow-scrolling: touch;
+}
+
+
 body {
   margin: 0;
   background: #0b0d11;
