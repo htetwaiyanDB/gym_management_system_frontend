@@ -111,6 +111,19 @@ function normalizeClassTimetable(payload) {
     .filter((item) => item.id !== undefined && item.id !== null);
 }
 
+const WEEK_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+
+function groupTimetableByDay(rows) {
+  const grouped = Object.fromEntries(WEEK_DAYS.map((day) => [day, []]));
+  for (const row of rows || []) {
+    const day = String(row?.day || "").trim();
+    const matchedDay = WEEK_DAYS.find((d) => d.toLowerCase() === day.toLowerCase());
+    if (!matchedDay) continue;
+    grouped[matchedDay].push(row?.name || "-");
+  }
+  return grouped;
+}
+
 function StatusBadge({ status }) {
   const s = String(status || "").toLowerCase();
   const cls =
@@ -182,6 +195,7 @@ export default function UserClassSubscriptions({ embedded = false }) {
     () => !loading && !error && subscriptions.length === 0,
     [loading, error, subscriptions.length],
   );
+  const timetableByDay = useMemo(() => groupTimetableByDay(timetableRows), [timetableRows]);
 
   return (
     <div>
@@ -254,7 +268,15 @@ export default function UserClassSubscriptions({ embedded = false }) {
       )}
 
       <h3 style={{ marginBottom: 10 }}>Class Timetable</h3>
-      <div style={{ display: "grid", gap: 10 }}>
+      <div
+        style={{
+          display: "flex",
+          gap: 10,
+          overflowX: "auto",
+          paddingBottom: 4,
+          scrollbarWidth: "thin",
+        }}
+      >
         {timetableRows.length === 0 ? (
           <div
             style={{
@@ -263,23 +285,55 @@ export default function UserClassSubscriptions({ embedded = false }) {
               background: "rgba(0,0,0,0.25)",
               padding: "10px 12px",
               opacity: 0.85,
+              width: "100%",
             }}
           >
             No class timetable available.
           </div>
         ) : (
-          timetableRows.map((row) => (
+          WEEK_DAYS.map((day) => (
             <div
-              key={row.id}
+              key={day}
               style={{
                 border: "1px solid rgba(255,255,255,0.12)",
                 borderRadius: 12,
                 background: "rgba(0,0,0,0.25)",
-                padding: "10px 12px",
+                padding: "12px 14px",
+                minWidth: 150,
+                flex: "0 0 auto",
               }}
             >
-              <div style={{ fontWeight: 700 }}>{row.day || "-"}</div>
-              <div style={{ opacity: 0.85 }}>{row.name || "-"}</div>
+              <div
+                style={{
+                  fontWeight: 800,
+                  fontSize: 14,
+                  letterSpacing: 0.2,
+                  marginBottom: 8,
+                  color: "#f3f6fb",
+                }}
+              >
+                {day}
+              </div>
+              <div style={{ display: "grid", gap: 6 }}>
+                {(timetableByDay[day] || []).length === 0 ? (
+                  <div style={{ opacity: 0.6, fontSize: 13 }}>No class</div>
+                ) : (
+                  timetableByDay[day].map((name, i) => (
+                    <div
+                      key={`${day}-${name}-${i}`}
+                      style={{
+                        background: "rgba(255,255,255,0.08)",
+                        border: "1px solid rgba(255,255,255,0.12)",
+                        borderRadius: 10,
+                        padding: "6px 8px",
+                        fontSize: 13,
+                      }}
+                    >
+                      {name}
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           ))
         )}
