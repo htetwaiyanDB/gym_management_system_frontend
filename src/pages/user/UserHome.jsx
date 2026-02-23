@@ -251,7 +251,7 @@ export default function UserHome() {
 
   return (
     <div>
-      <h2 className="home-title">User Home</h2>
+      <h2 className="home-title">Unity Fitness</h2>
 
       <h3 className="home-subtitle">Blogs</h3>
 
