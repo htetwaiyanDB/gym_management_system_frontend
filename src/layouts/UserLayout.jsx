@@ -124,7 +124,7 @@ export default function UserLayout() {
           className={({ isActive }) => "user-nav-item" + (isActive ? " active" : "")}
         >
           <FiCheckSquare className="user-nav-icon" />
-          <span className="user-nav-label">Attendance</span>
+          <span className="user-nav-label">Att</span>
         </NavLink>
 
         <NavLink
@@ -132,7 +132,7 @@ export default function UserLayout() {
           className={({ isActive }) => "user-nav-item" + (isActive ? " active" : "")}
         >
           <FiRepeat className="user-nav-icon" />
-          <span className="user-nav-label">Subs&Books</span>
+          <span className="user-nav-label">S&B</span>
         </NavLink>
 
         <NavLink
