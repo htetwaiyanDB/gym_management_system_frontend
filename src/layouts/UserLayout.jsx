@@ -9,6 +9,7 @@ import {
   FiSettings,
 } from "react-icons/fi";
 import axiosClient from "../api/axiosClient";
+import AppScrollbar from "../components/AppScrollbar";
 import "./UserLayout.css";
 
 export default function UserLayout() {
@@ -72,38 +73,42 @@ export default function UserLayout() {
   if (!isMobile) {
     return (
       <div className="user-shell">
-        <main className="user-content">
-          <div>
-            <h2>User View</h2>
-            <p>Please open User View on a mobile device.</p>
-            <p style={{ opacity: 0.8, marginTop: 8 }}>(Max width: 767px)</p>
+        <AppScrollbar className="user-scrollbar">
+          <main className="user-content">
+            <div>
+              <h2>User View</h2>
+              <p>Please open User View on a mobile device.</p>
+              <p style={{ opacity: 0.8, marginTop: 8 }}>(Max width: 767px)</p>
 
-            <div style={{ marginTop: 14 }}>
-              <button
-                onClick={() => (window.location.href = "/")}
-                style={{
-                  padding: "10px 14px",
-                  borderRadius: 10,
-                  border: "1px solid rgba(255,255,255,0.18)",
-                  background: "rgba(255,255,255,0.08)",
-                  color: "#fff",
-                  cursor: "pointer",
-                }}
-              >
-                Go Back
-              </button>
+              <div style={{ marginTop: 14 }}>
+                <button
+                  onClick={() => (window.location.href = "/")}
+                  style={{
+                    padding: "10px 14px",
+                    borderRadius: 10,
+                    border: "1px solid rgba(255,255,255,0.18)",
+                    background: "rgba(255,255,255,0.08)",
+                    color: "#fff",
+                    cursor: "pointer",
+                  }}
+                >
+                  Go Back
+                </button>
+              </div>
             </div>
-          </div>
-        </main>
+          </main>
+        </AppScrollbar>
       </div>
     );
   }
 
   return (
     <div className="user-shell">
-      <main className="user-content">
-        <Outlet />
-      </main>
+      <AppScrollbar className="user-scrollbar">
+        <main className="user-content">
+          <Outlet />
+        </main>
+      </AppScrollbar>
 
       <nav className="user-bottom-nav" aria-label="User bottom navigation">
         <NavLink

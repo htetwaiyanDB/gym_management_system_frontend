@@ -26,7 +26,7 @@
   width: 210px;
   min-width: 210px;
   height: 100vh;
-  overflow-y: auto;
+  overflow: hidden;
   background: linear-gradient(
     180deg,
     rgba(10, 12, 16, 0.32) 0%,
@@ -78,8 +78,16 @@
   z-index: 1;
   flex: 1;
   height: 100vh;
-  overflow-y: auto;
+  overflow: hidden;
+}
+
+.admin-main-inner {
   padding: 18px;
+}
+
+.admin-sidebar-scroll,
+.admin-main-scroll {
+  height: 100%;
 }
 
 @media (max-width: 991px) {

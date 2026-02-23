@@ -47,6 +47,31 @@
   background: transparent;
 }
 
+/* SimpleBar (React 19 compatible custom scrollbar package) */
+.simplebar-track.simplebar-vertical {
+  width: 10px;
+  right: 2px;
+}
+
+.simplebar-track.simplebar-horizontal {
+  height: 10px;
+  bottom: 2px;
+}
+
+.simplebar-scrollbar::before {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.24));
+  border-radius: 999px;
+  opacity: 1;
+}
+
+.simplebar-track.simplebar-vertical .simplebar-scrollbar {
+  min-height: 34px;
+}
+
+.simplebar-track.simplebar-horizontal .simplebar-scrollbar {
+  min-width: 34px;
+}
+
 a {
   font-weight: 500;
   color: #646cff;

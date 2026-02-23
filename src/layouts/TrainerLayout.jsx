@@ -9,6 +9,7 @@ import {
   FiSettings,
 } from "react-icons/fi";
 import axiosClient from "../api/axiosClient";
+import AppScrollbar from "../components/AppScrollbar";
 import "./TrainerLayout.css";
 
 export default function TrainerLayout() {
@@ -72,38 +73,42 @@ export default function TrainerLayout() {
   if (!isMobile) {
     return (
       <div className="trainer-shell">
-        <main className="trainer-content">
-          <div>
-            <h2>Mobile Only</h2>
-            <p>Please open Trainer View on a mobile device.</p>
-            <p style={{ opacity: 0.8, marginTop: 8 }}>(Max width: 767px)</p>
+        <AppScrollbar className="trainer-scrollbar">
+          <main className="trainer-content">
+            <div>
+              <h2>Mobile Only</h2>
+              <p>Please open Trainer View on a mobile device.</p>
+              <p style={{ opacity: 0.8, marginTop: 8 }}>(Max width: 767px)</p>
 
-            <div style={{ marginTop: 14 }}>
-              <button
-                onClick={() => (window.location.href = "/")}
-                style={{
-                  padding: "10px 14px",
-                  borderRadius: 10,
-                  border: "1px solid rgba(255,255,255,0.18)",
-                  background: "rgba(255,255,255,0.08)",
-                  color: "#fff",
-                  cursor: "pointer",
-                }}
-              >
-                Go Back
-              </button>
+              <div style={{ marginTop: 14 }}>
+                <button
+                  onClick={() => (window.location.href = "/")}
+                  style={{
+                    padding: "10px 14px",
+                    borderRadius: 10,
+                    border: "1px solid rgba(255,255,255,0.18)",
+                    background: "rgba(255,255,255,0.08)",
+                    color: "#fff",
+                    cursor: "pointer",
+                  }}
+                >
+                  Go Back
+                </button>
+              </div>
             </div>
-          </div>
-        </main>
+          </main>
+        </AppScrollbar>
       </div>
     );
   }
 
   return (
     <div className="trainer-shell">
-      <main className="trainer-content">
-        <Outlet />
-      </main>
+      <AppScrollbar className="trainer-scrollbar">
+        <main className="trainer-content">
+          <Outlet />
+        </main>
+      </AppScrollbar>
 
       <nav className="trainer-bottom-nav" aria-label="Trainer bottom navigation">
         <NavLink
