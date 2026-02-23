@@ -167,9 +167,9 @@ const normalizeReportPayload = (resData) => {
  * Inline styles only (no global CSS changes)
  */
 const cardGlass = {
-  background: "rgba(0,0,0,0.38)",
-  border: "1px solid rgba(255,255,255,0.14)",
-  boxShadow: "0 10px 35px rgba(0,0,0,0.35)",
+  background: "rgba(8,12,18,0.62)",
+  border: "1px solid rgba(255,255,255,0.22)",
+  boxShadow: "0 12px 36px rgba(0,0,0,0.45)",
 };
 
 const titleText = { color: "rgba(255,255,255,0.92)" };

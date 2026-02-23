@@ -131,6 +131,47 @@
   color: rgba(255,255,255,0.65);
 }
 
+/* Improve contrast for outline actions across admin pages */
+.admin-shell .btn-outline-light {
+  color: rgba(255, 255, 255, 0.95);
+  border-color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.admin-shell .btn-outline-light:hover,
+.admin-shell .btn-outline-light:focus,
+.admin-shell .btn-outline-light:active {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* Make underline tabs (e.g. Attendance Records / Checked-in Users) clearly visible */
+.admin-shell .nav-underline .nav-link {
+  color: rgba(255, 255, 255, 0.78);
+  border-bottom-color: transparent;
+}
+
+.admin-shell .nav-underline .nav-link:hover,
+.admin-shell .nav-underline .nav-link:focus {
+  color: rgba(255, 255, 255, 0.95);
+  border-bottom-color: rgba(255, 255, 255, 0.45);
+}
+
+.admin-shell .nav-underline .nav-link.active,
+.admin-shell .nav-underline .show > .nav-link {
+  color: #fff;
+  border-bottom-color: rgba(255, 255, 255, 0.95);
+}
+
+/* Better readability for dark tables on glass backgrounds */
+.admin-shell .table.table-dark {
+  --bs-table-bg: rgba(12, 16, 22, 0.82);
+  --bs-table-striped-bg: rgba(255, 255, 255, 0.045);
+  --bs-table-hover-bg: rgba(255, 255, 255, 0.095);
+  --bs-table-border-color: rgba(255, 255, 255, 0.2);
+}
+
 
 .admin-modal .form-select {
   background: rgba(33, 37, 41, 0.95);
