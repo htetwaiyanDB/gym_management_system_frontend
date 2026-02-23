@@ -19,8 +19,8 @@
 
 .user-content > div {
   background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border-radius: 16px;
   padding: 18px;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
@@ -52,9 +52,8 @@
 
   border: 1px solid rgba(255, 255, 255, 0.10);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
-
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 
   z-index: 9999;
 }
@@ -110,5 +109,17 @@
     left: 50%;
     right: auto;
     transform: translateX(-50%);
+  }
+}
+
+@media (max-width: 767px) {
+  .user-content > div {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.32);
+  }
+
+  .user-bottom-nav {
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
   }
 }

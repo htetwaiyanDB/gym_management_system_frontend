@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 
 export default function useRealtimePolling(task, intervalMs = 10000, deps = []) {
   const taskRef = useRef(task);
+  const inFlightRef = useRef(false);
 
   useEffect(() => {
     taskRef.current = task;
@@ -10,18 +11,28 @@ export default function useRealtimePolling(task, intervalMs = 10000, deps = []) 
   useEffect(() => {
     let timer = null;
 
-    const run = () => {
-      if (document.visibilityState !== "visible") return;
-      taskRef.current?.({ silent: true });
+    const runTask = async (options) => {
+      if (inFlightRef.current) return;
+      inFlightRef.current = true;
+      try {
+        await Promise.resolve(taskRef.current?.(options));
+      } finally {
+        inFlightRef.current = false;
+      }
     };
 
-    taskRef.current?.({ silent: false });
+    const run = () => {
+      if (document.visibilityState !== "visible") return;
+      runTask({ silent: true });
+    };
+
+    runTask({ silent: false });
     timer = window.setInterval(run, intervalMs);
 
-    const onFocus = () => taskRef.current?.({ silent: true });
+    const onFocus = () => runTask({ silent: true });
     const onVisible = () => {
       if (document.visibilityState === "visible") {
-        taskRef.current?.({ silent: true });
+        runTask({ silent: true });
       }
     };
 

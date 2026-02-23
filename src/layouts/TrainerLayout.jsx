@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   FiHome,
   FiLogIn,
@@ -15,9 +15,9 @@ export default function TrainerLayout() {
   const [isMobile, setIsMobile] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  const fetchUnreadCount = async () => {
+  const fetchUnreadCount = useCallback(async () => {
     try {
-      const res = await axiosClient.get("/notifications");
+      const res = await axiosClient.get("/notifications", { cache: { ttlMs: 12000 } });
       const list = Array.isArray(res?.data) ? res.data : res?.data?.data || res?.data?.notifications || [];
       const unread = list.filter((item) => !item?.read_at).length;
       setUnreadCount(unread);
@@ -25,32 +25,38 @@ export default function TrainerLayout() {
       // Silently fail - don't show badge if we can't fetch
       setUnreadCount(0);
     }
-  };
-
-  useEffect(() => {
-    fetchUnreadCount();
-    // Poll for new notifications every 5 seconds for near real-time updates
-    const interval = setInterval(fetchUnreadCount, 5000);
-    return () => clearInterval(interval);
   }, []);
 
-  // Check for updates when window regains focus (trainer returns to app)
   useEffect(() => {
+    const refreshIfVisible = () => {
+      if (document.visibilityState === "visible") {
+        fetchUnreadCount();
+      }
+    };
+
+    fetchUnreadCount();
+    // poll less aggressively to reduce render/network churn while preserving feature
+    const interval = setInterval(refreshIfVisible, 20000);
+
     const handleFocus = () => {
       fetchUnreadCount();
     };
-    window.addEventListener("focus", handleFocus);
-    return () => window.removeEventListener("focus", handleFocus);
-  }, []);
-
-  // Listen for notification updates from other components (e.g., when marking as read)
-  useEffect(() => {
     const handleNotificationUpdate = () => {
       fetchUnreadCount();
     };
+    const handleVisibility = () => refreshIfVisible();
+
+    window.addEventListener("focus", handleFocus);
     window.addEventListener("notifications-updated", handleNotificationUpdate);
-    return () => window.removeEventListener("notifications-updated", handleNotificationUpdate);
-  }, []);
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("notifications-updated", handleNotificationUpdate);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [fetchUnreadCount]);
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth <= 767);
