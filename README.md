@@ -1,16 +1,151 @@
-# React + Vite
+# Unity Fitness Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Unity Fitness Frontend is a React + Vite web application for managing gym operations across Admin, Trainer, and User roles. It supports attendance scanning (QR/RFID), membership workflows, subscriptions and bookings, notifications, messaging, and gym dashboard reporting.
 
-Currently, two official plugins are available:
+## Product Overview
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### Core role-based areas
+- **Admin**: dashboard metrics, user management, attendance monitoring, pricing, subscriptions, booking management, messages, blogs, and system settings.
+- **Trainer**: mobile-focused experience for attendance, class/member workflows, notifications, and communication.
+- **User**: mobile-focused member experience for attendance scans, subscriptions/bookings, notifications, profile, and messaging.
 
-## React Compiler
+### Architecture highlights
+- Built with **React 19**, **Vite 7**, and **React Router**.
+- API communication via a shared axios client.
+- Reusable scanning support for **QR** and **RFID** attendance flows.
+- UI uses Bootstrap + custom CSS.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+---
 
-## Expanding the ESLint configuration
+## Tech Stack
+- React, React DOM
+- Vite
+- React Router DOM
+- Axios
+- Bootstrap + Bootstrap Icons
+- Recharts
+- html5-qrcode
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+---
+
+## Getting Started
+
+### Prerequisites
+- Node.js 20+
+- npm 10+
+
+### Installation
+```bash
+npm install
+```
+
+### Run locally
+```bash
+npm run dev
+```
+
+The app runs on Vite default host/port unless overridden.
+
+---
+
+## Environment Variables
+
+Create a local `.env` file from `.env.example`:
+
+```bash
+cp .env.example .env
+```
+
+| Variable | Required | Description |
+|---|---|---|
+| `VITE_API_URL` | Yes | Base API path used by frontend requests (e.g. `https://api.example.com/api`). |
+| `VITE_BACKEND_URL` | Yes | Backend origin used for non-API absolute integrations when needed. |
+
+> `.env` is intentionally gitignored. Commit only `.env.example`.
+
+---
+
+## Available Scripts
+
+- `npm run dev` — start development server.
+- `npm run build` — create production build.
+- `npm run preview` — preview production build locally.
+- `npm run lint` — run ESLint.
+- `npm run release:check` — run pre-release verification (`lint` + `build`).
+- `npm run version:show` — print current package version.
+
+---
+
+## Lint & Quality Expectations
+
+Current lint baseline targets:
+- **0 ESLint errors** before release.
+- Hook dependency warnings are tracked and should be reviewed whenever touching related modules.
+
+Use:
+```bash
+npm run lint
+```
+
+---
+
+## Deployment
+
+### Build artifacts
+```bash
+npm run build
+```
+Output is generated in `dist/`.
+
+### Recommended static deployment targets
+- Netlify
+- Vercel
+- Nginx/Apache static hosting
+
+For SPA routing, ensure fallback rewrites to `index.html` (a Netlify `_redirects` file is included in `public/`).
+
+---
+
+## Release Metadata & Versioning Strategy
+
+This project follows **Semantic Versioning (SemVer)**:
+- `MAJOR.MINOR.PATCH`
+- **PATCH** for bug fixes and non-breaking cleanup.
+- **MINOR** for backward-compatible feature additions.
+- **MAJOR** for breaking API/UX changes.
+
+Release checklist recommendation:
+1. `npm run lint`
+2. `npm run build`
+3. Bump `package.json` version per SemVer.
+4. Tag release in source control (`vX.Y.Z`).
+5. Publish deployment artifact from `dist/`.
+
+---
+
+## Password Policy Note (Intentional PIN Model)
+
+The profile update UI currently validates password changes as a **4-digit numeric PIN**.
+
+This is intentional in the current product design and should only be used when backend controls are enforced, including:
+- server-side rate limiting and lockout,
+- secure transport (HTTPS),
+- token/session validation,
+- centralized audit logging.
+
+If those controls are not guaranteed in your environment, migrate to a stronger password policy before production hardening.
+
+---
+
+## Known Limits
+
+- Several hook dependency warnings remain and are tracked for staged refactors.
+- Trainer/User experiences are optimized for mobile viewport usage.
+- Scanner behavior relies on browser/device permission and camera capability.
+- PIN-based password model is intentionally constrained and depends on stronger backend protections.
+
+---
+
+## License
+
+MIT — see [LICENSE](./LICENSE).

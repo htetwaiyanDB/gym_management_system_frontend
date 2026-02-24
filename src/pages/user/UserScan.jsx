@@ -6,7 +6,6 @@ import RfidInputListener from "../../components/RfidInputListener";
 import QrScanner from "../common/QrScanner";
 import { isCardNotRegisteredError, normalizeCardId } from "../../utils/rfid";
 import { parseTokenFromQrText } from "../../utils/qr";
-import { useNavigate } from "react-router-dom";
 
 /* ---------------------------
    Robust datetime helpers
@@ -101,10 +100,8 @@ export default function UserScan() {
   const isMobile = useMemo(() => window.innerWidth < 768, []);
   const busyRef = useRef(false);
   const prevScannerStateRef = useRef(null);
-  const nav = useNavigate();
-
   // Global scanner state - Admin controls ON/OFF
-  const { isScanningEnabled: scanAllowedByAdmin, setIsScanningEnabled } = useGlobalScanner();
+  const { isScanningEnabled: scanAllowedByAdmin } = useGlobalScanner();
 
   const [statusMsg, setStatusMsg] = useState(null);
   const [rfidWarning, setRfidWarning] = useState(false);

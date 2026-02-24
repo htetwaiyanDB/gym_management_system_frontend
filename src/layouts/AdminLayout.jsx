@@ -9,7 +9,11 @@ export default function AdminLayout() {
   const nav = useNavigate();
 
   const logout = async () => {
-    try { await logoutApi(); } catch {}
+    try {
+      await logoutApi();
+    } catch (error) {
+      console.warn("Logout request failed; clearing local session.", error);
+    }
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     sessionStorage.removeItem("token");

@@ -844,7 +844,6 @@ export default function AdminTrainerBookings() {
               filteredBookings.map((b) => {
                 const isPaid = String(b.paid_status || "").toLowerCase() === "paid";
                 const { total, remaining } = getSessionProgress(b);
-                const monthCount = getMonthCount(b);
                 const isCompleted = (total !== null && remaining === 0) || isCompletedStatus(b?.status);
                 const statusValue = normalizeBookingStatus(b?.status);
                 const isPending = statusValue === "pending";
