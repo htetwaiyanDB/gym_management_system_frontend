@@ -665,9 +665,6 @@ export default function AdminDashboard() {
               </ResponsiveContainer>
             </div>
 
-            <div className="small mt-2" style={mutedText}>
-              * Attendance bars come from API: <code>labels/check_ins/check_outs</code>.
-            </div>
           </div>
         </div>
       </div>
