@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import axiosClient from "../../api/axiosClient";
 
 function getNotificationType(notification) {
@@ -76,10 +77,31 @@ function formatNotificationBody(notification) {
   return "Notification received.";
 }
 
+function resolveBlogId(notification) {
+  return (
+    notification?.data?.blog_id ||
+    notification?.data?.blog?.id ||
+    notification?.blog_id ||
+    notification?.blog?.id ||
+    null
+  );
+}
+
+function resolveNotificationTarget(notification, basePath) {
+  const blogId = resolveBlogId(notification);
+  if (blogId) return `${basePath}/blogs/${blogId}`;
+  if (hasMessageIndicator(notification)) return `${basePath}/messages`;
+  return null;
+}
+
 export default function Notifications() {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState(null);
   const [notifications, setNotifications] = useState([]);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const panelBasePath = location.pathname.startsWith("/trainer") ? "/trainer" : "/user";
 
   const loadNotifications = async () => {
     setLoading(true);
@@ -132,6 +154,20 @@ export default function Notifications() {
     }
   };
 
+  const openNotification = async (notification) => {
+    const notificationId = notification?.id;
+    const isRead = Boolean(notification?.read_at);
+    const targetPath = resolveNotificationTarget(notification, panelBasePath);
+
+    if (!isRead && notificationId) {
+      await markRead(notificationId);
+    }
+
+    if (targetPath) {
+      navigate(targetPath);
+    }
+  };
+
   return (
     <div className="admin-card p-4">
       <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
@@ -169,6 +205,15 @@ export default function Notifications() {
                 className={`list-group-item list-group-item-action d-flex justify-content-between align-items-start ${
                   isRead ? "bg-dark text-light" : "bg-secondary text-white"
                 }`}
+                role="button"
+                tabIndex={0}
+                onClick={() => openNotification(item)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    openNotification(item);
+                  }
+                }}
               >
                 <div className="me-3">
                   <div className="fw-semibold d-flex align-items-center gap-2">
@@ -189,13 +234,9 @@ export default function Notifications() {
                   </div>
                   <div className="small text-muted">{createdAt}</div>
                 </div>
-                <button
-                  className="btn btn-sm btn-outline-light"
-                  onClick={() => markRead(item?.id)}
-                  disabled={isRead}
-                >
-                  {isRead ? "Read" : "Mark read"}
-                </button>
+                <span className={`badge ${isRead ? "text-bg-success" : "text-bg-warning"}`}>
+                  {isRead ? "Read" : "Unread"}
+                </span>
               </div>
             );
           })
