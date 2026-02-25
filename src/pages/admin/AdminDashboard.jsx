@@ -345,7 +345,7 @@ export default function AdminDashboard() {
     }, POLL_GROWTH_EVERY_MS);
 
     return () => clearInterval(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   // metrics from attendance report

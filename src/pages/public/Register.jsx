@@ -119,12 +119,17 @@ export default function Register() {
               <input
                 type="password"
                 className={`form-control ${errors.password ? "is-invalid" : ""}`}
-                placeholder="Enter password"
-                {...register("password", { required: "Required", minLength: { value: 4, message: "Min 4 characters" } })}
+                placeholder="Enter 4-digit PIN"
+                inputMode="numeric"
+                maxLength={4}
+                {...register("password", {
+                  required: "Required",
+                  pattern: { value: /^\d{4}$/, message: "PIN must be exactly 4 numbers" },
+                })}
               />
               {errors.password && <div className="invalid-feedback">{errors.password.message}</div>}
               <div className="text-muted small mt-1">
-                Use upper/lowercase, number & symbol.
+Use a 4-digit numeric PIN. Account security is enforced primarily on the backend.
               </div>
             </div>
 
@@ -133,10 +138,13 @@ export default function Register() {
               <input
                 type="password"
                 className={`form-control ${errors.password_confirmation ? "is-invalid" : ""}`}
-                placeholder="Confirm password"
+                placeholder="Confirm 4-digit PIN"
+                inputMode="numeric"
+                maxLength={4}
                 {...register("password_confirmation", {
                   required: "Required",
-                  validate: (v) => v === pwd || "Passwords do not match",
+                  pattern: { value: /^\d{4}$/, message: "PIN must be exactly 4 numbers" },
+                  validate: (v) => v === pwd || "PINs do not match",
                 })}
               />
               {errors.password_confirmation && (

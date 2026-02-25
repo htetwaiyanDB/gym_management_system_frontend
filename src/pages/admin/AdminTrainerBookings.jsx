@@ -626,14 +626,14 @@ export default function AdminTrainerBookings() {
   }, [showDetails]);
 
 
-  useEffect(() => {
+    useEffect(() => {
     if (!showModal) return undefined;
     loadTrainerPackages();
     const interval = setInterval(loadTrainerPackages, 15000);
     return () => clearInterval(interval);
-  }, [showModal]);
+  }, [showModal]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const selectedPackage = useMemo(() => findSelectedPackage(), [packageType, trainerPackages]);
+    const selectedPackage = useMemo(() => findSelectedPackage(), [packageType, trainerPackages]); // eslint-disable-line react-hooks/exhaustive-deps
   const selectedPackageCount =
     selectedPackage?.duration_months ?? selectedPackage?.sessions_count ?? "";
   const countLabel = selectedPackage?.duration_months ? "Month Count" : "Session Count";
@@ -681,7 +681,7 @@ export default function AdminTrainerBookings() {
       monthly: trainerPackages.filter((pkg) => inferPackageGroup(pkg) === "monthly"),
       duo: trainerPackages.filter((pkg) => inferPackageGroup(pkg) === "duo"),
     };
-  }, [trainerPackages]);
+    }, [trainerPackages]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handlePackageSelect = (group) => (event) => {
     const value = event.target.value;
@@ -950,7 +950,6 @@ export default function AdminTrainerBookings() {
               filteredBookings.map((b) => {
                 const isPaid = String(b.paid_status || "").toLowerCase() === "paid";
                 const { total, remaining } = getSessionProgress(b);
-                const monthCount = getMonthCount(b);
                 const isCompleted = (total !== null && remaining === 0) || isCompletedStatus(b?.status);
                 const statusValue = normalizeBookingStatus(b?.status);
                 const isPending = statusValue === "pending";

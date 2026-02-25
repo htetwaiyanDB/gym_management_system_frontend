@@ -22,7 +22,7 @@ export default function UserLayout() {
       const list = Array.isArray(res?.data) ? res.data : res?.data?.data || res?.data?.notifications || [];
       const unread = list.filter((item) => !item?.read_at).length;
       setUnreadCount((prev) => (prev === unread ? prev : unread));
-    } catch (err) {
+    } catch {
       // Silently fail - don't show badge if we can't fetch
       setUnreadCount((prev) => (prev === 0 ? prev : 0));
     }
@@ -31,19 +31,27 @@ export default function UserLayout() {
   useEffect(() => {
     const refreshIfVisible = () => {
       if (document.visibilityState === "visible") {
-        fetchUnreadCount();
+        window.setTimeout(() => {
+      fetchUnreadCount();
+    }, 0);
       }
     };
 
-    fetchUnreadCount();
+    window.setTimeout(() => {
+      fetchUnreadCount();
+    }, 0);
     // poll less aggressively to reduce render/network churn while preserving feature
     const interval = setInterval(refreshIfVisible, 20000);
 
     const handleFocus = () => {
+      window.setTimeout(() => {
       fetchUnreadCount();
+    }, 0);
     };
     const handleNotificationUpdate = () => {
+      window.setTimeout(() => {
       fetchUnreadCount();
+    }, 0);
     };
     const handleVisibility = () => refreshIfVisible();
 

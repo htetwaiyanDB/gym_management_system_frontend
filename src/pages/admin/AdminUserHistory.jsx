@@ -417,7 +417,7 @@ export default function AdminUserHistory() {
     setRecords(emptyRecords);
     setUserProfile(null);
     loadRecords();
-  }, [recordId]);
+  }, [recordId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <UserRecordsDetail

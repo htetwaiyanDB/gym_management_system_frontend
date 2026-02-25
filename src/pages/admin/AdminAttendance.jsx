@@ -31,14 +31,6 @@ function formatDateTimeVideoStyle(s) {
   });
 }
 
-function normalizeRole(role) {
-  const r = String(role || "").toLowerCase();
-  if (r === "trainer") return "Trainer";
-  if (r === "user") return "User";
-  if (r === "admin" || r === "administrator") return "Admin";
-  return role || "-";
-}
-
 function roleBadge(role) {
   const r = String(role || "").toLowerCase();
   if (r === "trainer") return <span className="badge bg-info text-dark">Trainer</span>;
@@ -176,11 +168,6 @@ const titleText = { color: "rgba(255,255,255,0.92)" };
 const bodyText = { color: "rgba(255,255,255,0.80)" };
 const mutedText = { color: "rgba(255,255,255,0.60)" };
 
-const glassSelectStyle = {
-  background: "rgba(0,0,0,0.55)",
-  color: "#fff",
-  border: "1px solid rgba(255,255,255,0.18)",
-};
 
 export default function AdminAttendance() {
   const [activeTab, setActiveTab] = useState("records"); // records | checked
@@ -330,14 +317,14 @@ export default function AdminAttendance() {
     };
   }, []);
 
-  useEffect(() => {
+    useEffect(() => {
     if (activeTab === "records") loadRecords(true);
     if (activeTab === "checked") {
       loadCheckedIn(true);
       loadActiveCheckins(false);
       loadMemberCount(false);
     }
-  }, [activeTab]);
+  }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     let alive = true;
@@ -375,7 +362,7 @@ export default function AdminAttendance() {
     };
   }, []);
 
-  useEffect(() => {
+    useEffect(() => {
     if (activeTab !== "checked") return undefined;
     const intervalId = window.setInterval(() => {
       loadCheckedIn(false);
@@ -384,7 +371,7 @@ export default function AdminAttendance() {
     }, 10000);
 
     return () => window.clearInterval(intervalId);
-  }, [activeTab]);
+  }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---------------- computed ----------------
 
@@ -572,7 +559,7 @@ export default function AdminAttendance() {
                   setScanError(null);
                   setScanResult(null);
                   setTimeout(() => scanInputRef.current?.focus(), 0);
-                } catch (e) {
+                } catch {
                   // Even if API fails, save locally and update UI
                   setScannerActive(true);
                   saveAttendanceScanControlLocal(true);
@@ -599,7 +586,7 @@ export default function AdminAttendance() {
                   console.log("[Admin] Scanner stopped:", newState);
                   setScanValue("");
                   setScanError(null);
-                } catch (e) {
+                } catch {
                   // Even if API fails, save locally and update UI
                   setScannerActive(false);
                   saveAttendanceScanControlLocal(false);

@@ -50,7 +50,7 @@ export function useGlobalScanner() {
       setIsScanningEnabledState(newValue);
       saveAttendanceScanControlLocal(newValue);
       setError(null);
-    } catch (e) {
+    } catch {
       // On API error, read from localStorage (set by admin panel)
       const cached = readAttendanceScanControlLocal();
       setIsScanningEnabledState(cached ? !!cached.isActive : true);

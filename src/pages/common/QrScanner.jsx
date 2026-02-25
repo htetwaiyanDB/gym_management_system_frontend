@@ -47,10 +47,14 @@ export default function QrScanner({
         // stop() throws if not started; guard
         try {
           await qrRef.current.stop();
-        } catch {}
+        } catch {
+          // scanner may already be stopped/cleared
+        }
         try {
           await qrRef.current.clear();
-        } catch {}
+        } catch {
+          // scanner may already be stopped/cleared
+        }
       }
     } finally {
       qrRef.current = null;

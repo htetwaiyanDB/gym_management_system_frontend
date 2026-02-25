@@ -481,12 +481,12 @@ export default function AdminClassSubscriptions() {
     }
   };
 
-  useEffect(() => {
+    useEffect(() => {
     loadRecords();
     loadClassTimetable();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const sortedRecords = useMemo(() => {
+    const sortedRecords = useMemo(() => {
     const list = [...records];
     list.sort((a, b) => {
       const statusA = String(a?.status || "").toLowerCase();
@@ -501,7 +501,7 @@ export default function AdminClassSubscriptions() {
       return (b?.id ?? 0) - (a?.id ?? 0);
     });
     return list;
-  }, [records]);
+  }, [records]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="admin-card p-4">

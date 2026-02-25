@@ -102,9 +102,9 @@ export default function TrainerScan() {
   const busyRef = useRef(false);
   const prevScannerStateRef = useRef(null);
   const nav = useNavigate();
-
+  
   // Global scanner state - Admin controls ON/OFF
-  const { isScanningEnabled: scanAllowedByAdmin, setIsScanningEnabled } = useGlobalScanner();
+  const { isScanningEnabled: scanAllowedByAdmin } = useGlobalScanner();
 
   const [statusMsg, setStatusMsg] = useState(null);
   const [rfidWarning, setRfidWarning] = useState(false);

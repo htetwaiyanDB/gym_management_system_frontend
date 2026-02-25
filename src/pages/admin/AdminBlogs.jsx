@@ -284,7 +284,7 @@ export default function AdminBlogs() {
 
   useEffect(() => {
     loadBlogs();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   const sortedBlogs = useMemo(() => {
