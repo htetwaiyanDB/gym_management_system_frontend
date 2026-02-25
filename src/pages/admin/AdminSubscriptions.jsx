@@ -69,6 +69,10 @@ function memberIdOf(member) {
   return member?.id ?? member?.user_id ?? member?.member_id ?? null;
 }
 
+function memberVisibleCode(member) {
+  return member?.user_id ?? member?.member_id ?? member?.id ?? null;
+}
+
 function formatUserCode(value) {
   if (value === null || value === undefined || value === "") return "";
   const text = String(value).trim();
@@ -94,7 +98,7 @@ function memberSearchText(member) {
 }
 
 function memberDisplayLabel(member) {
-  const id = memberIdOf(member);
+  const id = memberVisibleCode(member);
   const code = formatUserCode(id) || id;
   return `${member?.name || "Unknown"} (${code || "-"})`;
 }
@@ -452,7 +456,7 @@ export default function AdminSubscriptions() {
       <input
         type="text"
         className="form-control bg-dark text-white mb-2"
-        placeholder="Search by user id (00000), name, or phone"
+        placeholder="search user"
         value={memberSearch}
         onChange={(e) => onMemberSearchChange(e.target.value)}
         disabled={optionsLoading}
