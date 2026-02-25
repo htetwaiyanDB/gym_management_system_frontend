@@ -444,7 +444,7 @@ export default function AdminSubscriptions() {
                   ></button>
                 </div>
 
-                <div className="modal-body">
+    <div className="modal-body">
     <div className="row g-3">
     
     <div className="col-md-4">
@@ -457,7 +457,7 @@ export default function AdminSubscriptions() {
         onChange={(e) => onMemberSearchChange(e.target.value)}
         disabled={optionsLoading}
       />
-      <div className="list-group">
+      {/* <div className="list-group">
         {visibleMemberSuggestions.map((m) => {
           const id = memberIdOf(m);
           const isSelected = String(id) === String(memberId);
@@ -473,10 +473,13 @@ export default function AdminSubscriptions() {
             </button>
           );
         })}
-      </div>
+      </div> */}
       {!!memberSearch && filteredMembers.length === 0 && (
         <div className="form-text text-warning">No members matched your search.</div>
       )}
+       {selectedMember && (
+        <div className="form-text text-success">Selected: {memberDisplayLabel(selectedMember)}</div>
+      )}      
     </div>
 
     
