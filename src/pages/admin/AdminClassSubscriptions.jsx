@@ -379,6 +379,8 @@ export default function AdminClassSubscriptions() {
     return members.find((member) => String(memberIdOf(member)) === String(memberId)) || null;
   }, [members, memberId]);
 
+  const showNoMembersWarning = Boolean(memberSearch.trim()) && filteredMembers.length === 0 && !selectedMember;
+
   const visibleMemberSuggestions = useMemo(() => filteredMembers.slice(0, 8), [filteredMembers]);
 
   const selectMember = (member) => {
@@ -689,7 +691,7 @@ export default function AdminClassSubscriptions() {
                           })}
                         </div>
                       )}
-                      {!!memberSearch && filteredMembers.length === 0 && (
+                      {showNoMembersWarning && (
                         <div className="form-text text-warning">No members matched your search.</div>
                       )}
                       {selectedMember && (
