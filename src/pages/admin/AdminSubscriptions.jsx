@@ -452,28 +452,30 @@ export default function AdminSubscriptions() {
       <input
         type="text"
         className="form-control bg-dark text-white mb-2"
-        placeholder="Search by user id (0000), name, or phone"
+        placeholder="Search by user id (00000), name, or phone"
         value={memberSearch}
         onChange={(e) => onMemberSearchChange(e.target.value)}
         disabled={optionsLoading}
       />
-      {/* <div className="list-group">
-        {visibleMemberSuggestions.map((m) => {
-          const id = memberIdOf(m);
-          const isSelected = String(id) === String(memberId);
-          return (
-            <button
-              key={id}
-              type="button"
-              className={`list-group-item list-group-item-action ${isSelected ? "active" : "bg-dark text-white border-secondary"}`}
-              onClick={() => selectMember(m)}
-              disabled={optionsLoading}
-            >
-              {memberDisplayLabel(m)}
-            </button>
-          );
-        })}
-      </div> */}
+      {!!memberSearch.trim() && visibleMemberSuggestions.length > 0 && (
+        <div className="list-group mb-2" style={{ maxHeight: 220, overflowY: "auto" }}>
+          {visibleMemberSuggestions.map((m) => {
+            const id = memberIdOf(m);
+            const isSelected = String(id) === String(memberId);
+            return (
+              <button
+                key={id}
+                type="button"
+                className={`list-group-item list-group-item-action ${isSelected ? "active" : "bg-dark text-white border-secondary"}`}
+                onClick={() => selectMember(m)}
+                disabled={optionsLoading}
+              >
+                {memberDisplayLabel(m)}
+              </button>
+            );
+          })}
+        </div>
+      )}
       {!!memberSearch && filteredMembers.length === 0 && (
         <div className="form-text text-warning">No members matched your search.</div>
       )}
