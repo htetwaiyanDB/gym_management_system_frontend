@@ -276,6 +276,9 @@ export default function UserSettings() {
           >
             {saving ? "Saving..." : "Save changes"}
           </button>
+          <p className="text-center text-light mt-3 mb-0" style={{ opacity: 1 }}>
+            Power By WinterArc Myanmar Software Solutions.
+          </p>
         </form>
       </div>
 
