@@ -132,6 +132,11 @@ function memberSearchText(member) {
     .join(" ");
 }
 
+function memberDisplayLabel(member) {
+  const phone = String(member?.phone || "").trim();
+  return `${member?.name || "Unknown"} (${phone || "-"})`;
+}
+
 async function requestWithFallback(requests) {
   let latestError = null;
   for (const run of requests) {
@@ -368,6 +373,41 @@ export default function AdminClassSubscriptions() {
     if (!keyword) return members;
     return members.filter((member) => memberSearchText(member).includes(keyword));
   }, [members, memberSearch]);
+
+  const selectedMember = useMemo(() => {
+    if (!memberId) return null;
+    return members.find((member) => String(memberIdOf(member)) === String(memberId)) || null;
+  }, [members, memberId]);
+
+  const visibleMemberSuggestions = useMemo(() => filteredMembers.slice(0, 8), [filteredMembers]);
+
+  const selectMember = (member) => {
+    const id = memberIdOf(member);
+    if (id === null || id === undefined || id === "") return;
+    setMemberId(String(id));
+    setMemberSearch(memberDisplayLabel(member));
+  };
+
+  const onMemberSearchChange = (value) => {
+    setMemberSearch(value);
+
+    if (!value.trim()) {
+      setMemberId("");
+      return;
+    }
+
+    const normalized = value.trim().toLowerCase();
+    const exactMatch = members.find((member) => memberDisplayLabel(member).toLowerCase() === normalized);
+    if (exactMatch) {
+      const id = memberIdOf(exactMatch);
+      setMemberId(id === null || id === undefined ? "" : String(id));
+      return;
+    }
+
+    if (selectedMember && !memberSearchText(selectedMember).includes(normalized)) {
+      setMemberId("");
+    }
+  };
 
   const save = async () => {
     if (!memberId) return setMsg({ type: "danger", text: "Please select a member." });
@@ -627,23 +667,33 @@ export default function AdminClassSubscriptions() {
                       <input
                         type="text"
                         className="form-control bg-dark text-white mb-2"
-                        placeholder="Search by name or user id (00000)"
+                        placeholder="Search member by name / phone / email"
                         value={memberSearch}
-                        onChange={(e) => setMemberSearch(e.target.value)}
+                        onChange={(e) => onMemberSearchChange(e.target.value)}
                       />
-                      <select className="form-select bg-dark text-white" value={memberId} onChange={(e) => setMemberId(e.target.value)}>
-                        <option value="">Select member</option>
-                        {filteredMembers.map((m) => {
-                          const id = memberIdOf(m);
-                          return (
-                            <option key={id} value={id}>
-                              {m.name} ({formatUserCode(id) || id}) {m.phone ? `- ${m.phone}` : ""}
-                            </option>
-                          );
-                        })}
-                      </select>
+                      {!!memberSearch.trim() && visibleMemberSuggestions.length > 0 && (
+                        <div className="list-group mb-2" style={{ maxHeight: 220, overflowY: "auto" }}>
+                          {visibleMemberSuggestions.map((m) => {
+                            const id = memberIdOf(m);
+                            const isSelected = String(id) === String(memberId);
+                            return (
+                              <button
+                                key={id}
+                                type="button"
+                                className={`list-group-item list-group-item-action ${isSelected ? "active" : "bg-dark text-white border-secondary"}`}
+                                onClick={() => selectMember(m)}
+                              >
+                                {memberDisplayLabel(m)}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
                       {!!memberSearch && filteredMembers.length === 0 && (
                         <div className="form-text text-warning">No members matched your search.</div>
+                      )}
+                      {selectedMember && (
+                        <div className="form-text text-success">Selected: {memberDisplayLabel(selectedMember)}</div>
                       )}
                     </div>
                     <div className="col-md-4">
