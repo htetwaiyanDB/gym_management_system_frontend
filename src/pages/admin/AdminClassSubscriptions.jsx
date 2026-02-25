@@ -103,6 +103,35 @@ function parsePriceNumber(value) {
   return Number.isNaN(parsed) ? null : parsed;
 }
 
+
+function memberIdOf(member) {
+  return member?.id ?? member?.user_id ?? member?.member_id ?? null;
+}
+
+function formatUserCode(value) {
+  if (value === null || value === undefined || value === "") return "";
+  const text = String(value).trim();
+  if (!text) return "";
+  return text.padStart(5, "0");
+}
+
+function memberSearchText(member) {
+  const id = memberIdOf(member);
+  const pieces = [
+    member?.name,
+    member?.phone,
+    member?.email,
+    member?.user_id,
+    member?.member_id,
+    id,
+    formatUserCode(id),
+  ];
+  return pieces
+    .filter((piece) => piece !== null && piece !== undefined)
+    .map((piece) => String(piece).toLowerCase())
+    .join(" ");
+}
+
 async function requestWithFallback(requests) {
   let latestError = null;
   for (const run of requests) {
@@ -135,6 +164,7 @@ export default function AdminClassSubscriptions() {
   const [classNameInput, setClassNameInput] = useState("");
   const [classDayInput, setClassDayInput] = useState("Monday");
   const [memberId, setMemberId] = useState("");
+  const [memberSearch, setMemberSearch] = useState("");
   const [planId, setPlanId] = useState("");
   const [startDate, setStartDate] = useState("");
 
@@ -142,6 +172,7 @@ export default function AdminClassSubscriptions() {
 
   const resetForm = () => {
     setMemberId("");
+    setMemberSearch("");
     setPlanId("");
     setStartDate("");
   };
@@ -331,6 +362,12 @@ export default function AdminClassSubscriptions() {
   };
 
   const selectedPlan = useMemo(() => plans.find((p) => String(planIdOf(p)) === String(planId)) || null, [plans, planId]);
+
+  const filteredMembers = useMemo(() => {
+    const keyword = memberSearch.trim().toLowerCase();
+    if (!keyword) return members;
+    return members.filter((member) => memberSearchText(member).includes(keyword));
+  }, [members, memberSearch]);
 
   const save = async () => {
     if (!memberId) return setMsg({ type: "danger", text: "Please select a member." });
@@ -587,12 +624,27 @@ export default function AdminClassSubscriptions() {
                   <div className="row g-3">
                     <div className="col-md-4">
                       <label className="form-label fw-bold">Member</label>
+                      <input
+                        type="text"
+                        className="form-control bg-dark text-white mb-2"
+                        placeholder="Search by name or user id (00000)"
+                        value={memberSearch}
+                        onChange={(e) => setMemberSearch(e.target.value)}
+                      />
                       <select className="form-select bg-dark text-white" value={memberId} onChange={(e) => setMemberId(e.target.value)}>
                         <option value="">Select member</option>
-                        {members.map((m) => (
-                          <option key={m.id} value={m.id}>{m.name} {m.phone ? `- ${m.phone}` : ""}</option>
-                        ))}
+                        {filteredMembers.map((m) => {
+                          const id = memberIdOf(m);
+                          return (
+                            <option key={id} value={id}>
+                              {m.name} ({formatUserCode(id) || id}) {m.phone ? `- ${m.phone}` : ""}
+                            </option>
+                          );
+                        })}
                       </select>
+                      {!!memberSearch && filteredMembers.length === 0 && (
+                        <div className="form-text text-warning">No members matched your search.</div>
+                      )}
                     </div>
                     <div className="col-md-4">
                       <label className="form-label fw-bold">Plan</label>

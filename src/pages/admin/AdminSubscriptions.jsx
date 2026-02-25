@@ -65,6 +65,34 @@ function isExpiredByDate(endDateValue) {
   return today > endDate;
 }
 
+function memberIdOf(member) {
+  return member?.id ?? member?.user_id ?? member?.member_id ?? null;
+}
+
+function formatUserCode(value) {
+  if (value === null || value === undefined || value === "") return "";
+  const text = String(value).trim();
+  if (!text) return "";
+  return text.padStart(5, "0");
+}
+
+function memberSearchText(member) {
+  const id = memberIdOf(member);
+  const pieces = [
+    member?.name,
+    member?.phone,
+    member?.email,
+    member?.user_id,
+    member?.member_id,
+    id,
+    formatUserCode(id),
+  ];
+  return pieces
+    .filter((piece) => piece !== null && piece !== undefined)
+    .map((piece) => String(piece).toLowerCase())
+    .join(" ");
+}
+
 export default function AdminSubscriptions() {
   const nav = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -80,11 +108,13 @@ export default function AdminSubscriptions() {
   const [plans, setPlans] = useState([]);
 
   const [memberId, setMemberId] = useState("");
+  const [memberSearch, setMemberSearch] = useState("");
   const [planId, setPlanId] = useState("");
   const [startDate, setStartDate] = useState(""); // optional
 
   const resetForm = () => {
     setMemberId("");
+    setMemberSearch("");
     setPlanId("");
     setStartDate("");
   };
@@ -217,6 +247,12 @@ export default function AdminSubscriptions() {
     if (!planId) return null;
     return planMap.get(String(planId)) || null;
   }, [planId, planMap]);
+
+  const filteredMembers = useMemo(() => {
+    const keyword = memberSearch.trim().toLowerCase();
+    if (!keyword) return members;
+    return members.filter((member) => memberSearchText(member).includes(keyword));
+  }, [members, memberSearch]);
 
   const sortedSubscriptions = useMemo(() => {
     const list = [...subs];
@@ -372,6 +408,14 @@ export default function AdminSubscriptions() {
     
     <div className="col-md-4">
       <label className="form-label fw-bold">Member</label>
+      <input
+        type="text"
+        className="form-control bg-dark text-white mb-2"
+        placeholder="Search by name or user id (00000)"
+        value={memberSearch}
+        onChange={(e) => setMemberSearch(e.target.value)}
+        disabled={optionsLoading}
+      />
       <select
         className="form-select bg-dark text-white"
         value={memberId}
@@ -379,12 +423,18 @@ export default function AdminSubscriptions() {
         disabled={optionsLoading}
       >
         <option value="">Select member</option>
-        {members.map((m) => (
-          <option key={m.id} value={m.id}>
-            {m.name} {m.phone ? `- ${m.phone}` : ""}
-          </option>
-        ))}
+        {filteredMembers.map((m) => {
+          const id = memberIdOf(m);
+          return (
+            <option key={id} value={id}>
+              {m.name} ({formatUserCode(id) || id}) {m.phone ? `- ${m.phone}` : ""}
+            </option>
+          );
+        })}
       </select>
+      {!!memberSearch && filteredMembers.length === 0 && (
+        <div className="form-text text-warning">No members matched your search.</div>
+      )}
     </div>
 
     
