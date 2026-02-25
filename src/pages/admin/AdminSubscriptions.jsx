@@ -477,9 +477,6 @@ export default function AdminSubscriptions() {
       {!!memberSearch && filteredMembers.length === 0 && (
         <div className="form-text text-warning">No members matched your search.</div>
       )}
-      {selectedMember && (
-        <div className="form-text text-success">Selected: {memberDisplayLabel(selectedMember)}</div>
-      )}
     </div>
 
     
