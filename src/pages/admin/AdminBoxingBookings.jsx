@@ -173,6 +173,24 @@ function addMonthsToDate(baseDate, months) {
   return date;
 }
 
+function personIdOf(person) {
+  return person?.id ?? person?.user_id ?? person?.member_id ?? person?.coach_id ?? person?.trainer_id ?? null;
+}
+
+function personSearchText(person) {
+  const id = personIdOf(person);
+  const pieces = [person?.name, person?.phone, person?.email, person?.user_id, person?.member_id, person?.coach_id, person?.trainer_id, id];
+  return pieces
+    .filter((piece) => piece !== null && piece !== undefined)
+    .map((piece) => String(piece).toLowerCase())
+    .join(" ");
+}
+
+function personDisplayLabel(person, fallback = "Unknown") {
+  const phone = String(person?.phone || "").trim();
+  return `${person?.name || fallback} (${phone || "-"})`;
+}
+
 
 export default function AdminBoxingBookings() {
   const [loading, setLoading] = useState(false);
@@ -214,7 +232,9 @@ export default function AdminBoxingBookings() {
 
   // form fields
   const [memberId, setMemberId] = useState("");
+  const [memberSearch, setMemberSearch] = useState("");
   const [coachId, setCoachId] = useState("");
+  const [coachSearch, setCoachSearch] = useState("");
   const [packageType, setPackageType] = useState("");
   const [packageGroup, setPackageGroup] = useState("");
   const [priceSource, setPriceSource] = useState("package"); // package | manual
@@ -277,7 +297,9 @@ export default function AdminBoxingBookings() {
 
   const resetForm = () => {
     setMemberId("");
+    setMemberSearch("");
     setCoachId("");
+    setCoachSearch("");
     setPackageType("");
     setPackageGroup("");
     setSessionsCount("1");
@@ -460,6 +482,90 @@ export default function AdminBoxingBookings() {
       });
     } finally {
       setBusyKey(null);
+    }
+  };
+
+  const filteredMembers = useMemo(() => {
+    const keyword = memberSearch.trim().toLowerCase();
+    if (!keyword) return members;
+    return members.filter((member) => personSearchText(member).includes(keyword));
+  }, [memberSearch, members]);
+
+  const filteredCoaches = useMemo(() => {
+    const keyword = coachSearch.trim().toLowerCase();
+    if (!keyword) return coaches;
+    return coaches.filter((coach) => personSearchText(coach).includes(keyword));
+  }, [coachSearch, coaches]);
+
+  const selectedMember = useMemo(
+    () => members.find((member) => String(personIdOf(member)) === String(memberId)) || null,
+    [memberId, members]
+  );
+
+  const selectedCoach = useMemo(
+    () => coaches.find((coach) => String(personIdOf(coach)) === String(coachId)) || null,
+    [coachId, coaches]
+  );
+
+  const visibleMemberSuggestions = useMemo(() => filteredMembers.slice(0, 8), [filteredMembers]);
+  const visibleCoachSuggestions = useMemo(() => filteredCoaches.slice(0, 8), [filteredCoaches]);
+
+  const showNoMembersWarning = Boolean(memberSearch.trim()) && filteredMembers.length === 0 && !selectedMember;
+  const showNoCoachesWarning = Boolean(coachSearch.trim()) && filteredCoaches.length === 0 && !selectedCoach;
+
+  const selectMember = (member) => {
+    const id = personIdOf(member);
+    if (id === null || id === undefined || id === "") return;
+    setMemberId(String(id));
+    setMemberSearch(personDisplayLabel(member, "Member"));
+  };
+
+  const selectCoach = (coach) => {
+    const id = personIdOf(coach);
+    if (id === null || id === undefined || id === "") return;
+    setCoachId(String(id));
+    setCoachSearch(personDisplayLabel(coach, "Coach"));
+  };
+
+  const onMemberSearchChange = (value) => {
+    setMemberSearch(value);
+
+    if (!value.trim()) {
+      setMemberId("");
+      return;
+    }
+
+    const normalized = value.trim().toLowerCase();
+    const exactMatch = members.find((member) => personDisplayLabel(member, "Member").toLowerCase() === normalized);
+    if (exactMatch) {
+      const id = personIdOf(exactMatch);
+      setMemberId(id === null || id === undefined ? "" : String(id));
+      return;
+    }
+
+    if (selectedMember && !personSearchText(selectedMember).includes(normalized)) {
+      setMemberId("");
+    }
+  };
+
+  const onCoachSearchChange = (value) => {
+    setCoachSearch(value);
+
+    if (!value.trim()) {
+      setCoachId("");
+      return;
+    }
+
+    const normalized = value.trim().toLowerCase();
+    const exactMatch = coaches.find((coach) => personDisplayLabel(coach, "Coach").toLowerCase() === normalized);
+    if (exactMatch) {
+      const id = personIdOf(exactMatch);
+      setCoachId(id === null || id === undefined ? "" : String(id));
+      return;
+    }
+
+    if (selectedCoach && !personSearchText(selectedCoach).includes(normalized)) {
+      setCoachId("");
     }
   };
 
@@ -1170,36 +1276,68 @@ export default function AdminBoxingBookings() {
                 <div className="row g-3">
                   <div className="col-12 col-md-6">
                     <label className="form-label fw-bold">Member</label>
-                    <select
-                      className="form-select admin-select-dark"
-                      value={memberId}
-                      onChange={(e) => setMemberId(e.target.value)}
+                    <input
+                      type="text"
+                      className="form-control bg-dark text-white mb-2"
+                      placeholder="Search member by name / phone"
+                      value={memberSearch}
+                      onChange={(e) => onMemberSearchChange(e.target.value)}
                       disabled={optionsLoading}
-                    >
-                      <option value="" className="fw-bold">Select member</option>
-                      {members.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.name} {m.phone ? `- ${m.phone}` : ""}
-                        </option>
-                      ))}
-                    </select>
+                    />
+                    {!!memberSearch.trim() && visibleMemberSuggestions.length > 0 && (
+                      <div className="list-group" style={{ maxHeight: 220, overflowY: "auto" }}>
+                        {visibleMemberSuggestions.map((member) => {
+                          const id = personIdOf(member);
+                          const isSelected = String(id) === String(memberId);
+                          return (
+                            <button
+                              key={id}
+                              type="button"
+                              className={`list-group-item list-group-item-action ${isSelected ? "active" : "bg-dark text-white border-secondary"}`}
+                              onClick={() => selectMember(member)}
+                              disabled={optionsLoading}
+                            >
+                              {personDisplayLabel(member, "Member")}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {showNoMembersWarning && <div className="form-text text-warning">No members matched your search.</div>}
+                    {selectedMember && <div className="form-text text-success">Selected: {personDisplayLabel(selectedMember, "Member")}</div>}
                   </div>
 
                   <div className="col-12 col-md-6">
                     <label className="form-label fw-bold">Coach</label>
-                    <select
-                      className="form-select admin-select-dark"
-                      value={coachId}
-                      onChange={(e) => setCoachId(e.target.value)}
+                    <input
+                      type="text"
+                      className="form-control bg-dark text-white mb-2"
+                      placeholder="Search coach by name / phone"
+                      value={coachSearch}
+                      onChange={(e) => onCoachSearchChange(e.target.value)}
                       disabled={optionsLoading}
-                    >
-                       <option value="" className="fw-bold">Select coach</option>
-                      {coaches.map((t) => (
-                        <option key={t.id} value={t.id}>
-                          {t.name} {t.phone ? `- ${t.phone}` : ""}
-                        </option>
-                      ))}
-                    </select>
+                    />
+                    {!!coachSearch.trim() && visibleCoachSuggestions.length > 0 && (
+                      <div className="list-group" style={{ maxHeight: 220, overflowY: "auto" }}>
+                        {visibleCoachSuggestions.map((coach) => {
+                          const id = personIdOf(coach);
+                          const isSelected = String(id) === String(coachId);
+                          return (
+                            <button
+                              key={id}
+                              type="button"
+                              className={`list-group-item list-group-item-action ${isSelected ? "active" : "bg-dark text-white border-secondary"}`}
+                              onClick={() => selectCoach(coach)}
+                              disabled={optionsLoading}
+                            >
+                              {personDisplayLabel(coach, "Coach")}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {showNoCoachesWarning && <div className="form-text text-warning">No coaches matched your search.</div>}
+                    {selectedCoach && <div className="form-text text-success">Selected: {personDisplayLabel(selectedCoach, "Coach")}</div>}
                   </div>
 
                     <div className="col-12">
