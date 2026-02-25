@@ -132,6 +132,23 @@ function getMonthCount(booking) {
   return toNumber(monthValue);
 }
 
+function getBookingMemberPhone(booking) {
+  return (
+    pickFirstValue(booking?.member, ["phone", "phone_number", "mobile", "contact_phone"]) ||
+    pickFirstValue(booking?.user, ["phone", "phone_number", "mobile", "contact_phone"]) ||
+    pickFirstValue(booking, ["member_phone", "user_phone", "phone", "memberPhone"]) ||
+    "-"
+  );
+}
+
+function getBookingTrainerPhone(booking) {
+  return (
+    pickFirstValue(booking?.trainer, ["phone", "phone_number", "mobile", "contact_phone"]) ||
+    pickFirstValue(booking, ["trainer_phone", "coach_phone", "boxing_trainer_phone"]) ||
+    "-"
+  );
+}
+
 function formatDateInputValue(date) {
   if (!date) return "";
   const y = date.getFullYear();
@@ -758,9 +775,9 @@ export default function AdminTrainerBookings() {
       if (searchValue) {
         const fields = [
           b?.member_name,
-          b?.member_phone,
+          getBookingMemberPhone(b),
           b?.trainer_name,
-          b?.trainer_phone,
+          getBookingTrainerPhone(b),
         ]
           .filter(Boolean)
           .map((value) => String(value).toLowerCase());
@@ -961,9 +978,9 @@ export default function AdminTrainerBookings() {
                   <tr key={b.id}>
                     <td>{b.id}</td>
                     <td>{b.member_name || "-"}</td>
-                    <td>{b.member_phone || "-"}</td>
+                    <td>{getBookingMemberPhone(b)}</td>
                     <td>{b.trainer_name || "-"}</td>
-                    <td>{b.trainer_phone || "-"}</td>
+                    <td>{getBookingTrainerPhone(b)}</td>
 
                     <td>{getBookingPackageLabel(b)}</td>
                     <td>{statusBadge(b.status)}</td>
@@ -1108,7 +1125,7 @@ export default function AdminTrainerBookings() {
                           </div>
                           <div className="col-12 col-md-4">
                             <div className="admin-muted">User Phone</div>
-                            <div>{selectedBooking?.member_phone ?? "-"}</div>
+                            <div>{getBookingMemberPhone(selectedBooking)}</div>
                           </div>
                           <div className="col-12 col-md-4">
                             <div className="admin-muted">Trainer Name</div>
@@ -1116,7 +1133,7 @@ export default function AdminTrainerBookings() {
                           </div>
                           <div className="col-12 col-md-4">
                             <div className="admin-muted">Trainer Phone</div>
-                            <div>{selectedBooking?.trainer_phone ?? "-"}</div>
+                            <div>{getBookingTrainerPhone(selectedBooking)}</div>
                           </div>
                           <div className="col-12 col-md-4">
                             <div className="admin-muted">Package Type</div>
