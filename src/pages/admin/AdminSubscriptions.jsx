@@ -96,7 +96,7 @@ function memberSearchText(member) {
 function memberDisplayLabel(member) {
   const id = memberIdOf(member);
   const code = formatUserCode(id) || id;
-  return `${member?.name || "Unknown"} (${code || "-"})${member?.phone ? ` - ${member.phone}` : ""}`;
+  return `${member?.name || "Unknown"} (${code || "-"})`;
 }
 
 export default function AdminSubscriptions() {
