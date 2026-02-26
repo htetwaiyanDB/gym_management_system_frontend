@@ -116,6 +116,16 @@ function formatClassTime(value) {
   return `${hour12}:${minute} ${suffix}`;
 }
 
+function toApiClassTime(value) {
+  const text = String(value || "").trim();
+  if (!text) return null;
+  const hhmm = text.match(/^(\d{1,2}):(\d{2})/);
+  if (!hhmm) return text;
+  const hour = String(Number(hhmm[1])).padStart(2, "0");
+  const minute = hhmm[2];
+  return `${hour}:${minute}`;
+}
+
 
 function memberIdOf(member) {
   return member?.id ?? member?.user_id ?? member?.member_id ?? null;
@@ -342,7 +352,7 @@ export default function AdminClassSubscriptions() {
     const payload = {
       class_name: classNameInput.trim(),
       class_day: classDayInput,
-      class_time: classTimeInput ? `${classTimeInput}:00` : null,
+      class_time: toApiClassTime(classTimeInput),
     };
 
     try {
