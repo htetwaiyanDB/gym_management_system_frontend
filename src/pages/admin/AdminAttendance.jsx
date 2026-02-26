@@ -182,11 +182,14 @@ const glassSelectStyle = {
   border: "1px solid rgba(255,255,255,0.18)",
 };
 
+const SCAN_COOLDOWN_MS = 4000;
+
 export default function AdminAttendance() {
   const [activeTab, setActiveTab] = useState("records"); // records | checked
   const [msg, setMsg] = useState(null);
   const scanInputRef = useRef(null);
   const scanTimeoutRef = useRef(null);
+  const lastScanAttemptRef = useRef(0);
 
   // Records
   const [recordsLoading, setRecordsLoading] = useState(false);
@@ -457,6 +460,15 @@ export default function AdminAttendance() {
 
   const handleScanSubmit = async (rawValue) => {
     if (!scannerActive || scanLoading) return;
+    const now = Date.now();
+    const sinceLast = now - lastScanAttemptRef.current;
+    if (lastScanAttemptRef.current && sinceLast < SCAN_COOLDOWN_MS) {
+      const secondsLeft = Math.ceil((SCAN_COOLDOWN_MS - sinceLast) / 1000);
+      setScanError(`Please wait ${secondsLeft} second${secondsLeft === 1 ? "" : "s"} before scanning again.`);
+      return;
+    }
+    lastScanAttemptRef.current = now;
+
     const cardId = normalizeCardId(rawValue);
     if (!cardId) {
       setScanError("Please scan a valid member card.");
