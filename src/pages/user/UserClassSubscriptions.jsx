@@ -107,8 +107,22 @@ function normalizeClassTimetable(payload) {
       id: item?.id ?? item?.class_id ?? item?.timetable_id,
       name: item?.class_name ?? item?.name ?? item?.title,
       day: item?.day ?? item?.weekday ?? item?.class_day,
+      time: item?.class_time ?? item?.time,
     }))
     .filter((item) => item.id !== undefined && item.id !== null);
+}
+
+function formatClassTime(value) {
+  if (!value) return "-";
+  const text = String(value).trim();
+  const hhmmss = text.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+  if (!hhmmss) return text;
+  const hour = Number(hhmmss[1]);
+  const minute = hhmmss[2];
+  if (Number.isNaN(hour)) return text;
+  const suffix = hour >= 12 ? "PM" : "AM";
+  const hour12 = hour % 12 || 12;
+  return `${hour12}:${minute} ${suffix}`;
 }
 
 const WEEK_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
@@ -119,7 +133,10 @@ function groupTimetableByDay(rows) {
     const day = String(row?.day || "").trim();
     const matchedDay = WEEK_DAYS.find((d) => d.toLowerCase() === day.toLowerCase());
     if (!matchedDay) continue;
-    grouped[matchedDay].push(row?.name || "-");
+    grouped[matchedDay].push({
+      name: row?.name || "-",
+      time: formatClassTime(row?.time),
+    });
   }
   return grouped;
 }
@@ -257,9 +274,9 @@ export default function UserClassSubscriptions({ embedded = false }) {
                 {(timetableByDay[day] || []).length === 0 ? (
                   <div style={{ opacity: 0.6, fontSize: 13 }}>No class</div>
                 ) : (
-                  timetableByDay[day].map((name, i) => (
+                  timetableByDay[day].map((entry, i) => (
                     <div
-                      key={`${day}-${name}-${i}`}
+                      key={`${day}-${entry.name}-${entry.time}-${i}`}
                       style={{
                         background: "rgba(255,255,255,0.08)",
                         border: "1px solid rgba(255,255,255,0.12)",
@@ -268,7 +285,8 @@ export default function UserClassSubscriptions({ embedded = false }) {
                         fontSize: 13,
                       }}
                     >
-                      {name}
+                      <div>{entry.name}</div>
+                      <div style={{ fontSize: 12, opacity: 0.8 }}>{entry.time}</div>
                     </div>
                   ))
                 )}

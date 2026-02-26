@@ -103,6 +103,19 @@ function parsePriceNumber(value) {
   return Number.isNaN(parsed) ? null : parsed;
 }
 
+function formatClassTime(value) {
+  if (!value) return "-";
+  const text = String(value).trim();
+  const hhmmss = text.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+  if (!hhmmss) return text;
+  const hour = Number(hhmmss[1]);
+  const minute = hhmmss[2];
+  if (Number.isNaN(hour)) return text;
+  const suffix = hour >= 12 ? "PM" : "AM";
+  const hour12 = hour % 12 || 12;
+  return `${hour12}:${minute} ${suffix}`;
+}
+
 
 function memberIdOf(member) {
   return member?.id ?? member?.user_id ?? member?.member_id ?? null;
@@ -168,6 +181,7 @@ export default function AdminClassSubscriptions() {
   const [editingClassId, setEditingClassId] = useState(null);
   const [classNameInput, setClassNameInput] = useState("");
   const [classDayInput, setClassDayInput] = useState("Monday");
+  const [classTimeInput, setClassTimeInput] = useState("08:00");
   const [memberId, setMemberId] = useState("");
   const [memberSearch, setMemberSearch] = useState("");
   const [planId, setPlanId] = useState("");
@@ -276,6 +290,7 @@ export default function AdminClassSubscriptions() {
         id: item?.id ?? item?.class_id ?? item?.timetable_id,
         name: item?.class_name ?? item?.name ?? item?.title,
         day: item?.day ?? item?.weekday ?? item?.class_day,
+        time: item?.class_time ?? item?.time,
       }))
       .filter((item) => item.id !== undefined && item.id !== null);
   };
@@ -295,6 +310,7 @@ export default function AdminClassSubscriptions() {
     setEditingClassId(null);
     setClassNameInput("");
     setClassDayInput("Monday");
+    setClassTimeInput("08:00");
   };
 
   const openCreateClass = () => {
@@ -306,6 +322,7 @@ export default function AdminClassSubscriptions() {
     setEditingClassId(row.id);
     setClassNameInput(row.name || "");
     setClassDayInput(weekDays.includes(row.day) ? row.day : "Monday");
+    setClassTimeInput(String(row.time || "08:00:00").slice(0, 5));
     setShowClassModal(true);
   };
 
@@ -322,7 +339,11 @@ export default function AdminClassSubscriptions() {
 
     setClassSaving(true);
     setMsg(null);
-    const payload = { class_name: classNameInput.trim(), class_day: classDayInput };
+    const payload = {
+      class_name: classNameInput.trim(),
+      class_day: classDayInput,
+      class_time: classTimeInput ? `${classTimeInput}:00` : null,
+    };
 
     try {
       if (editingClassId) {
@@ -539,19 +560,21 @@ export default function AdminClassSubscriptions() {
               <tr>
                 <th>Class Name</th>
                 <th>Days</th>
+                <th>Time</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {classRows.length === 0 ? (
                 <tr>
-                  <td colSpan="3" className="text-center text-muted py-4">No classes found.</td>
+                  <td colSpan="4" className="text-center text-muted py-4">No classes found.</td>
                 </tr>
               ) : (
                 classRows.map((row) => (
                   <tr key={row.id}>
                     <td>{row.name || "-"}</td>
                     <td>{row.day || "-"}</td>
+                    <td>{formatClassTime(row.time)}</td>
                     <td>
                       <div className="d-flex gap-2">
                         <button className="btn btn-sm btn-warning" onClick={() => openEditClass(row)}>Edit</button>
@@ -766,6 +789,15 @@ export default function AdminClassSubscriptions() {
                         <option key={day} value={day}>{day}</option>
                       ))}
                     </select>
+                  </div>
+                  <div className="mt-3">
+                    <label className="form-label fw-bold">Time</label>
+                    <input
+                      type="time"
+                      className="form-control bg-dark text-white"
+                      value={classTimeInput}
+                      onChange={(e) => setClassTimeInput(e.target.value)}
+                    />
                   </div>
                 </div>
                 <div className="modal-footer">
