@@ -559,7 +559,7 @@ export default function AdminClassSubscriptions() {
             <thead>
               <tr>
                 <th>Class Name</th>
-                <th>Days</th
+                <th>Days</th>
                 <th>Time</th>
                 <th>Actions</th>
               </tr>
