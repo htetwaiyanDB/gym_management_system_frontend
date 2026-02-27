@@ -240,20 +240,20 @@ export default function UserSubscriptions() {
             toNumber(discountPercentRaw) ??
             (toNumber(discountAmountRaw) !== null && basePriceNum
               ? (toNumber(discountAmountRaw) / basePriceNum) * 100
-              : null);
+              : 0);
 
           const computedFinalPrice =
             toNumber(finalPriceRaw) ??
             (basePriceNum !== null && discountPercentNum !== null
               ? basePriceNum * (1 - discountPercentNum / 100)
-              : null);
+              : priceNum);
 
           // Anything else (show as extra fields)
           const extra = [
             ["Duration", duration ? `${duration}` : null],
             ["Price", price !== null ? fmtMoney(price) : null],
-            ["Discount", fmtPercent(discountPercentNum)],
-            ["Final Price", computedFinalPrice !== null ? fmtMoney(computedFinalPrice) : null],
+            ["Discount Percent", fmtPercent(discountPercentNum ?? 0)],
+            ["Final", computedFinalPrice !== null ? fmtMoney(computedFinalPrice) : fmtMoney(price)],
             ["Start Date", startDate ? fmtDate(startDate) : null],
             ["End Date", endDate ? fmtDate(endDate) : null],
             ["Payment Method", paymentMethod ? titleize(paymentMethod) : null],
