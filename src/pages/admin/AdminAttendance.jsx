@@ -465,6 +465,8 @@ export default function AdminAttendance() {
     if (lastScanAttemptRef.current && sinceLast < SCAN_COOLDOWN_MS) {
       const secondsLeft = Math.ceil((SCAN_COOLDOWN_MS - sinceLast) / 1000);
       setScanError(`Please wait ${secondsLeft} second${secondsLeft === 1 ? "" : "s"} before scanning again.`);
+      setScanValue("");
+      setTimeout(() => scanInputRef.current?.focus(), 0);
       return;
     }
     lastScanAttemptRef.current = now;
