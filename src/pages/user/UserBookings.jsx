@@ -77,8 +77,72 @@ function fmtDateTime(v) {
 }
 
 function toNumber(value) {
-  const n = Number(value);
+  if (value === null || value === undefined || value === "") return null;
+  const cleaned = typeof value === "string" ? value.replace(/,/g, "") : value;
+  const n = Number(cleaned);
   return Number.isNaN(n) ? null : n;
+}
+
+function fmtPercent(value) {
+  const n = toNumber(value);
+  if (n === null) return "—";
+  if (Number.isInteger(n)) return `${n}%`;
+  return `${n.toFixed(2).replace(/\.00$/, "")}%`;
+}
+
+function fmtMoney(value) {
+  const n = toNumber(value);
+  if (n === null) return "—";
+  return n.toLocaleString();
+}
+
+function pickFromSources(sources, keys) {
+  for (const source of sources) {
+    const value = pick(source, keys);
+    if (value !== null) return value;
+  }
+  return null;
+}
+
+function getPricingMeta(booking) {
+  const sources = [
+    booking,
+    booking?.subscription,
+    booking?.plan,
+    booking?.package,
+    booking?.trainer_package,
+    booking?.package_detail,
+  ];
+
+  const basePrice = pickFromSources(sources, ["price", "plan_price", "amount", "total", "fee"]);
+  const discountRaw = pickFromSources(sources, [
+    "discount_percentage",
+    "discount_percent",
+    "discountPercentage",
+    "discount_rate",
+    "applied_discount_percentage",
+  ]);
+  const finalRaw = pickFromSources(sources, [
+    "final_price",
+    "finalPrice",
+    "final_pricing",
+    "net_price",
+    "payable_amount",
+    "amount_after_discount",
+  ]);
+
+  const baseNum = toNumber(basePrice);
+  const finalNum = toNumber(finalRaw);
+  let discountNum = toNumber(discountRaw);
+
+  if (discountNum === null && finalNum !== null && baseNum) {
+    discountNum = ((baseNum - finalNum) / baseNum) * 100;
+  }
+
+  const resolvedFinal =
+    finalNum ?? (baseNum !== null && discountNum !== null ? baseNum * (1 - discountNum / 100) : baseNum);
+
+  return { discountNum, finalPrice: resolvedFinal };
 }
 
 function isCompletedStatus(value) {
@@ -303,6 +367,7 @@ export default function UserBookings() {
             ]) || pick(b, ["booking_date", "date"]);
           const sessionsCount = pick(b, ["sessions_count", "session_count", "sessions"]);
           const { total: totalSessions, remaining: remainingSessions } = getSessionProgress(b);
+          const { discountNum, finalPrice } = getPricingMeta(b);
           const isCompleted =
             (totalSessions !== null && remainingSessions === 0) ||
             isCompletedStatus(pick(b, ["status", "state"]));
@@ -341,6 +406,9 @@ export default function UserBookings() {
                   </div>
                   <div style={{ opacity: 0.8, fontSize: 12, marginTop: 4 }}>
                     Session: {sessionDateTime ? fmtDateTime(sessionDateTime) : "—"}
+                  </div>
+                  <div style={{ opacity: 0.85, fontSize: 12, marginTop: 4 }}>
+                    Discount: {fmtPercent(discountNum)} · Final Price: {fmtMoney(finalPrice)}
                   </div>
                 </div>
 
@@ -389,6 +457,16 @@ export default function UserBookings() {
                   <div className="d-flex justify-content-between" style={{ gap: 12 }}>
                      <span style={{ opacity: 0.8 }}>Status</span>
                     <b style={{ textAlign: "right" }}>{toText(status)}</b>
+                  </div>
+
+                  <div className="d-flex justify-content-between" style={{ gap: 12 }}>
+                    <span style={{ opacity: 0.8 }}>Discount %</span>
+                    <b style={{ textAlign: "right" }}>{fmtPercent(discountNum)}</b>
+                  </div>
+
+                  <div className="d-flex justify-content-between" style={{ gap: 12 }}>
+                    <span style={{ opacity: 0.8 }}>Final pricing</span>
+                    <b style={{ textAlign: "right" }}>{fmtMoney(finalPrice)}</b>
                   </div>
 
                   

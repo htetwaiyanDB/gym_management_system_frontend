@@ -32,8 +32,31 @@ function formatISODate(d) {
 }
 
 function toNumber(value) {
-  const n = Number(value);
+  if (value === null || value === undefined || value === "") return null;
+  const cleaned = typeof value === "string" ? value.replace(/,/g, "") : value;
+  const n = Number(cleaned);
   return Number.isNaN(n) ? null : n;
+}
+
+function fmtPercent(value) {
+  const n = toNumber(value);
+  if (n === null) return "—";
+  if (Number.isInteger(n)) return `${n}%`;
+  return `${n.toFixed(2).replace(/\.00$/, "")}%`;
+}
+
+function fmtMoney(value) {
+  const n = toNumber(value);
+  if (n === null) return "—";
+  return n.toLocaleString();
+}
+
+function pickFromSources(sources, keys) {
+  for (const source of sources) {
+    const value = pick(source, keys);
+    if (value !== null) return value;
+  }
+  return null;
 }
 
 function isCompletedStatus(value) {
@@ -94,6 +117,48 @@ function getPackageType(booking) {
     pick(booking?.package_detail, ["type", "package_type", "package_kind", "package_category"]) ||
     "—"
   );
+}
+
+
+function getPricingMeta(booking) {
+  const sources = [
+    booking,
+    booking?.subscription,
+    booking?.plan,
+    booking?.package,
+    booking?.boxing_package,
+    booking?.package_detail,
+  ];
+
+  const basePrice = pickFromSources(sources, ["price", "plan_price", "amount", "total", "fee"]);
+  const discountRaw = pickFromSources(sources, [
+    "discount_percentage",
+    "discount_percent",
+    "discountPercentage",
+    "discount_rate",
+    "applied_discount_percentage",
+  ]);
+  const finalRaw = pickFromSources(sources, [
+    "final_price",
+    "finalPrice",
+    "final_pricing",
+    "net_price",
+    "payable_amount",
+    "amount_after_discount",
+  ]);
+
+  const baseNum = toNumber(basePrice);
+  const finalNum = toNumber(finalRaw);
+  let discountNum = toNumber(discountRaw);
+
+  if (discountNum === null && finalNum !== null && baseNum) {
+    discountNum = ((baseNum - finalNum) / baseNum) * 100;
+  }
+
+  const resolvedFinal =
+    finalNum ?? (baseNum !== null && discountNum !== null ? baseNum * (1 - discountNum / 100) : baseNum);
+
+  return { discountNum, finalPrice: resolvedFinal };
 }
 
 function getDate(b) {
@@ -351,6 +416,7 @@ function UserBoxingBookings() {
           {filtered.map((b, i) => {
             const bookingId = b?.id ?? i;
             const { total: totalSessions, remaining: remainingSessions } = getSessionProgress(b);
+            const { discountNum, finalPrice } = getPricingMeta(b);
             const isCompleted =
               remainingSessions === 0 || isCompletedStatus(resolveBookingStatus(b));
             return (
@@ -382,6 +448,10 @@ function UserBoxingBookings() {
                   <span style={pill("rgba(255,255,255,0.12)")}>
                     <FaClock /> {getTime(b)}
                   </span>
+                </div>
+
+                <div className="mt-2" style={{ opacity: 0.85, fontSize: 12 }}>
+                  Discount: {fmtPercent(discountNum)} · Final Price: {fmtMoney(finalPrice)}
                 </div>
 
                 {selectedId === bookingId && (
@@ -429,6 +499,14 @@ function UserBoxingBookings() {
                       <div className="d-flex justify-content-between">
                         <span style={{ opacity: 0.8 }}>Status</span>
                         <span>{String(resolveBookingStatus(b) || "—")}</span>
+                      </div>
+                      <div className="d-flex justify-content-between">
+                        <span style={{ opacity: 0.8 }}>Discount %</span>
+                        <span>{fmtPercent(discountNum)}</span>
+                      </div>
+                      <div className="d-flex justify-content-between">
+                        <span style={{ opacity: 0.8 }}>Final pricing</span>
+                        <span>{fmtMoney(finalPrice)}</span>
                       </div>
                       <div className="d-flex justify-content-between align-items-center">
                         <span style={{ opacity: 0.8 }}>Session confirmation</span>
