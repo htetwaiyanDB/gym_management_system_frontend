@@ -61,6 +61,14 @@ function pick(obj, keys) {
   return null;
 }
 
+function pickFromSources(sources, keys) {
+  for (const source of sources) {
+    const value = pick(source, keys);
+    if (value !== null) return value;
+  }
+  return null;
+}
+
 function isClassSubscription(sub) {
   const name = String(
     pick(sub, ["plan_name", "package_name", "name", "title", "membership_plan_name"]) ||
@@ -191,6 +199,14 @@ export default function UserSubscriptions() {
       <div style={{ display: "grid", gap: 12 }}>
         {items.map((sub, idx) => {
           const id = pick(sub, ["id", "subscription_id", "user_subscription_id"]) ?? idx;
+          const nestedSources = [
+            sub,
+            sub?.plan,
+            sub?.package,
+            sub?.subscription,
+            sub?.user_subscription,
+            sub?.membership_subscription,
+          ];
 
           // Plan/package info
           const planName =
@@ -201,10 +217,14 @@ export default function UserSubscriptions() {
 
           const status = resolveSubscriptionStatus(sub);
 
-          const price =
-            pick(sub, ["price", "amount", "total", "fee"]) ||
-            pick(sub?.plan, ["price", "amount"]) ||
-            pick(sub?.package, ["price", "amount"]);
+          const price = pickFromSources(nestedSources, [
+            "price",
+            "amount",
+            "total",
+            "fee",
+            "final_price",
+            "payable_amount",
+          ]);
 
           const duration =
             pick(sub, ["duration", "duration_days", "days", "months"]) ||
@@ -218,21 +238,35 @@ export default function UserSubscriptions() {
           const paymentStatus = pick(sub, ["payment_status", "paid_status"]);
           const invoiceNo = pick(sub, ["invoice_no", "invoice_number", "receipt_no"]);
 
-          const basePrice =
-            pick(sub, ["original_price", "base_price", "list_price", "mrp", "plan_price"]) ||
-            pick(sub?.plan, ["original_price", "base_price", "list_price", "mrp"]);
+          const basePrice = pickFromSources(nestedSources, [
+            "original_price",
+            "base_price",
+            "list_price",
+            "mrp",
+            "plan_price",
+            "price_before_discount",
+          ]);
 
-          const discountPercentRaw =
-            pick(sub, ["discount_percent", "discount_percentage", "discount_rate"]) ||
-            pick(sub?.plan, ["discount_percent", "discount_percentage", "discount_rate"]);
+          const discountPercentRaw = pickFromSources(nestedSources, [
+            "discount_percent",
+            "discount_percentage",
+            "discount_rate",
+            "applied_discount_percentage",
+          ]);
 
-          const discountAmountRaw =
-            pick(sub, ["discount_amount", "discount", "discount_value"]) ||
-            pick(sub?.plan, ["discount_amount", "discount", "discount_value"]);
+          const discountAmountRaw = pickFromSources(nestedSources, [
+            "discount_amount",
+            "discount",
+            "discount_value",
+            "applied_discount_amount",
+          ]);
 
-          const finalPriceRaw =
-            pick(sub, ["final_price", "net_price", "payable_amount", "amount_after_discount"]) ||
-            pick(sub?.plan, ["final_price", "net_price", "payable_amount"]);
+          const finalPriceRaw = pickFromSources(nestedSources, [
+            "final_price",
+            "net_price",
+            "payable_amount",
+            "amount_after_discount",
+          ]);
 
           const priceNum = toNumber(price);
           const basePriceNum = toNumber(basePrice) ?? priceNum;
@@ -240,10 +274,13 @@ export default function UserSubscriptions() {
             toNumber(discountPercentRaw) ??
             (toNumber(discountAmountRaw) !== null && basePriceNum
               ? (toNumber(discountAmountRaw) / basePriceNum) * 100
+              : toNumber(finalPriceRaw) !== null && basePriceNum
+              ? ((basePriceNum - toNumber(finalPriceRaw)) / basePriceNum) * 100
               : 0);
 
           const computedFinalPrice =
             toNumber(finalPriceRaw) ??
+            priceNum ??
             (basePriceNum !== null && discountPercentNum !== null
               ? basePriceNum * (1 - discountPercentNum / 100)
               : priceNum);
