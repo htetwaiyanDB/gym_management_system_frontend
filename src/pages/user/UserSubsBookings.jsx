@@ -487,7 +487,7 @@ export default function UserSubsBookings() {
         ))}
       </div>
 
-      {activeTab === "subscriptions" && <UserSubscriptions />}
+      {activeTab === "subscriptions" && <UserSubscriptions embedded />}
       {activeTab === "bookings" && <UserBookings />}
       {activeTab === "class-subscriptions" && <UserClassSubscriptions embedded />}
     </div>

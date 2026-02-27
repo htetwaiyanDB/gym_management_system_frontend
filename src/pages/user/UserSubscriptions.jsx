@@ -180,7 +180,7 @@ function StatusBadge({ status }) {
   );
 }
 
-export default function UserSubscriptions() {
+export default function UserSubscriptions({ embedded = false } = {}) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -194,9 +194,6 @@ export default function UserSubscriptions() {
         setError("");
 
         const res = await axiosClient.get("/user/subscriptions");
-
-        // ✅ debug: see real API response structure
-        console.log("GET /user/subscriptions RESPONSE:", res?.data);
 
         const list = normalizeSubscriptions(res?.data).map(normalizeSubscriptionRecord);
 
@@ -218,7 +215,6 @@ export default function UserSubscriptions() {
 
         if (alive) setItems(sorted);
       } catch (e) {
-        console.log("GET /user/subscriptions ERROR:", e?.response?.data || e);
         if (alive) setError(e?.response?.data?.message || "Failed to load subscriptions.");
       } finally {
         if (alive) setLoading(false);
@@ -238,7 +234,7 @@ export default function UserSubscriptions() {
 
   return (
     <div>
-      <h2 style={{ marginBottom: 12 }}>Subscriptions</h2>
+      {!embedded && <h2 style={{ marginBottom: 12 }}>Subscriptions</h2>}
 
       {loading && <p>Loading subscriptions...</p>}
 
@@ -355,12 +351,13 @@ export default function UserSubscriptions() {
               ? basePriceNum * (1 - discountPercentNum / 100)
               : priceNum);
 
+          const displayedOriginalPrice = basePriceNum ?? priceNum;
+          const displayedDiscountPercent = discountPercentNum ?? 0;
+          const displayedFinalPrice = computedFinalPrice ?? displayedOriginalPrice;
+
           // Anything else (show as extra fields)
           const extra = [
             ["Duration", duration ? `${duration}` : null],
-            ["Original Price", basePriceNum !== null ? fmtMoney(basePriceNum) : null],
-            ["Discount %", fmtPercent(discountPercentNum)],
-            ["Final Price", computedFinalPrice !== null ? fmtMoney(computedFinalPrice) : fmtMoney(price)],
             ["Start Date", startDate ? fmtDate(startDate) : null],
             ["End Date", endDate ? fmtDate(endDate) : null],
             ["Payment Method", paymentMethod ? titleize(paymentMethod) : null],
@@ -389,31 +386,45 @@ export default function UserSubscriptions() {
                 <StatusBadge status={status} />
               </div>
 
-              {(discountPercentNum !== null || finalPriceNum !== null) && (
-                <div style={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between', 
-                  alignItems: 'center', 
-                  marginTop: '8px', 
-                  paddingTop: '8px', 
-                  borderTop: '1px solid rgba(255,255,255,0.1)',
-                  flexWrap: 'wrap',
-                  gap: '10px'
-                }}>
-                  <div style={{ flex: 1, minWidth: '100px' }}>
-                    <small className="text-muted">Original Price:</small>
-                    <div style={{ fontWeight: 600, textDecoration: 'line-through' }}>{fmtMoney(basePriceNum)}</div>
-                  </div>
-                  <div style={{ flex: '0 0 auto', minWidth: '80px' }}>
-                    <small className="text-muted">Discount:</small>
-                    <div style={{ fontWeight: 600, color: '#28a745' }}>{fmtPercent(discountPercentNum)} OFF</div>
-                  </div>
-                  <div style={{ flex: 1, minWidth: '100px' }}>
-                    <small className="text-muted">Final Price:</small>
-                    <div style={{ fontWeight: 700, fontSize: '1.1em', color: '#28a745' }}>{fmtMoney(computedFinalPrice)}</div>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginTop: "8px",
+                  paddingTop: "8px",
+                  borderTop: "1px solid rgba(255,255,255,0.1)",
+                  flexWrap: "wrap",
+                  gap: "10px",
+                }}
+              >
+                <div style={{ flex: 1, minWidth: "100px" }}>
+                  <small className="text-muted">Original Price:</small>
+                  <div
+                    style={{
+                      fontWeight: 600,
+                      textDecoration:
+                        displayedOriginalPrice !== null && displayedOriginalPrice !== displayedFinalPrice
+                          ? "line-through"
+                          : "none",
+                    }}
+                  >
+                    {fmtMoney(displayedOriginalPrice)}
                   </div>
                 </div>
-              )}
+                <div style={{ flex: "0 0 auto", minWidth: "80px" }}>
+                  <small className="text-muted">Discount:</small>
+                  <div style={{ fontWeight: 600, color: "#28a745" }}>
+                    {fmtPercent(displayedDiscountPercent) || "0%"} OFF
+                  </div>
+                </div>
+                <div style={{ flex: 1, minWidth: "100px" }}>
+                  <small className="text-muted">Final Price:</small>
+                  <div style={{ fontWeight: 700, fontSize: "1.1em", color: "#28a745" }}>
+                    {fmtMoney(displayedFinalPrice)}
+                  </div>
+                </div>
+              </div>
 
               {extra.length > 0 && (
                 <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
