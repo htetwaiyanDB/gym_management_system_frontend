@@ -380,6 +380,8 @@ export default function AdminSubscriptions() {
               <th>Plan</th>
               <th>Details</th>
               <th>Price</th>
+              <th>Discount</th>
+              <th>Final Price</th>
               <th>Start</th>
               <th>End</th>
               <th>Status</th>
@@ -390,7 +392,7 @@ export default function AdminSubscriptions() {
           <tbody>
             {subs.length === 0 ? (
               <tr>
-                <td colSpan="10" className="text-center text-muted py-4">
+                <td colSpan="12" className="text-center text-muted py-4">
                   {loading ? "Loading..." : "No subscriptions found."}
                 </td>
               </tr>
@@ -413,6 +415,8 @@ export default function AdminSubscriptions() {
                     </td>
                     <td>{s.duration_days ? `${s.duration_days} day(s)` : "-"}</td>
                     <td>{moneyMMK(s.price)}</td>
+                    <td>{s.discount_percentage !== null && s.discount_percentage !== undefined ? `${s.discount_percentage}%` : "0%"}</td>
+                    <td>{moneyMMK(s.final_price ?? s.price)}</td>
                     <td>{s.start_date || "-"}</td>
                     <td>{s.end_date || "-"}</td>
                     <td>
