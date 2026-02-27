@@ -251,9 +251,9 @@ export default function UserSubscriptions() {
           // Anything else (show as extra fields)
           const extra = [
             ["Duration", duration ? `${duration}` : null],
-            ["Price", price !== null ? fmtMoney(price) : null],
-            ["Discount Percent", fmtPercent(discountPercentNum ?? 0)],
-            ["Final", computedFinalPrice !== null ? fmtMoney(computedFinalPrice) : fmtMoney(price)],
+            ["Original Price", price !== null ? fmtMoney(price) : null],
+            ["Discount %", fmtPercent(discountPercentNum ?? 0)],
+            ["Final Price", computedFinalPrice !== null ? fmtMoney(computedFinalPrice) : fmtMoney(price)],
             ["Start Date", startDate ? fmtDate(startDate) : null],
             ["End Date", endDate ? fmtDate(endDate) : null],
             ["Payment Method", paymentMethod ? titleize(paymentMethod) : null],
@@ -281,6 +281,32 @@ export default function UserSubscriptions() {
 
                 <StatusBadge status={status} />
               </div>
+
+              {(discountPercentNum > 0 || finalPriceRaw !== null) && (
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center', 
+                  marginTop: '8px', 
+                  paddingTop: '8px', 
+                  borderTop: '1px solid rgba(255,255,255,0.1)',
+                  flexWrap: 'wrap',
+                  gap: '10px'
+                }}>
+                  <div style={{ flex: 1, minWidth: '100px' }}>
+                    <small className="text-muted">Original Price:</small>
+                    <div style={{ fontWeight: 600, textDecoration: 'line-through' }}>{fmtMoney(basePriceNum)}</div>
+                  </div>
+                  <div style={{ flex: '0 0 auto', minWidth: '80px' }}>
+                    <small className="text-muted">Discount:</small>
+                    <div style={{ fontWeight: 600, color: '#28a745' }}>{fmtPercent(discountPercentNum)} OFF</div>
+                  </div>
+                  <div style={{ flex: 1, minWidth: '100px' }}>
+                    <small className="text-muted">Final Price:</small>
+                    <div style={{ fontWeight: 700, fontSize: '1.1em', color: '#28a745' }}>{fmtMoney(computedFinalPrice)}</div>
+                  </div>
+                </div>
+              )}
 
               {extra.length > 0 && (
                 <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
