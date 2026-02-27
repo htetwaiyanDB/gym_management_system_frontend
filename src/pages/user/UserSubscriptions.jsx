@@ -223,7 +223,10 @@ export default function UserSubscriptions() {
             "total",
             "fee",
             "final_price",
+            "finalPrice",
+            "final_pricing",
             "payable_amount",
+            "payableAmount",
           ]);
 
           const duration =
@@ -240,18 +243,24 @@ export default function UserSubscriptions() {
 
           const basePrice = pickFromSources(nestedSources, [
             "original_price",
+            "originalPrice",
             "base_price",
+            "basePrice",
             "list_price",
             "mrp",
             "plan_price",
             "price_before_discount",
+            "priceBeforeDiscount",
+            "price",
           ]);
 
           const discountPercentRaw = pickFromSources(nestedSources, [
             "discount_percent",
             "discount_percentage",
+            "discountPercentage",
             "discount_rate",
             "applied_discount_percentage",
+            "percentage",
           ]);
 
           const discountAmountRaw = pickFromSources(nestedSources, [
@@ -259,27 +268,34 @@ export default function UserSubscriptions() {
             "discount",
             "discount_value",
             "applied_discount_amount",
+            "discountAmount",
           ]);
 
           const finalPriceRaw = pickFromSources(nestedSources, [
             "final_price",
+            "finalPrice",
+            "final_pricing",
             "net_price",
             "payable_amount",
+            "payableAmount",
             "amount_after_discount",
+            "amountAfterDiscount",
           ]);
 
           const priceNum = toNumber(price);
           const basePriceNum = toNumber(basePrice) ?? priceNum;
+          const discountAmountNum = toNumber(discountAmountRaw);
+          const finalPriceNum = toNumber(finalPriceRaw);
           const discountPercentNum =
             toNumber(discountPercentRaw) ??
-            (toNumber(discountAmountRaw) !== null && basePriceNum
-              ? (toNumber(discountAmountRaw) / basePriceNum) * 100
-              : toNumber(finalPriceRaw) !== null && basePriceNum
-              ? ((basePriceNum - toNumber(finalPriceRaw)) / basePriceNum) * 100
-              : 0);
+            (discountAmountNum !== null && basePriceNum
+              ? (discountAmountNum / basePriceNum) * 100
+              : finalPriceNum !== null && basePriceNum
+              ? ((basePriceNum - finalPriceNum) / basePriceNum) * 100
+              : null);
 
           const computedFinalPrice =
-            toNumber(finalPriceRaw) ??
+            finalPriceNum ??
             priceNum ??
             (basePriceNum !== null && discountPercentNum !== null
               ? basePriceNum * (1 - discountPercentNum / 100)
@@ -288,8 +304,8 @@ export default function UserSubscriptions() {
           // Anything else (show as extra fields)
           const extra = [
             ["Duration", duration ? `${duration}` : null],
-            ["Original Price", price !== null ? fmtMoney(price) : null],
-            ["Discount %", fmtPercent(discountPercentNum ?? 0)],
+            ["Original Price", basePriceNum !== null ? fmtMoney(basePriceNum) : null],
+            ["Discount %", fmtPercent(discountPercentNum)],
             ["Final Price", computedFinalPrice !== null ? fmtMoney(computedFinalPrice) : fmtMoney(price)],
             ["Start Date", startDate ? fmtDate(startDate) : null],
             ["End Date", endDate ? fmtDate(endDate) : null],
@@ -319,7 +335,7 @@ export default function UserSubscriptions() {
                 <StatusBadge status={status} />
               </div>
 
-              {(discountPercentNum > 0 || finalPriceRaw !== null) && (
+              {(discountPercentNum !== null || finalPriceNum !== null) && (
                 <div style={{ 
                   display: 'flex', 
                   justifyContent: 'space-between', 
