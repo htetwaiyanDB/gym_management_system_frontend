@@ -196,6 +196,7 @@ export default function AdminClassSubscriptions() {
   const [memberSearch, setMemberSearch] = useState("");
   const [planId, setPlanId] = useState("");
   const [startDate, setStartDate] = useState("");
+  const [discountPercentage, setDiscountPercentage] = useState("");
 
   const weekDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
@@ -204,6 +205,7 @@ export default function AdminClassSubscriptions() {
     setMemberSearch("");
     setPlanId("");
     setStartDate("");
+    setDiscountPercentage("");
   };
 
   const parseDateOnly = (value) => {
@@ -399,6 +401,30 @@ export default function AdminClassSubscriptions() {
 
   const selectedPlan = useMemo(() => plans.find((p) => String(planIdOf(p)) === String(planId)) || null, [plans, planId]);
 
+  const normalizedDiscountPercentage = useMemo(() => {
+    if (discountPercentage === "" || discountPercentage === null || discountPercentage === undefined) {
+      return 0;
+    }
+    const value = Number(discountPercentage);
+    if (Number.isNaN(value)) return 0;
+    return Math.min(100, Math.max(0, value));
+  }, [discountPercentage]);
+
+  const selectedPlanPrice = useMemo(() => {
+    if (!selectedPlan) return 0;
+    return (
+      parsePriceNumber(selectedPlan?.price) ??
+      parsePriceNumber(selectedPlan?.membership_plan_price) ??
+      parsePriceNumber(selectedPlan?.plan_price) ??
+      0
+    );
+  }, [selectedPlan]);
+
+  const calculatedFinalPrice = useMemo(() => {
+    const discountAmount = selectedPlanPrice * (normalizedDiscountPercentage / 100);
+    return Math.max(0, Math.round(selectedPlanPrice - discountAmount));
+  }, [selectedPlanPrice, normalizedDiscountPercentage]);
+
   const filteredMembers = useMemo(() => {
     const keyword = memberSearch.trim().toLowerCase();
     if (!keyword) return members;
@@ -451,6 +477,13 @@ export default function AdminClassSubscriptions() {
       return setMsg({ type: "danger", text: "Class plan is missing from options. Please create a Class plan first." });
     }
 
+    const hasDiscount = discountPercentage !== "" && discountPercentage !== null && discountPercentage !== undefined;
+    const normalizedDiscount = hasDiscount ? Number(discountPercentage) : null;
+    if (hasDiscount && (Number.isNaN(normalizedDiscount) || normalizedDiscount < 0 || normalizedDiscount > 100)) {
+      setMsg({ type: "danger", text: "Discount percentage must be between 0 and 100." });
+      return;
+    }
+
     setSaving(true);
     setMsg(null);
 
@@ -460,16 +493,18 @@ export default function AdminClassSubscriptions() {
       class_plan_id: parsedPlanId,
       class_package_id: parsedPlanId,
       plan_id: parsedPlanId,
+      discount_percentage: normalizedDiscount,
+      final_price: calculatedFinalPrice,
     };
 
     if (startDate) payload.start_date = startDate;
-    const selectedPlanPrice =
+    const resolvedPlanPrice =
       parsePriceNumber(selectedPlan?.price) ??
       parsePriceNumber(selectedPlan?.membership_plan_price) ??
       parsePriceNumber(selectedPlan?.plan_price);
 
-    if (selectedPlanPrice !== null) {
-      payload.price = selectedPlanPrice;
+    if (resolvedPlanPrice !== null) {
+      payload.price = resolvedPlanPrice;
     }
 
     try {
@@ -614,6 +649,8 @@ export default function AdminClassSubscriptions() {
               <th>Member Phone</th>
               <th>Plan</th>
               <th>Price</th>
+              <th>Discount</th>
+              <th>Final Price</th>
               <th>Duration</th>
               <th>Start</th>
               <th>End</th>
@@ -624,7 +661,7 @@ export default function AdminClassSubscriptions() {
           <tbody>
             {records.length === 0 ? (
               <tr>
-                <td colSpan="10" className="text-center text-muted py-4">{loading ? "Loading..." : "No class subscriptions found."}</td>
+                <td colSpan="12" className="text-center text-muted py-4">{loading ? "Loading..." : "No class subscriptions found."}</td>
               </tr>
             ) : (
               sortedRecords.map((r, index) => {
@@ -642,6 +679,8 @@ export default function AdminClassSubscriptions() {
                   <td>{r.member_phone || r.user_phone || "-"}</td>
                   <td><span className="badge bg-primary">{r.class_plan_name || r.class_package_name || r.membership_plan_name || r.plan_name || "-"}</span></td>
                   <td>{moneyMMK(r.price)}</td>
+                  <td>{r.discount_percentage !== null && r.discount_percentage !== undefined && r.discount_percentage !== "" ? `${r.discount_percentage}%` : "-"}</td>
+                  <td>{moneyMMK(r.final_price)}</td>
                   <td>{formatDurationDays(r)}</td>
                   <td>{r.start_date ? String(r.start_date).split("T")[0] : "-"}</td>
                   <td>{r.end_date ? String(r.end_date).split("T")[0] : "-"}</td>
@@ -747,13 +786,30 @@ export default function AdminClassSubscriptions() {
                       <label className="form-label fw-bold">Start Date</label>
                       <input type="date" className="form-control bg-dark text-white" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
                     </div>
+                    <div className="col-md-4">
+                      <label className="form-label fw-bold">Discount Percentage (%)</label>
+                      <input
+                        type="number"
+                        className="form-control bg-dark text-white"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        value={discountPercentage}
+                        onChange={(e) => setDiscountPercentage(e.target.value)}
+                        placeholder="Optional"
+                      />
+                      <div className="form-text text-white-50">Enter a value between 0 and 100.</div>
+                    </div>
                   </div>
 
                   {selectedPlan && (
                     <div className="mt-3 p-3 rounded bg-dark border border-secondary-subtle">
                       <div className="fw-bold">{selectedPlan.name || selectedPlan.plan_name || "Class"}</div>
                       <div className="text-white-50">Duration: {formatDurationDays(selectedPlan)}</div>
-                      <div className="text-white-50">Price: {moneyMMK(selectedPlan.price)}</div>
+                      <div className="text-white-50">Price: {moneyMMK(selectedPlanPrice)}</div>
+                      <div className="alert alert-success mt-2 mb-0 py-2 px-3">
+                        <span className="fw-semibold">Final Price: {moneyMMK(calculatedFinalPrice)}</span>
+                      </div>
                     </div>
                   )}
                 </div>

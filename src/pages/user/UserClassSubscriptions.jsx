@@ -9,6 +9,28 @@ function pick(obj, keys) {
   return null;
 }
 
+function pickFromSources(sources, keys) {
+  for (const source of sources) {
+    const value = pick(source, keys);
+    if (value !== null) return value;
+  }
+  return null;
+}
+
+function toNumber(v) {
+  if (v === null || v === undefined || v === "") return null;
+  const cleaned = typeof v === "string" ? v.replace(/,/g, "") : v;
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : null;
+}
+
+function fmtPercent(v) {
+  const n = toNumber(v);
+  if (n === null) return null;
+  if (Number.isInteger(n)) return `${n}%`;
+  return `${n.toFixed(2).replace(/\.00$/, "")}%`;
+}
+
 function normalizeSubscriptions(payload) {
   if (!payload) return [];
   if (Array.isArray(payload)) return payload;
@@ -305,21 +327,79 @@ export default function UserClassSubscriptions({ embedded = false }) {
               pick(sub?.plan, ["name", "title"]) ||
               pick(sub?.package, ["name", "title"]) ||
               "Class Plan";
-            const startDate = pick(sub, ["start_date", "starts_at", "start"]);
-            const endDate = pick(sub, ["end_date", "ends_at", "end", "expire_at", "expires_at"]);
-            const duration =
-              pick(sub, ["duration", "duration_days", "days", "months"]) ||
-              pick(sub?.plan, ["duration", "duration_days"]) ||
-              pick(sub?.package, ["duration", "duration_days"]);
-            const price =
-              pick(sub, ["price", "amount", "total", "fee"]) ||
-              pick(sub?.plan, ["price", "amount"]) ||
-              pick(sub?.package, ["price", "amount"]);
             const status = resolveSubscriptionStatus(sub);
+
+            const nestedSources = [sub, sub?.plan, sub?.package, sub?.subscription, sub?.user_subscription];
+            const duration =
+              pickFromSources(nestedSources, ["duration", "duration_days", "days", "months", "plan_duration_days"]);
+            const startDate = pickFromSources(nestedSources, ["start_date", "starts_at", "start"]);
+            const endDate = pickFromSources(nestedSources, ["end_date", "ends_at", "end", "expire_at", "expires_at"]);
+
+            const basePriceRaw = pickFromSources(nestedSources, [
+              "original_price",
+              "originalPrice",
+              "base_price",
+              "basePrice",
+              "list_price",
+              "mrp",
+              "plan_price",
+              "price_before_discount",
+              "priceBeforeDiscount",
+              "price",
+              "amount",
+              "total",
+              "fee",
+            ]);
+
+            const discountPercentRaw = pickFromSources(nestedSources, [
+              "discount_percent",
+              "discount_percentage",
+              "discountPercentage",
+              "discount_rate",
+              "applied_discount_percentage",
+              "percentage",
+            ]);
+
+            const discountAmountRaw = pickFromSources(nestedSources, [
+              "discount_amount",
+              "discount",
+              "discount_value",
+              "applied_discount_amount",
+              "discountAmount",
+            ]);
+
+            const finalPriceRaw = pickFromSources(nestedSources, [
+              "final_price",
+              "finalPrice",
+              "final_pricing",
+              "net_price",
+              "payable_amount",
+              "payableAmount",
+              "amount_after_discount",
+              "amountAfterDiscount",
+            ]);
+
+            const basePriceNum = toNumber(basePriceRaw);
+            const discountAmountNum = toNumber(discountAmountRaw);
+            const finalPriceNum = toNumber(finalPriceRaw);
+            const discountPercentNum =
+              toNumber(discountPercentRaw) ??
+              (discountAmountNum !== null && basePriceNum
+                ? (discountAmountNum / basePriceNum) * 100
+                : finalPriceNum !== null && basePriceNum
+                  ? ((basePriceNum - finalPriceNum) / basePriceNum) * 100
+                  : null);
+            const computedFinalPrice =
+              finalPriceNum ??
+              (basePriceNum !== null && discountPercentNum !== null
+                ? basePriceNum * (1 - discountPercentNum / 100)
+                : basePriceNum);
 
             const fields = [
               ["Duration", duration ? String(duration) : null],
-              ["Price", price !== null ? fmtMoney(price) : null],
+              ["Original Price", basePriceNum !== null ? fmtMoney(basePriceNum) : null],
+              ["Discount %", fmtPercent(discountPercentNum)],
+              ["Final Price", computedFinalPrice !== null ? fmtMoney(computedFinalPrice) : null],
               ["Start Date", fmtDate(startDate)],
               ["End Date", fmtDate(endDate)],
             ].filter(([, value]) => value !== null);
@@ -343,6 +423,36 @@ export default function UserClassSubscriptions({ embedded = false }) {
                   </div>
                   <StatusBadge status={status} />
                 </div>
+
+                {(discountPercentNum !== null || finalPriceNum !== null) && (
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginTop: "8px",
+                      paddingTop: "8px",
+                      borderTop: "1px solid rgba(255,255,255,0.1)",
+                      flexWrap: "wrap",
+                      gap: "10px",
+                    }}
+                  >
+                    <div style={{ flex: 1, minWidth: "100px" }}>
+                      <small className="text-muted">Original Price:</small>
+                      <div style={{ fontWeight: 600, textDecoration: "line-through" }}>{fmtMoney(basePriceNum)}</div>
+                    </div>
+                    <div style={{ flex: "0 0 auto", minWidth: "80px" }}>
+                      <small className="text-muted">Discount:</small>
+                      <div style={{ fontWeight: 600, color: "#28a745" }}>{fmtPercent(discountPercentNum)} OFF</div>
+                    </div>
+                    <div style={{ flex: 1, minWidth: "100px" }}>
+                      <small className="text-muted">Final Price:</small>
+                      <div style={{ fontWeight: 700, fontSize: "1.1em", color: "#28a745" }}>
+                        {fmtMoney(computedFinalPrice)}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
                   {fields.map(([label, value]) => (
