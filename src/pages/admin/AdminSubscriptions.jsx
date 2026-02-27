@@ -117,12 +117,14 @@ export default function AdminSubscriptions() {
   const [memberSearch, setMemberSearch] = useState("");
   const [planId, setPlanId] = useState("");
   const [startDate, setStartDate] = useState(""); // optional
+  const [discountPercentage, setDiscountPercentage] = useState("0");
 
   const resetForm = () => {
     setMemberId("");
     setMemberSearch("");
     setPlanId("");
     setStartDate("");
+    setDiscountPercentage("0");
   };
 
   const load = async () => {
@@ -182,10 +184,18 @@ export default function AdminSubscriptions() {
       return;
     }
 
+    const normalizedDiscount = Number(discountPercentage);
+    if (Number.isNaN(normalizedDiscount) || normalizedDiscount < 0 || normalizedDiscount > 100) {
+      setMsg({ type: "danger", text: "Discount percentage must be between 0 and 100." });
+      return;
+    }
+
     try {
       const payload = {
         member_id: Number(memberId),
         membership_plan_id: Number(planId),
+        discount_percentage: normalizedDiscount,
+        final_price: calculatedFinalPrice,
       };
       if (startDate) payload.start_date = startDate;
 
@@ -253,6 +263,24 @@ export default function AdminSubscriptions() {
     if (!planId) return null;
     return planMap.get(String(planId)) || null;
   }, [planId, planMap]);
+
+  const normalizedDiscountPercentage = useMemo(() => {
+    const value = Number(discountPercentage);
+    if (Number.isNaN(value)) return 0;
+    return Math.min(100, Math.max(0, value));
+  }, [discountPercentage]);
+
+  const selectedPlanPrice = useMemo(() => {
+    if (!selectedPlan) return 0;
+    const price = Number(selectedPlan?.price);
+    if (Number.isNaN(price)) return 0;
+    return price;
+  }, [selectedPlan]);
+
+  const calculatedFinalPrice = useMemo(() => {
+    const discountAmount = selectedPlanPrice * (normalizedDiscountPercentage / 100);
+    return Math.max(0, Math.round(selectedPlanPrice - discountAmount));
+  }, [selectedPlanPrice, normalizedDiscountPercentage]);
 
   const filteredMembers = useMemo(() => {
     const keyword = memberSearch.trim().toLowerCase();
@@ -515,6 +543,21 @@ export default function AdminSubscriptions() {
         disabled={optionsLoading}
       />
     </div>
+
+    <div className="col-md-4">
+      <label className="form-label fw-bold">Discount Percentage (%)</label>
+      <input
+        type="number"
+        className="form-control bg-dark text-white"
+        min="0"
+        max="100"
+        step="0.01"
+        value={discountPercentage}
+        onChange={(e) => setDiscountPercentage(e.target.value)}
+        disabled={optionsLoading}
+      />
+      <div className="form-text text-white-50">Enter a value between 0 and 100.</div>
+    </div>
   </div>
 
   {/* Plan summary */}
@@ -526,6 +569,13 @@ export default function AdminSubscriptions() {
       </div>
       <div className="text-white-50">
         Price: {moneyMMK(selectedPlan.price)}
+      </div>
+
+      <hr className="border-secondary" />
+      <div className="text-white-50">Original Price: {moneyMMK(selectedPlanPrice)}</div>
+      <div className="text-white-50">Discount Percentage: {normalizedDiscountPercentage}%</div>
+      <div className="alert alert-success mt-2 mb-0 py-2 px-3">
+        <span className="fw-semibold">Final Price: {moneyMMK(calculatedFinalPrice)}</span>
       </div>
     </div>
   )}
