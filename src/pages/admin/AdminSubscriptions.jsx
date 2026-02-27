@@ -117,14 +117,14 @@ export default function AdminSubscriptions() {
   const [memberSearch, setMemberSearch] = useState("");
   const [planId, setPlanId] = useState("");
   const [startDate, setStartDate] = useState(""); // optional
-  const [discountPercentage, setDiscountPercentage] = useState("0");
+  const [discountPercentage, setDiscountPercentage] = useState("");
 
   const resetForm = () => {
     setMemberId("");
     setMemberSearch("");
     setPlanId("");
     setStartDate("");
-    setDiscountPercentage("0");
+    setDiscountPercentage("");
   };
 
   const load = async () => {
@@ -184,8 +184,9 @@ export default function AdminSubscriptions() {
       return;
     }
 
-    const normalizedDiscount = Number(discountPercentage);
-    if (Number.isNaN(normalizedDiscount) || normalizedDiscount < 0 || normalizedDiscount > 100) {
+    const hasDiscount = discountPercentage !== "" && discountPercentage !== null && discountPercentage !== undefined;
+    const normalizedDiscount = hasDiscount ? Number(discountPercentage) : null;
+    if (hasDiscount && (Number.isNaN(normalizedDiscount) || normalizedDiscount < 0 || normalizedDiscount > 100)) {
       setMsg({ type: "danger", text: "Discount percentage must be between 0 and 100." });
       return;
     }
@@ -265,6 +266,9 @@ export default function AdminSubscriptions() {
   }, [planId, planMap]);
 
   const normalizedDiscountPercentage = useMemo(() => {
+    if (discountPercentage === "" || discountPercentage === null || discountPercentage === undefined) {
+      return 0;
+    }
     const value = Number(discountPercentage);
     if (Number.isNaN(value)) return 0;
     return Math.min(100, Math.max(0, value));
@@ -415,7 +419,7 @@ export default function AdminSubscriptions() {
                     </td>
                     <td>{s.duration_days ? `${s.duration_days} day(s)` : "-"}</td>
                     <td>{moneyMMK(s.price)}</td>
-                    <td>{s.discount_percentage !== null && s.discount_percentage !== undefined ? `${s.discount_percentage}%` : "0%"}</td>
+                    <td>{s.discount_percentage !== null && s.discount_percentage !== undefined && s.discount_percentage !== "" ? `${s.discount_percentage}%` : "-"}</td>
                     <td>{moneyMMK(s.final_price ?? s.price)}</td>
                     <td>{s.start_date || "-"}</td>
                     <td>{s.end_date || "-"}</td>
@@ -558,6 +562,7 @@ export default function AdminSubscriptions() {
         step="0.01"
         value={discountPercentage}
         onChange={(e) => setDiscountPercentage(e.target.value)}
+        placeholder="Optional"
         disabled={optionsLoading}
       />
       <div className="form-text text-white-50">Enter a value between 0 and 100.</div>
@@ -575,9 +580,6 @@ export default function AdminSubscriptions() {
         Price: {moneyMMK(selectedPlan.price)}
       </div>
 
-      <hr className="border-secondary" />
-      <div className="text-white-50">Original Price: {moneyMMK(selectedPlanPrice)}</div>
-      <div className="text-white-50">Discount Percentage: {normalizedDiscountPercentage}%</div>
       <div className="alert alert-success mt-2 mb-0 py-2 px-3">
         <span className="fw-semibold">Final Price: {moneyMMK(calculatedFinalPrice)}</span>
       </div>
