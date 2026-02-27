@@ -33,6 +33,20 @@ function fmtMoney(v) {
   return n.toLocaleString();
 }
 
+function toNumber(v) {
+  if (v === null || v === undefined || v === "") return null;
+  const cleaned = typeof v === "string" ? v.replace(/,/g, "") : v;
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : null;
+}
+
+function fmtPercent(v) {
+  const n = toNumber(v);
+  if (n === null) return null;
+  if (Number.isInteger(n)) return `${n}%`;
+  return `${n.toFixed(2).replace(/\.00$/, "")}%`;
+}
+
 function titleize(s) {
   return String(s || "")
     .replace(/_/g, " ")
@@ -204,10 +218,42 @@ export default function UserSubscriptions() {
           const paymentStatus = pick(sub, ["payment_status", "paid_status"]);
           const invoiceNo = pick(sub, ["invoice_no", "invoice_number", "receipt_no"]);
 
+          const basePrice =
+            pick(sub, ["original_price", "base_price", "list_price", "mrp", "plan_price"]) ||
+            pick(sub?.plan, ["original_price", "base_price", "list_price", "mrp"]);
+
+          const discountPercentRaw =
+            pick(sub, ["discount_percent", "discount_percentage", "discount_rate"]) ||
+            pick(sub?.plan, ["discount_percent", "discount_percentage", "discount_rate"]);
+
+          const discountAmountRaw =
+            pick(sub, ["discount_amount", "discount", "discount_value"]) ||
+            pick(sub?.plan, ["discount_amount", "discount", "discount_value"]);
+
+          const finalPriceRaw =
+            pick(sub, ["final_price", "net_price", "payable_amount", "amount_after_discount"]) ||
+            pick(sub?.plan, ["final_price", "net_price", "payable_amount"]);
+
+          const priceNum = toNumber(price);
+          const basePriceNum = toNumber(basePrice) ?? priceNum;
+          const discountPercentNum =
+            toNumber(discountPercentRaw) ??
+            (toNumber(discountAmountRaw) !== null && basePriceNum
+              ? (toNumber(discountAmountRaw) / basePriceNum) * 100
+              : null);
+
+          const computedFinalPrice =
+            toNumber(finalPriceRaw) ??
+            (basePriceNum !== null && discountPercentNum !== null
+              ? basePriceNum * (1 - discountPercentNum / 100)
+              : null);
+
           // Anything else (show as extra fields)
           const extra = [
             ["Duration", duration ? `${duration}` : null],
             ["Price", price !== null ? fmtMoney(price) : null],
+            ["Discount", fmtPercent(discountPercentNum)],
+            ["Final Price", computedFinalPrice !== null ? fmtMoney(computedFinalPrice) : null],
             ["Start Date", startDate ? fmtDate(startDate) : null],
             ["End Date", endDate ? fmtDate(endDate) : null],
             ["Payment Method", paymentMethod ? titleize(paymentMethod) : null],
