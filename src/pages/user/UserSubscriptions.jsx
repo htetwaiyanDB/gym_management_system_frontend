@@ -19,6 +19,60 @@ function normalizeSubscriptions(payload) {
   return [];
 }
 
+function normalizeSubscriptionRecord(raw) {
+  const planName =
+    pick(raw, ["plan_name", "membership_plan_name", "package_name", "name", "title"]) ||
+    pick(raw?.plan, ["name", "title", "plan_name"]) ||
+    pick(raw?.package, ["name", "title", "plan_name"]) ||
+    "Subscription";
+
+  const price = pickFromSources([raw, raw?.plan, raw?.package], [
+    "price",
+    "plan_price",
+    "amount",
+    "total",
+    "fee",
+  ]);
+
+  const discountPercentage = pickFromSources([raw, raw?.plan, raw?.package], [
+    "discount_percentage",
+    "discount_percent",
+    "discountPercentage",
+    "discount_rate",
+    "applied_discount_percentage",
+  ]);
+
+  const finalPrice = pickFromSources([raw, raw?.plan, raw?.package], [
+    "final_price",
+    "finalPrice",
+    "final_pricing",
+    "net_price",
+    "payable_amount",
+    "amount_after_discount",
+  ]);
+
+  return {
+    ...raw,
+    id: pick(raw, ["id", "subscription_id", "user_subscription_id"]),
+    member_name: pick(raw, ["member_name", "user_name", "name"]),
+    member_phone: pick(raw, ["member_phone", "phone"]),
+    plan_name: planName,
+    duration_days:
+      pick(raw, ["duration_days", "duration", "days", "months"]) ||
+      pick(raw?.plan, ["duration_days", "duration"]) ||
+      pick(raw?.package, ["duration_days", "duration"]),
+    price,
+    discount_percentage: discountPercentage ?? 0,
+    final_price: finalPrice ?? price,
+    start_date: pick(raw, ["start_date", "starts_at", "start"]),
+    end_date: pick(raw, ["end_date", "ends_at", "end", "expire_at", "expires_at"]),
+    is_on_hold:
+      pick(raw, ["is_on_hold", "on_hold"]) ??
+      String(pick(raw, ["status", "state"]) || "").toLowerCase() === "on_hold",
+    status: pick(raw, ["status", "state"]),
+  };
+}
+
 function fmtDate(v) {
   if (!v) return "—";
   const d = new Date(v);
@@ -144,7 +198,7 @@ export default function UserSubscriptions() {
         // ✅ debug: see real API response structure
         console.log("GET /user/subscriptions RESPONSE:", res?.data);
 
-        const list = normalizeSubscriptions(res?.data);
+        const list = normalizeSubscriptions(res?.data).map(normalizeSubscriptionRecord);
 
         // Sort: active first, then latest start date
         const normalSubscriptions = list.filter((sub) => !isClassSubscription(sub));
