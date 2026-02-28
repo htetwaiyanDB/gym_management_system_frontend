@@ -670,6 +670,7 @@ export default function AdminClassSubscriptions() {
           type="text"
           className="form-control bg-dark text-white border-secondary"
           placeholder="Search by member name / ID / phone"
+          style={{ maxWidth: "420px" }}
           value={tableSearch}
           onChange={(e) => setTableSearch(e.target.value)}
         />
