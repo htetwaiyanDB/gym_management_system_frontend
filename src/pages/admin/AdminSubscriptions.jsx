@@ -399,7 +399,7 @@ export default function AdminSubscriptions() {
 
       {msg && <div className={`alert alert-${msg.type}`}>{msg.text}</div>}
 
-      <div className="mb-3">
+      <div className="mb-3" style={{ maxWidth: "520px" }}>
         <input
           type="text"
           className="form-control bg-dark text-white border-secondary"
