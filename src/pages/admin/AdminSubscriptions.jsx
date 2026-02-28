@@ -99,6 +99,24 @@ function memberDisplayLabel(member) {
   return `${member?.name || "Unknown"} (${phone || "-"})`;
 }
 
+function subscriptionSearchText(record) {
+  const memberId =
+    record?.member_id ?? record?.user_id ?? record?.member?.id ?? record?.user?.id ?? record?.id ?? "";
+  const pieces = [
+    record?.member_name,
+    record?.user_name,
+    record?.member_phone,
+    record?.user_phone,
+    memberId,
+    formatUserCode(memberId),
+  ];
+
+  return pieces
+    .filter((piece) => piece !== null && piece !== undefined)
+    .map((piece) => String(piece).toLowerCase())
+    .join(" ");
+}
+
 export default function AdminSubscriptions() {
   const nav = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -106,6 +124,7 @@ export default function AdminSubscriptions() {
   const [msg, setMsg] = useState(null);
 
   const [subs, setSubs] = useState([]);
+  const [tableSearch, setTableSearch] = useState("");
 
   // modal state
   const [showModal, setShowModal] = useState(false);
@@ -346,6 +365,12 @@ export default function AdminSubscriptions() {
     return list;
   }, [subs]);
 
+  const filteredSubscriptions = useMemo(() => {
+    const keyword = tableSearch.trim().toLowerCase();
+    if (!keyword) return sortedSubscriptions;
+    return sortedSubscriptions.filter((record) => subscriptionSearchText(record).includes(keyword));
+  }, [sortedSubscriptions, tableSearch]);
+
   return (
     <div className="admin-card p-4">
       <div className="d-flex align-items-center justify-content-between mb-3">
@@ -374,6 +399,16 @@ export default function AdminSubscriptions() {
 
       {msg && <div className={`alert alert-${msg.type}`}>{msg.text}</div>}
 
+      <div className="mb-3">
+        <input
+          type="text"
+          className="form-control bg-dark text-white border-secondary"
+          placeholder="Search by member name / ID / phone"
+          value={tableSearch}
+          onChange={(e) => setTableSearch(e.target.value)}
+        />
+      </div>
+
       <div className="table-responsive">
         <table className="table table-dark table-hover align-middle mb-0">
           <thead>
@@ -394,14 +429,14 @@ export default function AdminSubscriptions() {
           </thead>
 
           <tbody>
-            {subs.length === 0 ? (
+            {filteredSubscriptions.length === 0 ? (
               <tr>
                 <td colSpan="12" className="text-center text-muted py-4">
-                  {loading ? "Loading..." : "No subscriptions found."}
+                  {loading ? "Loading..." : tableSearch.trim() ? "No subscriptions matched your search." : "No subscriptions found."}
                 </td>
               </tr>
             ) : (
-              sortedSubscriptions.map((s, index) => {
+              filteredSubscriptions.map((s, index) => {
                 const rawStatus = String(s?.status || "");
                 const isOnHold = !!s?.is_on_hold;
                 const isExpired = rawStatus.toLowerCase() === "expired" || isExpiredByDate(s?.end_date);

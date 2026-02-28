@@ -160,6 +160,24 @@ function memberDisplayLabel(member) {
   return `${member?.name || "Unknown"} (${phone || "-"})`;
 }
 
+function subscriptionSearchText(record) {
+  const memberId =
+    record?.member_id ?? record?.user_id ?? record?.member?.id ?? record?.user?.id ?? record?.id ?? "";
+  const pieces = [
+    record?.member_name,
+    record?.user_name,
+    record?.member_phone,
+    record?.user_phone,
+    memberId,
+    formatUserCode(memberId),
+  ];
+
+  return pieces
+    .filter((piece) => piece !== null && piece !== undefined)
+    .map((piece) => String(piece).toLowerCase())
+    .join(" ");
+}
+
 async function requestWithFallback(requests) {
   let latestError = null;
   for (const run of requests) {
@@ -180,6 +198,7 @@ export default function AdminClassSubscriptions() {
   const [busyId, setBusyId] = useState(null);
   const [msg, setMsg] = useState(null);
   const [records, setRecords] = useState([]);
+  const [tableSearch, setTableSearch] = useState("");
   const [members, setMembers] = useState([]);
   const [plans, setPlans] = useState([]);
 
@@ -569,6 +588,12 @@ export default function AdminClassSubscriptions() {
     return list;
   }, [records]);
 
+  const filteredRecords = useMemo(() => {
+    const keyword = tableSearch.trim().toLowerCase();
+    if (!keyword) return sortedRecords;
+    return sortedRecords.filter((record) => subscriptionSearchText(record).includes(keyword));
+  }, [sortedRecords, tableSearch]);
+
   return (
     <div className="admin-card p-4">
       <div className="d-flex align-items-center justify-content-between mb-3">
@@ -640,6 +665,16 @@ export default function AdminClassSubscriptions() {
         </div>
       </div>
 
+      <div className="mb-3">
+        <input
+          type="text"
+          className="form-control bg-dark text-white border-secondary"
+          placeholder="Search by member name / ID / phone"
+          value={tableSearch}
+          onChange={(e) => setTableSearch(e.target.value)}
+        />
+      </div>
+
       <div className="table-responsive">
         <table className="table table-dark table-hover align-middle mb-0">
           <thead>
@@ -659,12 +694,12 @@ export default function AdminClassSubscriptions() {
             </tr>
           </thead>
           <tbody>
-            {records.length === 0 ? (
+            {filteredRecords.length === 0 ? (
               <tr>
-                <td colSpan="12" className="text-center text-muted py-4">{loading ? "Loading..." : "No class subscriptions found."}</td>
+                <td colSpan="12" className="text-center text-muted py-4">{loading ? "Loading..." : tableSearch.trim() ? "No class subscriptions matched your search." : "No class subscriptions found."}</td>
               </tr>
             ) : (
-              sortedRecords.map((r, index) => {
+              filteredRecords.map((r, index) => {
                 const rawStatus = String(r?.status || "");
                 const isOnHold = !!r?.is_on_hold;
                 const isExpired = rawStatus.toLowerCase() === "expired" || isExpiredByDate(r?.end_date);
