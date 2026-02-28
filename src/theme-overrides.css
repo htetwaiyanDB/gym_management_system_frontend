@@ -53,7 +53,8 @@ body {
 }
 
 .user-shell .form-control::placeholder,
-.trainer-shell .form-control::placeholder {
+.trainer-shell .form-control::placeholder,
+.admin-shell .form-control::placeholder {
   color: rgba(245, 247, 250, 0.7);
 }
 
