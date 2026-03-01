@@ -1169,7 +1169,7 @@ export default function AdminTrainerBookings() {
                           </div>
                           <div className="col-12 col-md-4">
                             <div className="admin-muted">Discount Percentage</div>
-                              <div className="text-success">{formatPercentage(discountPercentage)}</div>
+                              <div className="text-green-600 font-bold text-lg">{formatPercentage(discountPercentage)}</div>
                           </div>
                           <div className="col-12 col-md-4">
                             <div className="admin-muted">Final Price</div>
