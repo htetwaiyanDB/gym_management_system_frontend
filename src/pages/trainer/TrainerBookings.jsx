@@ -33,8 +33,113 @@ function formatISODate(d) {
 }
 
 function toNumber(value) {
-  const n = Number(value);
-  return Number.isNaN(n) ? null : n;
+  if (value === null || value === undefined || value === "") return null;
+  const cleaned = typeof value === "string" ? value.replace(/,/g, "") : value;
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : null;
+}
+
+function fmtMoney(v) {
+  if (v === null || v === undefined || v === "") return "—";
+  const n = Number(v);
+  if (Number.isNaN(n)) return String(v);
+  return n.toLocaleString();
+}
+
+function fmtPercent(v) {
+  const n = toNumber(v);
+  if (n === null) return null;
+  if (Number.isInteger(n)) return `${n}%`;
+  return `${n.toFixed(2).replace(/\.00$/, "")}%`;
+}
+
+function pickFromSources(sources, keys) {
+  for (const source of sources) {
+    const value = pick(source, keys);
+    if (value !== null) return value;
+  }
+  return null;
+}
+
+function getPricingBreakdown(booking) {
+  const nestedSources = [
+    booking,
+    booking?.package,
+    booking?.trainer_package,
+    booking?.boxing_package,
+    booking?.subscription,
+    booking?.user_subscription,
+  ];
+
+  const listedPriceRaw = pickFromSources(nestedSources, [
+    "original_price",
+    "originalPrice",
+    "base_price",
+    "basePrice",
+    "list_price",
+    "mrp",
+    "price_before_discount",
+    "priceBeforeDiscount",
+    "plan_price",
+  ]);
+
+  const finalPriceRaw = pickFromSources(nestedSources, [
+    "final_price",
+    "finalPrice",
+    "final_pricing",
+    "net_price",
+    "payable_amount",
+    "payableAmount",
+    "amount_after_discount",
+    "amountAfterDiscount",
+    "price",
+    "amount",
+    "total",
+    "fee",
+  ]);
+
+  const discountPercentRaw = pickFromSources(nestedSources, [
+    "discount_percent",
+    "discount_percentage",
+    "discountPercentage",
+    "discount_rate",
+    "applied_discount_percentage",
+    "percentage",
+  ]);
+
+  const discountAmountRaw = pickFromSources(nestedSources, [
+    "discount_amount",
+    "discount",
+    "discount_value",
+    "discountAmount",
+    "applied_discount_amount",
+  ]);
+
+  const listedPrice = toNumber(listedPriceRaw);
+  const finalPrice = toNumber(finalPriceRaw);
+  const discountAmount = toNumber(discountAmountRaw);
+
+  const basePrice = listedPrice ?? finalPrice;
+  const discountPercent =
+    toNumber(discountPercentRaw) ??
+    (discountAmount !== null && basePrice
+      ? (discountAmount / basePrice) * 100
+      : finalPrice !== null && basePrice
+      ? ((basePrice - finalPrice) / basePrice) * 100
+      : null);
+
+  const computedFinalPrice =
+    finalPrice ??
+    (basePrice !== null && discountPercent !== null
+      ? basePrice * (1 - discountPercent / 100)
+      : basePrice);
+
+  return {
+    hasPricing: basePrice !== null || computedFinalPrice !== null,
+    basePrice,
+    discountPercent,
+    computedFinalPrice,
+  };
 }
 
 function isCompletedStatus(value) {
@@ -388,6 +493,8 @@ export default function TrainerBooking() {
             const packageType = getPackageType(b);
             const isMonthlyPackage = isMonthlyPackageType(packageType);
             const { total: totalSessions, remaining: remainingSessions } = getSessionProgress(b);
+            const { hasPricing, basePrice, discountPercent, computedFinalPrice } =
+              getPricingBreakdown(b);
             const isCompleted =
               remainingSessions === 0 || isCompletedStatus(b?.status);
             return (
@@ -472,7 +579,26 @@ export default function TrainerBooking() {
                         <span>{String(b?.status || "—")}</span>
                       </div>
 
-                        {!isMonthlyPackage && (
+                      {hasPricing && (
+                        <>
+                          <div className="d-flex justify-content-between">
+                            <span style={{ opacity: 0.8 }}>Original Price</span>
+                            <span>{fmtMoney(basePrice)}</span>
+                          </div>
+                          <div className="d-flex justify-content-between">
+                            <span style={{ opacity: 0.8 }}>Discount %</span>
+                            <span>{fmtPercent(discountPercent) || "0%"}</span>
+                          </div>
+                          <div className="d-flex justify-content-between">
+                            <span style={{ opacity: 0.8 }}>Final Price</span>
+                            <span style={{ fontWeight: 800, color: "#7dffa1" }}>
+                              {fmtMoney(computedFinalPrice)}
+                            </span>
+                          </div>
+                        </>
+                      )}
+
+                      {!isMonthlyPackage && (
                         <div className="d-flex justify-content-between align-items-center">
                           <span style={{ opacity: 0.8 }}>Session confirmation</span>
                           <button
