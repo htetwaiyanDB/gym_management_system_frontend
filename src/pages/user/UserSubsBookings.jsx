@@ -402,6 +402,12 @@ function UserBoxingBookings() {
             const isCompleted =
               remainingSessions === 0 || isCompletedStatus(resolveBookingStatus(b));
             const { totalPrice, discountPercent, finalPrice } = getPricingDetails(b);
+            const discountPercentNum = Number(discountPercent);
+            const hasDiscount = Number.isFinite(discountPercentNum) && discountPercentNum > 0;
+            const successPriceText = {
+              color: "#198754",
+              fontWeight: 800,
+            };
             return (
               <div
                 key={bookingId}
@@ -492,15 +498,21 @@ function UserBoxingBookings() {
                         <div style={{ fontWeight: 700, marginBottom: 6 }}>Pricing</div>
                         <div className="d-flex justify-content-between">
                           <span style={{ opacity: 0.8 }}>Total price</span>
-                          <b>{String(totalPrice ?? "—")}</b>
+                          <b style={hasDiscount ? { textDecoration: "line-through", opacity: 0.85 } : undefined}>
+                            {String(totalPrice ?? "—")}
+                          </b>
                         </div>
                         <div className="d-flex justify-content-between">
-                          <span style={{ opacity: 0.8 }}>Discount %</span>
-                          <b>{String(discountPercent ?? "—")}</b>
+                          <span style={hasDiscount ? successPriceText : { opacity: 0.8 }}>Discount %</span>
+                          <b style={hasDiscount ? successPriceText : undefined}>
+                            {String(discountPercent ?? "—")}
+                          </b>
                         </div>
                         <div className="d-flex justify-content-between">
-                          <span style={{ opacity: 0.8 }}>Final price</span>
-                          <b>{String(finalPrice ?? "—")}</b>
+                          <span style={hasDiscount ? successPriceText : { opacity: 0.8 }}>Final price</span>
+                          <b style={hasDiscount ? successPriceText : undefined}>
+                            {String(finalPrice ?? "—")}
+                          </b>
                         </div>
                       </div>
                       {!isMonthlyPackage && (
