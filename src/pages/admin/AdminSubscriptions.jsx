@@ -121,6 +121,7 @@ export default function AdminSubscriptions() {
   const nav = useNavigate();
   const [loading, setLoading] = useState(false);
   const [busyId, setBusyId] = useState(null);
+  const [holdAllBusy, setHoldAllBusy] = useState(false);
   const [msg, setMsg] = useState(null);
 
   const [subs, setSubs] = useState([]);
@@ -269,6 +270,23 @@ export default function AdminSubscriptions() {
     }
   };
 
+  const holdAllSubscriptions = async () => {
+    setMsg(null);
+    setHoldAllBusy(true);
+    try {
+      const res = await axiosClient.post("/subscription/all-hold");
+      setMsg({ type: "success", text: res?.data?.message || "All active subscriptions are now on hold." });
+      await load();
+    } catch (e) {
+      setMsg({
+        type: "danger",
+        text: e?.response?.data?.message || "Failed to hold all subscriptions.",
+      });
+    } finally {
+      setHoldAllBusy(false);
+    }
+  };
+
   useEffect(() => {
     load();
   }, []);
@@ -386,11 +404,16 @@ export default function AdminSubscriptions() {
             <i className="bi bi-collection-play me-2"></i> Class Page
           </button>
 
-          <button className="btn btn-primary" onClick={openCreateModal} disabled={loading}>
-            <i className="bi bi-plus-circle me-2"></i> Add New Subscription
+          <button className="btn btn-warning" onClick={holdAllSubscriptions} disabled={loading || holdAllBusy}>
+            <i className="bi bi-pause-circle me-2"></i>
+            {holdAllBusy ? "Holding..." : "Hold All"}
           </button>
 
-          <button className="btn btn-outline-light" onClick={load} disabled={loading}>
+          <button className="btn btn-primary" onClick={openCreateModal} disabled={loading || holdAllBusy}>
+            <i className="bi bi-plus-circle me-2"></i> Add Memberships
+          </button>
+
+          <button className="btn btn-outline-light" onClick={load} disabled={loading || holdAllBusy}>
             <i className="bi bi-arrow-clockwise me-2"></i>
             {loading ? "Loading..." : "Refresh"}
           </button>
@@ -508,7 +531,7 @@ export default function AdminSubscriptions() {
             <div className="modal-dialog modal-dialog-centered">
               <div className="modal-content bg-dark text-white">
                 <div className="modal-header">
-                  <h5 className="modal-title fw-bolder">Add New Subscription</h5>
+                  <h5 className="modal-title fw-bolder">Add Memberships</h5>
                   <button
                     className="btn-close btn-close-white"
                     onClick={closeModal}
