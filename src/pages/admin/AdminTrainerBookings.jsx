@@ -213,6 +213,7 @@ export default function AdminTrainerBookings() {
   const [priceSource, setPriceSource] = useState("package"); // package | manual
   const [sessionsCount, setSessionsCount] = useState("1");
   const [pricePerSession, setPricePerSession] = useState("");
+  const [discountPercentage, setDiscountPercentage] = useState("");
   const [status, setStatus] = useState("pending");
   const [paidStatus, setPaidStatus] = useState("unpaid");
   const [notes, setNotes] = useState("");
@@ -266,6 +267,7 @@ export default function AdminTrainerBookings() {
     setSessionsCount("1");
     setPricePerSession(""); // will set default on options load
     setPriceSource("package");
+    setDiscountPercentage("");
     setStatus("pending");
     setPaidStatus("unpaid");
     setNotes("");
@@ -273,11 +275,34 @@ export default function AdminTrainerBookings() {
     setEndDate("");
   };
 
-  const total = useMemo(() => {
+   const basePrice = useMemo(() => {
     const p = Number(pricePerSession || defaultPrice);
     if (Number.isNaN(p)) return 0;
     return Math.max(0, p);
   }, [pricePerSession, defaultPrice]);
+
+  const normalizedDiscountPercentage = useMemo(() => {
+    if (
+      discountPercentage === "" ||
+      discountPercentage === null ||
+      discountPercentage === undefined
+    ) {
+      return 0;
+    }
+    const value = Number(discountPercentage);
+    if (Number.isNaN(value)) return 0;
+    return Math.min(100, Math.max(0, value));
+  }, [discountPercentage]);
+
+  const discountAmount = useMemo(
+    () => Math.round(basePrice * (normalizedDiscountPercentage / 100)),
+    [basePrice, normalizedDiscountPercentage]
+  );
+
+  const total = useMemo(
+    () => Math.max(0, Math.round(basePrice - discountAmount)),
+    [basePrice, discountAmount]
+  );
 
   const loadBookings = async () => {
     setMsg(null);
@@ -389,6 +414,20 @@ export default function AdminTrainerBookings() {
     if (Number.isNaN(sessions) || sessions <= 0) return setMsg({ type: "danger", text: "Sessions must be a valid number." });
     if (Number.isNaN(price) || price < 0) return setMsg({ type: "danger", text: "Price per session must be valid." });
 
+    const hasDiscount =
+      discountPercentage !== "" && discountPercentage !== null && discountPercentage !== undefined;
+    const normalizedDiscount = hasDiscount ? Number(discountPercentage) : null;
+    if (
+      hasDiscount &&
+      (Number.isNaN(normalizedDiscount) || normalizedDiscount < 0 || normalizedDiscount > 100)
+    ) {
+      return setMsg({
+        type: "danger",
+        text: "Discount percentage must be between 0 and 100.",
+      });
+    }
+
+
     setBusyKey("create");
     try {
   
@@ -419,6 +458,9 @@ export default function AdminTrainerBookings() {
         price_per_session: price,
         status,
         paid_status: paidStatus,
+        discount_percentage: normalizedDiscount,
+        discount_amount: discountAmount,
+        final_price: total,
         notes: notes || null,
         start_date: startDate,
         end_date: endDate,
@@ -1439,6 +1481,20 @@ export default function AdminTrainerBookings() {
                   </div>
 
                   <div className="col-12 col-md-3">
+                    <label className="form-label fw-bold">Discount (%)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      className="form-control"
+                      value={discountPercentage}
+                      onChange={(e) => setDiscountPercentage(e.target.value)}
+                      disabled={optionsLoading}
+                      placeholder="0"
+                    />
+                  </div>
+
+                  <div className="col-12 col-md-3">
                     <label className="form-label fw-bold">Paid Status</label>
                     <select
                       className="form-select admin-select-dark"
@@ -1477,7 +1533,12 @@ export default function AdminTrainerBookings() {
 
                   <div className="col-12">
                     <div className="d-flex align-items-center justify-content-between p-3 rounded border border-secondary">
-                      <div className="admin-muted fw-bold">Total Amount</div>
+                       <div className="admin-muted fw-bold">
+                        Total Amount
+                        <div style={{ fontSize: 12, marginTop: 4 }}>
+                          Base: {moneyMMK(basePrice)} · Discount: {moneyMMK(discountAmount)}
+                        </div>
+                      </div>
                       <div className="fs-5 fw-bold">{moneyMMK(total)}</div>
                     </div>
                   </div>
