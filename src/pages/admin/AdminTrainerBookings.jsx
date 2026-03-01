@@ -1098,6 +1098,7 @@ export default function AdminTrainerBookings() {
                     "payable_amount",
                     "net_price",
                   ]);
+                  const hasDiscount = Number(discountPercentage) > 0;
                   const sessionStartRaw = pickFirstValue(selectedBooking, [
                     "sessions_start_date",
                     "session_start_date",
@@ -1164,15 +1165,15 @@ export default function AdminTrainerBookings() {
                           </div>
                           <div className="col-12 col-md-4">
                             <div className="admin-muted">Total Price</div>
-                            <div>{moneyMMK(totalPrice)}</div>
+                              <div className={hasDiscount ? "text-decoration-line-through" : ""}>{moneyMMK(totalPrice)}</div>
                           </div>
                           <div className="col-12 col-md-4">
                             <div className="admin-muted">Discount Percentage</div>
-                            <div>{formatPercentage(discountPercentage)}</div>
+                              <div className="text-success">{formatPercentage(discountPercentage)}</div>
                           </div>
                           <div className="col-12 col-md-4">
                             <div className="admin-muted">Final Price</div>
-                            <div>{moneyMMK(finalPrice)}</div>
+                            <div className="text-success">{moneyMMK(finalPrice)}</div>
                           </div>
                         </div>
                       </div>
