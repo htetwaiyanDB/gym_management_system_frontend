@@ -238,7 +238,7 @@ export default function UserClassSubscriptions({ embedded = false }) {
 
   return (
     <div>
-      {!embedded && <h2 style={{ marginBottom: 12 }}>Class Subscriptions</h2>}
+      {!embedded && <h2 style={{ marginBottom: 12 }}>Class</h2>}
 
       {loading && <p>Loading class subscriptions...</p>}
       {!loading && error && <div className="alert alert-danger">{error}</div>}

@@ -238,7 +238,7 @@ export default function UserSubscriptions() {
 
   return (
     <div>
-      <h2 style={{ marginBottom: 12 }}>Subscriptions</h2>
+      <h2 style={{ marginBottom: 12 }}>Memberships</h2>
 
       {loading && <p>Loading subscriptions...</p>}
 
