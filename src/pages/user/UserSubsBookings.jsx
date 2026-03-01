@@ -465,8 +465,9 @@ export default function UserSubsBookings() {
   const [activeTab, setActiveTab] = useState("subscriptions");
 
   const tabs = [
-    { id: "subscriptions", label: "Subscriptions" },
+    { id: "subscriptions", label: "Memberships" },
     { id: "bookings", label: "Trainer Bookings" },
+    { id: "boxing-bookings", label: "Boxing Bookings" },
     { id: "class-subscriptions", label: "Class Subscriptions" },
   ];
 
@@ -489,6 +490,7 @@ export default function UserSubsBookings() {
 
       {activeTab === "subscriptions" && <UserSubscriptions />}
       {activeTab === "bookings" && <UserBookings />}
+      {activeTab === "boxing-bookings" && <UserBoxingBookings />}
       {activeTab === "class-subscriptions" && <UserClassSubscriptions embedded />}
     </div>
   );
