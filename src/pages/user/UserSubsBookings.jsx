@@ -174,6 +174,41 @@ function getCoachPhone(b) {
   );
 }
 
+function getPricingDetails(booking) {
+  const totalPrice = pick(booking, [
+    "total_price",
+    "price",
+    "amount",
+    "package_price",
+    "original_price",
+    "subscription_price",
+  ]);
+  const discountPercent = pick(booking, [
+    "discount_percent",
+    "discount_percentage",
+    "discount",
+    "offer_percent",
+  ]);
+  const finalPrice = pick(booking, [
+    "final_price",
+    "net_price",
+    "payable_amount",
+    "paid_amount",
+    "total_amount",
+  ]);
+
+  return { totalPrice, discountPercent, finalPrice };
+}
+
+function normalizeStatusFilter(statusValue) {
+  const s = String(statusValue || "").toLowerCase();
+  if (s.includes("pending")) return "pending";
+  if (s.includes("active")) return "active";
+  if (s.includes("hold")) return "on-hold";
+  if (s.includes("complete") || s.includes("done")) return "complete";
+  return s;
+}
+
 function normalizeBookings(payload) {
   if (!payload) return [];
   if (Array.isArray(payload)) return payload;
@@ -193,7 +228,6 @@ function UserBoxingBookings() {
   const [busyKey, setBusyKey] = useState(null);
   const [bookings, setBookings] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
-  const [search, setSearch] = useState("");
   const [date, setDate] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
@@ -243,14 +277,13 @@ function UserBoxingBookings() {
 
   const filtered = useMemo(() => {
     return bookings.filter((b) => {
-      const nameMatch =
-        !search || getCoachName(b).toLowerCase().includes(search.toLowerCase());
       const dateMatch = !date || getDate(b) === date;
       const resolvedStatus = String(resolveBookingStatus(b) || "").toLowerCase();
-      const statusMatch = statusFilter === "all" || resolvedStatus === statusFilter;
-      return nameMatch && dateMatch && statusMatch;
+      const statusMatch =
+        statusFilter === "all" || normalizeStatusFilter(resolvedStatus) === statusFilter;
+      return dateMatch && statusMatch;
     });
-  }, [bookings, search, date, statusFilter]);
+  }, [bookings, date, statusFilter]);
 
   const cardStyle = {
     borderRadius: 14,
@@ -318,19 +351,6 @@ function UserBoxingBookings() {
 
         <div className="mt-3 d-flex gap-2">
           <input
-            className="form-control"
-            placeholder="Search coach..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{
-              borderRadius: 12,
-              background: "rgba(0,0,0,0.45)",
-              border: "1px solid rgba(255,255,255,0.12)",
-              color: "#fff",
-            }}
-          />
-
-          <input
             type="date"
             className="form-control"
             value={date}
@@ -358,12 +378,9 @@ function UserBoxingBookings() {
           >
             <option value="all">All status</option>
             <option value="pending">Pending</option>
-            <option value="approved">Approved</option>
-            <option value="confirmed">Confirmed</option>
             <option value="active">Active</option>
-            <option value="rejected">Rejected</option>
-            <option value="cancelled">Cancelled</option>
-            <option value="completed">Completed</option>
+            <option value="on-hold">On-hold</option>
+            <option value="complete">Complete</option>
           </select>
         </div>
       </div>
@@ -384,6 +401,7 @@ function UserBoxingBookings() {
             const isMonthlyPackage = isMonthlyPackageType(getPackageType(b));
             const isCompleted =
               remainingSessions === 0 || isCompletedStatus(resolveBookingStatus(b));
+            const { totalPrice, discountPercent, finalPrice } = getPricingDetails(b);
             return (
               <div
                 key={bookingId}
@@ -460,6 +478,30 @@ function UserBoxingBookings() {
                       <div className="d-flex justify-content-between">
                         <span style={{ opacity: 0.8 }}>Status</span>
                         <span>{String(resolveBookingStatus(b) || "—")}</span>
+                      </div>
+                      <div
+                        style={{
+                          marginTop: 6,
+                          background:
+                            "linear-gradient(120deg, rgba(13,110,253,0.18), rgba(102,16,242,0.18))",
+                          border: "1px solid rgba(255,255,255,0.15)",
+                          borderRadius: 10,
+                          padding: 10,
+                        }}
+                      >
+                        <div style={{ fontWeight: 700, marginBottom: 6 }}>Pricing</div>
+                        <div className="d-flex justify-content-between">
+                          <span style={{ opacity: 0.8 }}>Total price</span>
+                          <b>{String(totalPrice ?? "—")}</b>
+                        </div>
+                        <div className="d-flex justify-content-between">
+                          <span style={{ opacity: 0.8 }}>Discount %</span>
+                          <b>{String(discountPercent ?? "—")}</b>
+                        </div>
+                        <div className="d-flex justify-content-between">
+                          <span style={{ opacity: 0.8 }}>Final price</span>
+                          <b>{String(finalPrice ?? "—")}</b>
+                        </div>
                       </div>
                       {!isMonthlyPackage && (
                         <div className="d-flex justify-content-between align-items-center">

@@ -128,9 +128,43 @@ export default function UserBookings() {
   const [msg, setMsg] = useState(null);
   const [busyKey, setBusyKey] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
-  const [search, setSearch] = useState("");
   const [date, setDate] = useState("");
   const [filter, setFilter] = useState("all");
+
+  const getPricingDetails = useCallback((booking) => {
+    const totalPrice = pick(booking, [
+      "total_price",
+      "price",
+      "amount",
+      "package_price",
+      "original_price",
+      "subscription_price",
+    ]);
+    const discountPercent = pick(booking, [
+      "discount_percent",
+      "discount_percentage",
+      "discount",
+      "offer_percent",
+    ]);
+    const finalPrice = pick(booking, [
+      "final_price",
+      "net_price",
+      "payable_amount",
+      "paid_amount",
+      "total_amount",
+    ]);
+
+    return { totalPrice, discountPercent, finalPrice };
+  }, []);
+
+  const normalizeStatusFilter = useCallback((statusValue) => {
+    const s = String(statusValue || "").toLowerCase();
+    if (s.includes("pending")) return "pending";
+    if (s.includes("active")) return "active";
+    if (s.includes("hold")) return "on-hold";
+    if (s.includes("complete") || s.includes("done")) return "complete";
+    return s;
+  }, []);
 
   const fetchBookings = useCallback(async () => {
     setMsg(null);
@@ -197,24 +231,16 @@ export default function UserBookings() {
   const filtered = useMemo(() => {
     return items.filter((b) => {
       const s = resolveBookingStatus(b);
-      const trainerObj = pick(b, ["trainer"]) || b?.trainer;
-      const trainerName =
-        pick(b, ["trainer_name"]) ||
-        (typeof trainerObj === "object"
-          ? trainerObj?.name || trainerObj?.email || trainerObj?.phone
-          : trainerObj) ||
-        pick(b?.trainer_detail, ["name"]) ||
-        "";
       const sessionDateTime =
         pick(b, ["session_datetime", "session_time", "datetime", "date_time", "start_time", "starts_at"]) ||
         pick(b, ["booking_date", "date"]);
 
-      const searchMatch = !search || String(trainerName).toLowerCase().includes(search.toLowerCase());
       const dateMatch = !date || String(sessionDateTime || "").slice(0, 10) === date;
-      const statusMatch = filter === "all" || s === filter;
-      return searchMatch && dateMatch && statusMatch;
+      const statusMatch =
+        filter === "all" || normalizeStatusFilter(s) === filter;
+      return dateMatch && statusMatch;
     });
-  }, [items, search, date, filter]);
+  }, [items, date, filter, normalizeStatusFilter]);
 
   const cardStyle = {
     borderRadius: 14,
@@ -265,19 +291,6 @@ export default function UserBookings() {
 
         <div className="mt-3 d-flex gap-2 flex-wrap">
           <input
-            className="form-control"
-            placeholder="Search trainer..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{
-              borderRadius: 12,
-              background: "rgba(0,0,0,0.45)",
-              border: "1px solid rgba(255,255,255,0.12)",
-              color: "#fff",
-            }}
-          />
-
-          <input
             type="date"
             className="form-control"
             value={date}
@@ -305,12 +318,9 @@ export default function UserBookings() {
           >
             <option value="all">All status</option>
             <option value="pending">Pending</option>
-            <option value="approved">Approved</option>
-            <option value="confirmed">Confirmed</option>
             <option value="active">Active</option>
-            <option value="rejected">Rejected</option>
-            <option value="cancelled">Cancelled</option>
-            <option value="completed">Completed</option>
+            <option value="on-hold">On-hold</option>
+            <option value="complete">Complete</option>
           </select>
         </div>
       </div>
@@ -379,6 +389,7 @@ export default function UserBookings() {
 
           const note = pick(b, ["note", "remark", "message", "description"]);
           const paidStatus = pick(b, ["paid_status", "payment_status"]);
+          const { totalPrice, discountPercent, finalPrice } = getPricingDetails(b);
 
           return (
             <div
@@ -465,9 +476,33 @@ export default function UserBookings() {
            
 
               
-                  <div className="d-flex justify-content-between" style={{ gap: 12 }}>
+                    <div className="d-flex justify-content-between" style={{ gap: 12 }}>
                      <span style={{ opacity: 0.8 }}>Status</span>
                     <b style={{ textAlign: "right" }}>{toText(status)}</b>
+                  </div>
+
+                  <div
+                    style={{
+                      marginTop: 6,
+                      background: "linear-gradient(120deg, rgba(13,110,253,0.18), rgba(102,16,242,0.18))",
+                      border: "1px solid rgba(255,255,255,0.15)",
+                      borderRadius: 10,
+                      padding: 10,
+                    }}
+                  >
+                    <div style={{ fontWeight: 700, marginBottom: 6 }}>Pricing</div>
+                    <div className="d-flex justify-content-between" style={{ gap: 12 }}>
+                      <span style={{ opacity: 0.8 }}>Total price</span>
+                      <b>{toText(totalPrice)}</b>
+                    </div>
+                    <div className="d-flex justify-content-between" style={{ gap: 12 }}>
+                      <span style={{ opacity: 0.8 }}>Discount %</span>
+                      <b>{toText(discountPercent)}</b>
+                    </div>
+                    <div className="d-flex justify-content-between" style={{ gap: 12 }}>
+                      <span style={{ opacity: 0.8 }}>Final price</span>
+                      <b>{toText(finalPrice)}</b>
+                    </div>
                   </div>
 
                   
