@@ -37,6 +37,24 @@ function toNumber(value) {
   return Number.isNaN(n) ? null : n;
 }
 
+function getPriceValue(booking, keys) {
+  return toNumber(
+    pick(booking, keys) ??
+      pick(booking?.trainer_package, keys) ??
+      pick(booking?.boxing_package, keys) ??
+      pick(booking?.package, keys)
+  );
+}
+
+function formatMoney(value) {
+  const n = toNumber(value);
+  if (n === null) return "—";
+  return new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(n);
+}
+
 function isCompletedStatus(value) {
   const s = String(value || "").toLowerCase();
   return s.includes("complete") || s.includes("completed") || s.includes("done");
@@ -388,6 +406,9 @@ export default function TrainerBooking() {
             const packageType = getPackageType(b);
             const isMonthlyPackage = isMonthlyPackageType(packageType);
             const { total: totalSessions, remaining: remainingSessions } = getSessionProgress(b);
+            const totalPrice = getPriceValue(b, ["total_price", "price", "package_price"]);
+            const discountAmount = getPriceValue(b, ["discount_amount", "discount"]);
+            const finalPrice = getPriceValue(b, ["final_price", "amount_after_discount"]);
             const isCompleted =
               remainingSessions === 0 || isCompletedStatus(b?.status);
             return (
@@ -470,6 +491,18 @@ export default function TrainerBooking() {
                       <div className="d-flex justify-content-between">
                         <span style={{ opacity: 0.8 }}>Status</span>
                         <span>{String(b?.status || "—")}</span>
+                      </div>
+                      <div className="d-flex justify-content-between">
+                        <span style={{ opacity: 0.8 }}>Total Price</span>
+                        <span>{formatMoney(totalPrice)} MMK</span>
+                      </div>
+                      <div className="d-flex justify-content-between">
+                        <span style={{ opacity: 0.8 }}>Discount</span>
+                        <span>{formatMoney(discountAmount)} MMK</span>
+                      </div>
+                      <div className="d-flex justify-content-between" style={{ fontWeight: 700 }}>
+                        <span style={{ opacity: 0.9 }}>Final Price</span>
+                        <span>{formatMoney(finalPrice)} MMK</span>
                       </div>
 
                         {!isMonthlyPackage && (
