@@ -41,6 +41,11 @@ function isCompletedStatus(value) {
   return s.includes("complete") || s.includes("completed") || s.includes("done");
 }
 
+function isMonthlyPackageType(value) {
+  const s = String(value || "").toLowerCase();
+  return s.includes("month");
+}
+
 
 function hasStarted(value) {
   if (!value) return false;
@@ -190,6 +195,7 @@ function UserBoxingBookings() {
   const [selectedId, setSelectedId] = useState(null);
   const [search, setSearch] = useState("");
   const [date, setDate] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   const fetchBookings = useCallback(async ({ silent = false } = {}) => {
     if (!silent) setLoading(true);
@@ -240,9 +246,11 @@ function UserBoxingBookings() {
       const nameMatch =
         !search || getCoachName(b).toLowerCase().includes(search.toLowerCase());
       const dateMatch = !date || getDate(b) === date;
-      return nameMatch && dateMatch;
+      const resolvedStatus = String(resolveBookingStatus(b) || "").toLowerCase();
+      const statusMatch = statusFilter === "all" || resolvedStatus === statusFilter;
+      return nameMatch && dateMatch && statusMatch;
     });
-  }, [bookings, search, date]);
+  }, [bookings, search, date, statusFilter]);
 
   const cardStyle = {
     borderRadius: 14,
@@ -335,6 +343,28 @@ function UserBoxingBookings() {
               width: 150,
             }}
           />
+
+          <select
+            className="form-select"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            style={{
+              borderRadius: 12,
+              background: "rgba(0,0,0,0.45)",
+              border: "1px solid rgba(255,255,255,0.12)",
+              color: "#fff",
+              width: 160,
+            }}
+          >
+            <option value="all">All status</option>
+            <option value="pending">Pending</option>
+            <option value="approved">Approved</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="active">Active</option>
+            <option value="rejected">Rejected</option>
+            <option value="cancelled">Cancelled</option>
+            <option value="completed">Completed</option>
+          </select>
         </div>
       </div>
 
@@ -351,6 +381,7 @@ function UserBoxingBookings() {
           {filtered.map((b, i) => {
             const bookingId = b?.id ?? i;
             const { total: totalSessions, remaining: remainingSessions } = getSessionProgress(b);
+            const isMonthlyPackage = isMonthlyPackageType(getPackageType(b));
             const isCompleted =
               remainingSessions === 0 || isCompletedStatus(resolveBookingStatus(b));
             return (
@@ -430,19 +461,21 @@ function UserBoxingBookings() {
                         <span style={{ opacity: 0.8 }}>Status</span>
                         <span>{String(resolveBookingStatus(b) || "—")}</span>
                       </div>
-                      <div className="d-flex justify-content-between align-items-center">
-                        <span style={{ opacity: 0.8 }}>Session confirmation</span>
-                        <button
-                          className="btn btn-sm btn-outline-info"
-                          onClick={() => confirmSession(bookingId)}
-                          disabled={isCompleted || busyKey === `confirm-${bookingId}`}
-                          title={
-                            isCompleted ? "All sessions completed" : "Confirm this session"
-                          }
-                        >
-                          {busyKey === `confirm-${bookingId}` ? "..." : "Confirm"}
-                        </button>
-                      </div>
+                      {!isMonthlyPackage && (
+                        <div className="d-flex justify-content-between align-items-center">
+                          <span style={{ opacity: 0.8 }}>Session confirmation</span>
+                          <button
+                            className="btn btn-sm btn-outline-info"
+                            onClick={() => confirmSession(bookingId)}
+                            disabled={isCompleted || busyKey === `confirm-${bookingId}`}
+                            title={
+                              isCompleted ? "All sessions completed" : "Confirm this session"
+                            }
+                          >
+                            {busyKey === `confirm-${bookingId}` ? "..." : "Confirm"}
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     {b?.notes && (

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import axiosClient from "../../api/axiosClient";
+import { FaCalendar, FaClock, FaPhoneAlt, FaUser } from "react-icons/fa";
 
 /* ------------ helpers ------------ */
 
@@ -118,29 +119,6 @@ function titleize(s) {
     .replace(/\b\w/g, (m) => m.toUpperCase());
 }
 
-function StatusBadge({ status }) {
-  const s = String(status || "").toLowerCase();
-
-  const cls =
-    s === "approved" || s === "confirmed" || s === "active"
-      ? "bg-success"
-      : s === "pending"
-      ? "bg-warning text-dark"
-      : s === "rejected"
-      ? "bg-danger"
-      : s === "cancelled" || s === "canceled"
-      ? "bg-secondary"
-      : s === "completed" || s === "done"
-      ? "bg-info"
-      : "bg-secondary";
-
-  return (
-    <span className={`badge ${cls}`} style={{ textTransform: "capitalize" }}>
-      {status || "—"}
-    </span>
-  );
-}
-
 /* ------------ page ------------ */
 
 export default function UserBookings() {
@@ -150,8 +128,8 @@ export default function UserBookings() {
   const [msg, setMsg] = useState(null);
   const [busyKey, setBusyKey] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
-
-  // Optional filter like TrainerBookings
+  const [search, setSearch] = useState("");
+  const [date, setDate] = useState("");
   const [filter, setFilter] = useState("all");
 
   const fetchBookings = useCallback(async () => {
@@ -217,48 +195,140 @@ export default function UserBookings() {
 
 
   const filtered = useMemo(() => {
-    if (filter === "all") return items;
     return items.filter((b) => {
       const s = resolveBookingStatus(b);
-      return s === filter;
+      const trainerObj = pick(b, ["trainer"]) || b?.trainer;
+      const trainerName =
+        pick(b, ["trainer_name"]) ||
+        (typeof trainerObj === "object"
+          ? trainerObj?.name || trainerObj?.email || trainerObj?.phone
+          : trainerObj) ||
+        pick(b?.trainer_detail, ["name"]) ||
+        "";
+      const sessionDateTime =
+        pick(b, ["session_datetime", "session_time", "datetime", "date_time", "start_time", "starts_at"]) ||
+        pick(b, ["booking_date", "date"]);
+
+      const searchMatch = !search || String(trainerName).toLowerCase().includes(search.toLowerCase());
+      const dateMatch = !date || String(sessionDateTime || "").slice(0, 10) === date;
+      const statusMatch = filter === "all" || s === filter;
+      return searchMatch && dateMatch && statusMatch;
     });
-  }, [items, filter]);
+  }, [items, search, date, filter]);
+
+  const cardStyle = {
+    borderRadius: 14,
+    background: "rgba(0,0,0,0.35)",
+    border: "1px solid rgba(255,255,255,0.12)",
+    padding: 14,
+    color: "#fff",
+    backdropFilter: "blur(6px)",
+  };
+
+  const pill = (bg) => ({
+    padding: "4px 10px",
+    borderRadius: 999,
+    fontSize: 12,
+    fontWeight: 800,
+    background: bg,
+    border: "1px solid rgba(255,255,255,0.15)",
+  });
+
+  const statusPill = (status) => {
+    const s = String(status || "").toLowerCase();
+    if (s.includes("cancel")) return pill("rgba(220,53,69,0.35)");
+    if (s.includes("complete") || s.includes("active")) return pill("rgba(25,135,84,0.35)");
+    if (s.includes("pending")) return pill("rgba(255,193,7,0.35)");
+    return pill("rgba(13,110,253,0.35)");
+  };
 
   return (
-    <div>
-      <div className="d-flex align-items-center justify-content-between" style={{ gap: 12 }}>
-        <h2 style={{ marginBottom: 12 }}>Bookings</h2>
+    <div className="container py-3" style={{ maxWidth: 720 }}>
+      <div style={cardStyle} className="mb-3">
+        <div className="d-flex justify-content-between align-items-start">
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 900 }}>Trainer Bookings</div>
+            <div className="small" style={{ opacity: 0.9 }}>
+              From subscriptions
+            </div>
+          </div>
 
-        <select
-          className="form-select form-select-sm"
-          style={{ width: 170 }}
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-        >
-          <option value="all">All</option>
-          <option value="pending">Pending</option>
-          <option value="approved">Approved</option>
-          <option value="confirmed">Confirmed</option>
-          <option value="active">Active</option>
-          <option value="rejected">Rejected</option>
-          <option value="cancelled">Cancelled</option>
-          <option value="completed">Completed</option>
-        </select>
+          <button
+            className="btn btn-sm btn-outline-light"
+            onClick={fetchBookings}
+            disabled={loading}
+            style={{ borderRadius: 10 }}
+          >
+            Refresh
+          </button>
+        </div>
+
+        <div className="mt-3 d-flex gap-2 flex-wrap">
+          <input
+            className="form-control"
+            placeholder="Search trainer..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{
+              borderRadius: 12,
+              background: "rgba(0,0,0,0.45)",
+              border: "1px solid rgba(255,255,255,0.12)",
+              color: "#fff",
+            }}
+          />
+
+          <input
+            type="date"
+            className="form-control"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            style={{
+              borderRadius: 12,
+              background: "rgba(0,0,0,0.45)",
+              border: "1px solid rgba(255,255,255,0.12)",
+              color: "#fff",
+              width: 150,
+            }}
+          />
+
+          <select
+            className="form-select"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            style={{
+              borderRadius: 12,
+              background: "rgba(0,0,0,0.45)",
+              border: "1px solid rgba(255,255,255,0.12)",
+              color: "#fff",
+              width: 160,
+            }}
+          >
+            <option value="all">All status</option>
+            <option value="pending">Pending</option>
+            <option value="approved">Approved</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="active">Active</option>
+            <option value="rejected">Rejected</option>
+            <option value="cancelled">Cancelled</option>
+            <option value="completed">Completed</option>
+          </select>
+        </div>
       </div>
-
-      {loading && <p>Loading bookings...</p>}
 
       {msg && <div className={`alert alert-${msg.type}`}>{msg.text}</div>}
 
-      {!loading && error && (
+      {error && (
         <div className="alert alert-danger" style={{ fontWeight: 600 }}>
           {error}
         </div>
       )}
 
-      {!loading && !error && filtered.length === 0 && <p>No bookings available.</p>}
-
-      <div style={{ display: "grid", gap: 12 }}>
+      {loading ? (
+        <div style={cardStyle}>Loading bookings...</div>
+      ) : filtered.length === 0 ? (
+        <div style={cardStyle}>No bookings found.</div>
+      ) : (
+        <div className="d-flex flex-column gap-2">
         {filtered.map((b, idx) => {
           const id = pick(b, ["id", "booking_id", "reference_id"]) ?? idx;
           const status = resolveBookingStatus(b);
@@ -308,17 +378,12 @@ export default function UserBookings() {
             isCompletedStatus(pick(b, ["status", "state"]));
 
           const note = pick(b, ["note", "remark", "message", "description"]);
+          const paidStatus = pick(b, ["paid_status", "payment_status"]);
 
           return (
             <div
               key={id}
-              style={{
-                border: "1px solid rgba(255,255,255,0.12)",
-                borderRadius: 14,
-                background: "rgba(255,255,255,0.06)",
-                padding: 14,
-                 cursor: "pointer",
-              }}
+              style={{ ...cardStyle, cursor: "pointer" }}
               onClick={() => setSelectedId((prev) => (prev === id ? null : id))}
               role="button"
               tabIndex={0}
@@ -328,46 +393,60 @@ export default function UserBookings() {
                 }
               }}
             >
-              <div className="d-flex justify-content-between align-items-start" style={{ gap: 10 }}>
-                <div>
-                  <div style={{ fontWeight: 800, fontSize: 16 }}>
-                    {titleize(toText(service))}
+                <div className="d-flex justify-content-between align-items-start" style={{ gap: 10 }}>
+                  <div>
+                    <div style={{ fontWeight: 800, fontSize: 16 }}>
+                      {titleize(toText(service))}
+                    </div>
+                    <div style={{ opacity: 0.75, fontSize: 12, marginTop: 4 }}>
+                      Booking ID: {toText(id)}
+                    </div>
+                    <div style={{ opacity: 0.8, fontSize: 12, marginTop: 4 }}>
+                      Trainer: {toText(trainerName)}
+                    </div>
                   </div>
-                  <div style={{ opacity: 0.75, fontSize: 12, marginTop: 4 }}>
-                    Booking ID: {toText(id)}
-                  </div>
-                  <div style={{ opacity: 0.8, fontSize: 12, marginTop: 4 }}>
-                    Trainer: {toText(trainerName)}
-                  </div>
-                  <div style={{ opacity: 0.8, fontSize: 12, marginTop: 4 }}>
-                    Session: {sessionDateTime ? fmtDateTime(sessionDateTime) : "—"}
-                  </div>
+
+                  <span style={statusPill(status)}>{String(status || "—").toUpperCase()}</span>
                 </div>
 
-                <StatusBadge status={toText(status)} />
-              </div>
+                <div className="mt-2 d-flex gap-2 flex-wrap">
+                  <span style={pill("rgba(255,255,255,0.12)")}>
+                    <FaCalendar /> {sessionDateTime ? String(sessionDateTime).slice(0, 10) : "—"}
+                  </span>
+                  <span style={pill("rgba(255,255,255,0.12)")}>
+                    <FaClock /> {sessionDateTime ? fmtDateTime(sessionDateTime).split(", ")[1] || "—" : "—"}
+                  </span>
+                </div>
 
                 {selectedId === id && (
-                <div
-                  style={{
-                    marginTop: 12,
-                    display: "grid",
-                    gap: 8,
-                    background: "rgba(255,255,255,0.04)",
-                    borderRadius: 12,
-                    padding: 12,
-                    border: "1px solid rgba(255,255,255,0.08)",
-                  }}
-                >
-                  <div className="d-flex justify-content-between" style={{ gap: 12 }}>
-                    <span style={{ opacity: 0.8 }}>Trainer</span>
-                    <b style={{ textAlign: "right" }}>{toText(trainerName)}</b>
-                  </div>
-               
-                  <div className="d-flex justify-content-between" style={{ gap: 12 }}>
-                     <span style={{ opacity: 0.8 }}>Phone</span>
-                    <b style={{ textAlign: "right" }}>{toText(trainerPhone)}</b>
-                  </div>
+                  <div
+                    style={{
+                      marginTop: 12,
+                      display: "grid",
+                      gap: 8,
+                      background: "rgba(255,255,255,0.04)",
+                      borderRadius: 12,
+                      padding: 12,
+                      border: "1px solid rgba(255,255,255,0.08)",
+                    }}
+                  >
+                    <div className="d-flex justify-content-between align-items-center">
+                      <div className="d-flex align-items-center gap-2">
+                        <FaUser />
+                        <span style={{ fontWeight: 700 }}>{toText(trainerName)}</span>
+                      </div>
+                      {paidStatus ? (
+                        <span style={pill("rgba(25,135,84,0.35)")}>{String(paidStatus).toUpperCase()}</span>
+                      ) : null}
+                    </div>
+
+                    <div className="d-flex justify-content-between" style={{ gap: 12 }}>
+                      <span style={{ opacity: 0.8 }}>Phone</span>
+                      <span className="d-flex align-items-center gap-2">
+                        <FaPhoneAlt />
+                        {toText(trainerPhone)}
+                      </span>
+                    </div>
 
                   <div className="d-flex justify-content-between" style={{ gap: 12 }}>
                     <span style={{ opacity: 0.8 }}>Package type</span>
@@ -393,21 +472,20 @@ export default function UserBookings() {
 
                   
                     {!isMonthlyPackage && (
-                    <div className="d-flex justify-content-between align-items-center" style={{ gap: 12 }}>
-                      <span style={{ opacity: 0.8 }}>Session confirmation</span>
-                      <button
-                        className="btn btn-sm btn-outline-info"
-                        onClick={(event) => confirmSession(id, event)}
-                        disabled={isCompleted || busyKey === `confirm-${id}`}
-                        title={isCompleted ? "All sessions completed" : "Confirm this session"}
-                      >
-                        {busyKey === `confirm-${id}` ? "..." : "Confirm"}
-                      </button>
-                    </div>
-                  )}
-             
+                      <div className="d-flex justify-content-between align-items-center" style={{ gap: 12 }}>
+                        <span style={{ opacity: 0.8 }}>Session confirmation</span>
+                        <button
+                          className="btn btn-sm btn-outline-info"
+                          onClick={(event) => confirmSession(id, event)}
+                          disabled={isCompleted || busyKey === `confirm-${id}`}
+                          title={isCompleted ? "All sessions completed" : "Confirm this session"}
+                        >
+                          {busyKey === `confirm-${id}` ? "..." : "Confirm"}
+                        </button>
+                      </div>
+                    )}
 
-                {note ? (
+                    {note ? (
                     <div style={{ marginTop: 6, opacity: 0.92, lineHeight: 1.6 }}>
                       <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 4 }}>
                         Note
@@ -415,12 +493,13 @@ export default function UserBookings() {
                       <div>{toText(note)}</div>
                     </div>
                   ) : null}
-                </div>
-              )}
+                  </div>
+                )}
             </div>
           );
         })}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
