@@ -289,7 +289,7 @@ export default function UserBookings() {
           </button>
         </div>
 
-        <div className="mt-3 d-flex gap-2 flex-wrap">
+        <div className="mt-3 d-flex gap-2">
           <input
             type="date"
             className="form-control"
@@ -390,6 +390,12 @@ export default function UserBookings() {
           const note = pick(b, ["note", "remark", "message", "description"]);
           const paidStatus = pick(b, ["paid_status", "payment_status"]);
           const { totalPrice, discountPercent, finalPrice } = getPricingDetails(b);
+          const discountPercentNum = Number(discountPercent);
+          const hasDiscount = Number.isFinite(discountPercentNum) && discountPercentNum > 0;
+          const successPriceText = {
+            color: "#198754",
+            fontWeight: 800,
+          };
 
           return (
             <div
@@ -493,15 +499,17 @@ export default function UserBookings() {
                     <div style={{ fontWeight: 700, marginBottom: 6 }}>Pricing</div>
                     <div className="d-flex justify-content-between" style={{ gap: 12 }}>
                       <span style={{ opacity: 0.8 }}>Total price</span>
-                      <b>{toText(totalPrice)}</b>
+                      <b style={hasDiscount ? { textDecoration: "line-through", opacity: 0.85 } : undefined}>
+                        {toText(totalPrice)}
+                      </b>
                     </div>
                     <div className="d-flex justify-content-between" style={{ gap: 12 }}>
-                      <span style={{ opacity: 0.8 }}>Discount %</span>
-                      <b>{toText(discountPercent)}</b>
+                      <span style={hasDiscount ? successPriceText : { opacity: 0.8 }}>Discount %</span>
+                      <b style={hasDiscount ? successPriceText : undefined}>{toText(discountPercent)}</b>
                     </div>
                     <div className="d-flex justify-content-between" style={{ gap: 12 }}>
-                      <span style={{ opacity: 0.8 }}>Final price</span>
-                      <b>{toText(finalPrice)}</b>
+                      <span style={hasDiscount ? successPriceText : { opacity: 0.8 }}>Final price</span>
+                      <b style={hasDiscount ? successPriceText : undefined}>{toText(finalPrice)}</b>
                     </div>
                   </div>
 
