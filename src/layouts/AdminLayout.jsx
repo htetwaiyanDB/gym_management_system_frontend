@@ -54,7 +54,7 @@ export default function AdminLayout() {
               </NavLink>
 
               <NavLink to="/admin/subscriptions" className={({isActive}) => `admin-link ${isActive ? "active" : ""}`}>
-                <i className="bi bi-credit-card-2-front"></i> Subscriptions
+                <i className="bi bi-credit-card-2-front"></i> Membership
               </NavLink>
 
               <NavLink to="/admin/subscriptions/classes" className={({isActive}) => `admin-link ${isActive ? "active" : ""}`}>
