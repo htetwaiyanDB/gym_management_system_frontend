@@ -8,6 +8,13 @@ function moneyMMK(v) {
   return n.toLocaleString("en-US") + " MMK";
 }
 
+function formatPercentage(v) {
+  if (v === null || v === undefined || v === "") return "-";
+  const n = Number(v);
+  if (Number.isNaN(n)) return String(v);
+  return `${n}%`;
+}
+
 function parseBackendDateTime(s) {
   // backend: "YYYY-MM-DD HH:mm:ss" (or null)
   if (!s) return null;
@@ -240,6 +247,7 @@ export default function AdminBoxingBookings() {
   const [priceSource, setPriceSource] = useState("package"); // package | manual
   const [sessionsCount, setSessionsCount] = useState("1");
   const [pricePerSession, setPricePerSession] = useState("");
+  const [discountPercentage, setDiscountPercentage] = useState("0");
   const [status, setStatus] = useState("pending");
   const [paidStatus, setPaidStatus] = useState("unpaid");
   const [notes, setNotes] = useState("");
@@ -304,6 +312,7 @@ export default function AdminBoxingBookings() {
     setPackageGroup("");
     setSessionsCount("1");
     setPricePerSession(""); // will set default on options load
+    setDiscountPercentage("0");
     setPriceSource("package");
     setStatus("pending");
     setPaidStatus("unpaid");
@@ -312,11 +321,18 @@ export default function AdminBoxingBookings() {
     setEndDate("");
   };
 
-  const total = useMemo(() => {
+  const planPrice = useMemo(() => {
     const p = Number(pricePerSession || defaultPrice);
     if (Number.isNaN(p)) return 0;
     return Math.max(0, p);
   }, [pricePerSession, defaultPrice]);
+
+  const finalPrice = useMemo(() => {
+    const discount = Number(discountPercentage || 0);
+    if (Number.isNaN(discount)) return planPrice;
+    const normalizedDiscount = Math.min(Math.max(discount, 0), 100);
+    return Math.max(0, planPrice - (planPrice * normalizedDiscount) / 100);
+  }, [planPrice, discountPercentage]);
 
   const loadBookings = async () => {
     setMsg(null);
@@ -430,9 +446,13 @@ export default function AdminBoxingBookings() {
 
     const sessions = Number(sessionsCount);
     const price = Number(pricePerSession);
+    const discount = Number(discountPercentage || 0);
 
     if (Number.isNaN(sessions) || sessions <= 0) return setMsg({ type: "danger", text: "Sessions must be a valid number." });
     if (Number.isNaN(price) || price < 0) return setMsg({ type: "danger", text: "Price per session must be valid." });
+    if (Number.isNaN(discount) || discount < 0 || discount > 100) {
+      return setMsg({ type: "danger", text: "Discount percentage must be between 0 and 100." });
+    }
 
     setBusyKey("create");
     try {
@@ -463,6 +483,8 @@ export default function AdminBoxingBookings() {
         package_group: packageGroup || undefined,
         sessions_count: sessions,
         price_per_session: price,
+        discount_percentage: discount,
+        final_price: finalPrice,
         status,
         paid_status: paidStatus,
         notes: notes || null,
@@ -1111,6 +1133,23 @@ export default function AdminBoxingBookings() {
                   const { total, remaining } = getSessionProgress(selectedBooking);
                   const monthCount = getMonthCount(selectedBooking);
                   const packageTypeValue = getBookingPackageType(selectedBooking);
+                  const totalPrice = pickFirstValue(selectedBooking, [
+                    "total_price",
+                    "price",
+                    "package_price",
+                    "amount",
+                  ]);
+                  const discountPercentageValue = pickFirstValue(selectedBooking, [
+                    "discount_percentage",
+                    "applied_discount_percentage",
+                    "discount",
+                  ]);
+                  const finalPriceValue = pickFirstValue(selectedBooking, [
+                    "final_price",
+                    "payable_amount",
+                    "net_price",
+                  ]);
+                  const hasDiscount = Number(discountPercentageValue) > 0;
                   const sessionStartRaw = pickFirstValue(selectedBooking, [
                     "sessions_start_date",
                     "session_start_date",
@@ -1174,6 +1213,18 @@ export default function AdminBoxingBookings() {
                             <div>
                               {getBookingPackageLabel(selectedBooking)}
                             </div>
+                          </div>
+                          <div className="col-12 col-md-4">
+                            <div className="admin-muted">Total Price</div>
+                            <div className={hasDiscount ? "text-decoration-line-through" : ""}>{moneyMMK(totalPrice)}</div>
+                          </div>
+                          <div className="col-12 col-md-4">
+                            <div className="admin-muted">Discount Percentage</div>
+                            <div className="text-success fw-bold">{formatPercentage(discountPercentageValue)}</div>
+                          </div>
+                          <div className="col-12 col-md-4">
+                            <div className="admin-muted">Final Price</div>
+                            <div className="text-success fw-bold">{moneyMMK(finalPriceValue)}</div>
                           </div>
                         </div>
                       </div>
@@ -1497,6 +1548,19 @@ export default function AdminBoxingBookings() {
                   </div>
 
                   <div className="col-12 col-md-3">
+                    <label className="form-label fw-bold">Discount (%)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      className="form-control"
+                      value={discountPercentage}
+                      onChange={(e) => setDiscountPercentage(e.target.value)}
+                      disabled={optionsLoading}
+                    />
+                  </div>
+
+                  <div className="col-12 col-md-3">
                     <label className="form-label fw-bold">Status</label>
                     <select
                       className="form-select admin-select-dark"
@@ -1551,8 +1615,14 @@ export default function AdminBoxingBookings() {
 
                   <div className="col-12">
                     <div className="d-flex align-items-center justify-content-between p-3 rounded border border-secondary">
-                      <div className="admin-muted fw-bold">Total Amount</div>
-                      <div className="fs-5 fw-bold">{moneyMMK(total)}</div>
+                      <div>
+                        <div className="admin-muted fw-bold">Plan Price</div>
+                        <div className="admin-muted">Final Price = Plan Price - (Plan Price × Discount % / 100)</div>
+                      </div>
+                      <div className="text-end">
+                        <div className="admin-muted">{moneyMMK(planPrice)}</div>
+                        <div className="fs-5 fw-bold">{moneyMMK(finalPrice)}</div>
+                      </div>
                     </div>
                   </div>
                 </div>
