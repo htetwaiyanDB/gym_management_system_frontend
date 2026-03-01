@@ -8,6 +8,13 @@ function moneyMMK(v) {
   return n.toLocaleString("en-US") + " MMK";
 }
 
+function formatDiscountPercent(value) {
+  if (value === null || value === undefined || value === "") return "-";
+  const n = Number(value);
+  if (Number.isNaN(n)) return "-";
+  return `${n}%`;
+}
+
 function parseBackendDateTime(s) {
   // backend: "YYYY-MM-DD HH:mm:ss" (or null)
   if (!s) return null;
@@ -130,6 +137,25 @@ function getMonthCount(booking) {
     booking?.month_count ??
     booking?.months_count;
   return toNumber(monthValue);
+}
+
+function getBookingDiscountPercentage(booking) {
+  return pickFirstValue(booking, ["discount_percentage", "discount_percent", "discount"]);
+}
+
+function getBookingFinalPrice(booking) {
+  const explicitFinalPrice = pickFirstValue(booking, ["final_price", "total_price", "net_price"]);
+  if (explicitFinalPrice !== null) return explicitFinalPrice;
+
+  const basePrice = toNumber(pickFirstValue(booking, ["price_per_session", "price", "amount"]));
+  if (basePrice === null) return null;
+
+  const discountAmount = toNumber(pickFirstValue(booking, ["discount_amount"]));
+  if (discountAmount !== null) return Math.max(0, basePrice - discountAmount);
+
+  const discountPercentage = toNumber(getBookingDiscountPercentage(booking));
+  if (discountPercentage === null) return basePrice;
+  return Math.max(0, Math.round(basePrice - basePrice * (discountPercentage / 100)));
 }
 
 function formatDateInputValue(date) {
@@ -975,6 +1001,8 @@ export default function AdminTrainerBookings() {
               <th style={{ width: 150 }}>Trainer Name</th>
               <th style={{ width: 150 }}>Trainer Phone</th>
               <th style={{ width: 140 }}>Package Type</th>
+              <th style={{ width: 140 }}>Discount %</th>
+              <th style={{ width: 160 }}>Final Price</th>
               <th style={{ width: 120 }}>Status</th>
               <th style={{ width: 100 }}>Paid</th>
               <th style={{ width: 240 }}>Actions</th>
@@ -984,7 +1012,7 @@ export default function AdminTrainerBookings() {
           <tbody>
             {filteredBookings.length === 0 ? (
               <tr>
-                <td colSpan="9" className="text-center text-muted py-4">
+                <td colSpan="11" className="text-center text-muted py-4">
                   {loading ? "Loading..." : "No bookings found."}
                 </td>
               </tr>
@@ -998,6 +1026,8 @@ export default function AdminTrainerBookings() {
                 const isPending = statusValue === "pending";
                 const isActive = statusValue === "active";
                 const isOnHold = statusValue === "on-hold";
+                const discountPercent = getBookingDiscountPercentage(b);
+                const finalPrice = getBookingFinalPrice(b);
 
                 return (
                   <tr key={b.id}>
@@ -1008,6 +1038,8 @@ export default function AdminTrainerBookings() {
                     <td>{b.trainer_phone || "-"}</td>
 
                     <td>{getBookingPackageLabel(b)}</td>
+                    <td>{formatDiscountPercent(discountPercent)}</td>
+                    <td>{moneyMMK(finalPrice)}</td>
                     <td>{statusBadge(b.status)}</td>
                     <td>{paidBadge(b.paid_status)}</td>
 
@@ -1126,6 +1158,8 @@ export default function AdminTrainerBookings() {
                   ]);
                   const sessionStart = sessionStartRaw ? formatDateTimeVideoStyle(sessionStartRaw) : "-";
                   const sessionEnd = sessionEndRaw ? formatDateTimeVideoStyle(sessionEndRaw) : "-";
+                  const discountPercent = getBookingDiscountPercentage(selectedBooking);
+                  const finalPrice = getBookingFinalPrice(selectedBooking);
                   const monthStart = monthStartRaw ? formatDateTimeVideoStyle(monthStartRaw) : "-";
                   const monthEndFallbackDate =
                     monthStartRaw && monthCount !== null
@@ -1165,6 +1199,14 @@ export default function AdminTrainerBookings() {
                             <div>
                               {getBookingPackageLabel(selectedBooking)}
                             </div>
+                          </div>
+                          <div className="col-12 col-md-4">
+                            <div className="admin-muted">Discount %</div>
+                            <div>{formatDiscountPercent(discountPercent)}</div>
+                          </div>
+                          <div className="col-12 col-md-4">
+                            <div className="admin-muted">Final Price</div>
+                            <div>{moneyMMK(finalPrice)}</div>
                           </div>
                         </div>
                       </div>
