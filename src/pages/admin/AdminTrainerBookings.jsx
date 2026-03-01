@@ -8,6 +8,13 @@ function moneyMMK(v) {
   return n.toLocaleString("en-US") + " MMK";
 }
 
+function formatPercentage(v) {
+  if (v === null || v === undefined || v === "") return "-";
+  const n = Number(v);
+  if (Number.isNaN(n)) return String(v);
+  return `${n}%`;
+}
+
 function parseBackendDateTime(s) {
   // backend: "YYYY-MM-DD HH:mm:ss" (or null)
   if (!s) return null;
@@ -1075,6 +1082,22 @@ export default function AdminTrainerBookings() {
                   const { total, remaining } = getSessionProgress(selectedBooking);
                   const monthCount = getMonthCount(selectedBooking);
                   const packageTypeValue = getBookingPackageType(selectedBooking);
+                  const totalPrice = pickFirstValue(selectedBooking, [
+                    "total_price",
+                    "price",
+                    "package_price",
+                    "amount",
+                  ]);
+                  const discountPercentage = pickFirstValue(selectedBooking, [
+                    "discount_percentage",
+                    "applied_discount_percentage",
+                    "discount",
+                  ]);
+                  const finalPrice = pickFirstValue(selectedBooking, [
+                    "final_price",
+                    "payable_amount",
+                    "net_price",
+                  ]);
                   const sessionStartRaw = pickFirstValue(selectedBooking, [
                     "sessions_start_date",
                     "session_start_date",
@@ -1138,6 +1161,18 @@ export default function AdminTrainerBookings() {
                             <div>
                               {getBookingPackageLabel(selectedBooking)}
                             </div>
+                          </div>
+                          <div className="col-12 col-md-4">
+                            <div className="admin-muted">Total Price</div>
+                            <div>{moneyMMK(totalPrice)}</div>
+                          </div>
+                          <div className="col-12 col-md-4">
+                            <div className="admin-muted">Discount Percentage</div>
+                            <div>{formatPercentage(discountPercentage)}</div>
+                          </div>
+                          <div className="col-12 col-md-4">
+                            <div className="admin-muted">Final Price</div>
+                            <div>{moneyMMK(finalPrice)}</div>
                           </div>
                         </div>
                       </div>
