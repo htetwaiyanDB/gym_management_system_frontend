@@ -21,11 +21,13 @@ const normalizePointListPayload = (payload) => {
   const raw =
     payload?.data?.data ??
     payload?.data?.points ??
+    payload?.data?.point ??
     payload?.data ??
     payload?.points ??
+    payload?.point ??
     (Array.isArray(payload) ? payload : null);
 
-  const list = Array.isArray(raw) ? raw : [];
+  const list = Array.isArray(raw) ? raw : raw && typeof raw === "object" ? [raw] : [];
   return list.map(normalizePointRecord).filter((item) => item.user_id);
 };
 

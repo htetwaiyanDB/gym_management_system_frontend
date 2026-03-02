@@ -83,14 +83,11 @@ export default function UserSettings() {
   };
 
   const loadPoints = async (userId) => {
-    if (!userId) {
-      setPointsCount(0);
-      return;
-    }
-
     try {
       const points = await getPoints();
-      const currentUserPoints = points.find((item) => String(item.user_id) === String(userId));
+      const currentUserPoints = userId
+        ? points.find((item) => String(item.user_id) === String(userId))
+        : points[0];
       setPointsCount(currentUserPoints?.points ?? 0);
     } catch {
       setPointsCount(0);
