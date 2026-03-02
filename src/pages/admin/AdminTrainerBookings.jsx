@@ -63,6 +63,33 @@ function pickFirstValue(source, keys) {
 }
 
 
+function promptExtendPayload() {
+  const nextEndDateInput = window.prompt(
+    "Enter new end date (YYYY-MM-DD).\nLeave blank to extend by days instead.",
+    "",
+  );
+  if (nextEndDateInput === null) return null;
+
+  const nextEndDate = nextEndDateInput.trim();
+  if (nextEndDate) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(nextEndDate)) {
+      return { error: "Invalid date format. Please use YYYY-MM-DD." };
+    }
+    return { payload: { new_end_date: nextEndDate } };
+  }
+
+  const extensionDaysInput = window.prompt("Enter extension days (example: 7)", "");
+  if (extensionDaysInput === null) return null;
+  const extensionDays = Number(extensionDaysInput.trim());
+
+  if (!Number.isInteger(extensionDays) || extensionDays <= 0) {
+    return { error: "Extension days must be a positive whole number." };
+  }
+
+  return { payload: { extension_days: extensionDays } };
+}
+
+
 function formatDateTimeVideoStyle(s) {
   // "2026-01-11 10:30 AM"
   const d = parseBackendDateTime(s);
@@ -620,10 +647,17 @@ export default function AdminTrainerBookings() {
   };
 
   const extendBooking = async (id) => {
+    const extendConfig = promptExtendPayload();
+    if (!extendConfig) return;
+    if (extendConfig.error) {
+      setMsg({ type: "danger", text: extendConfig.error });
+      return;
+    }
+
     setMsg(null);
     setBusyKey(`extend-${id}`);
     try {
-      const res = await axiosClient.patch(`/trainer-bookings/${id}/extend`);
+      const res = await axiosClient.patch(`/trainer-bookings/${id}/extend`, extendConfig.payload);
       setMsg({ type: "success", text: res?.data?.message || "Booking end date extended." });
       await loadBookings();
     } catch (e) {
