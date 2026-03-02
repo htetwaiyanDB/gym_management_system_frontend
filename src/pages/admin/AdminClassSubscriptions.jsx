@@ -566,6 +566,20 @@ export default function AdminClassSubscriptions() {
     }
   };
 
+  const extendRecord = async (id) => {
+    setMsg(null);
+    setBusyId(id);
+    try {
+      const res = await axiosClient.patch(`/subscriptions/${id}/extend`);
+      setMsg({ type: "success", text: res?.data?.message || "Class subscription end date extended." });
+      await loadRecords();
+    } catch (e) {
+      setMsg({ type: "danger", text: e?.response?.data?.message || "Failed to extend class subscription." });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   useEffect(() => {
     loadRecords();
     loadClassTimetable();
@@ -707,6 +721,7 @@ export default function AdminClassSubscriptions() {
                 const status = isExpired ? "Expired" : rawStatus || "-";
                 const canHold = !isExpired && !isOnHold && rawStatus.toLowerCase() === "active";
                 const canResume = !isExpired && isOnHold;
+                const canExtend = isExpired;
 
                 return (
                 <tr key={r.id}>
@@ -751,6 +766,14 @@ export default function AdminClassSubscriptions() {
                         title="Resume class subscription"
                       >
                         {busyId === r.id ? "..." : "Resume"}
+                      </button>
+                      <button
+                        className="btn btn-sm btn-info"
+                        disabled={!canExtend || busyId === r.id}
+                        onClick={() => extendRecord(r.id)}
+                        title="Extend expired class subscription end date"
+                      >
+                        {busyId === r.id ? "..." : "Extend"}
                       </button>
                     </div>
                   </td>

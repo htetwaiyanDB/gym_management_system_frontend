@@ -270,6 +270,23 @@ export default function AdminSubscriptions() {
     }
   };
 
+  const extendSubscription = async (id) => {
+    setMsg(null);
+    setBusyId(id);
+    try {
+      const res = await axiosClient.patch(`/subscriptions/${id}/extend`);
+      setMsg({ type: "success", text: res?.data?.message || "Subscription end date extended." });
+      await load();
+    } catch (e) {
+      setMsg({
+        type: "danger",
+        text: e?.response?.data?.message || "Failed to extend subscription end date.",
+      });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const holdAllSubscriptions = async () => {
     setMsg(null);
     setHoldAllBusy(true);
@@ -466,6 +483,7 @@ export default function AdminSubscriptions() {
                 const status = isExpired ? "Expired" : rawStatus || "-";
                 const canHold = !isExpired && !isOnHold && rawStatus.toLowerCase() === "active";
                 const canResume = !isExpired && isOnHold;
+                const canExtend = isExpired;
 
                 return (
                   <tr key={s.id}>
@@ -513,6 +531,15 @@ export default function AdminSubscriptions() {
                           title="Resume subscription"
                         >
                           {busyId === s.id ? "..." : "Resume"}
+                        </button>
+
+                        <button
+                          className="btn btn-sm btn-info"
+                          disabled={!canExtend || busyId === s.id}
+                          onClick={() => extendSubscription(s.id)}
+                          title="Extend expired subscription end date"
+                        >
+                          {busyId === s.id ? "..." : "Extend"}
                         </button>
                       </div>
                     </td>

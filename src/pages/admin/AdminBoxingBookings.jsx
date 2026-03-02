@@ -29,6 +29,29 @@ function pad2(n) {
   return String(n).padStart(2, "0");
 }
 
+function parseDateOnly(value) {
+  if (!value) return null;
+  const s = String(value).trim();
+  if (!s) return null;
+  const dateOnly = s.includes("T") ? s.split("T")[0] : s.split(" ")[0];
+  const parts = dateOnly.split("-").map((part) => Number(part));
+  if (parts.length !== 3) return null;
+  const [year, month, day] = parts;
+  if (!year || !month || !day) return null;
+  const parsed = new Date(year, month - 1, day);
+  if (Number.isNaN(parsed.getTime())) return null;
+  parsed.setHours(0, 0, 0, 0);
+  return parsed;
+}
+
+function isExpiredByDate(endDateValue) {
+  const endDate = parseDateOnly(endDateValue);
+  if (!endDate) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return today > endDate;
+}
+
 function pickFirstValue(source, keys) {
   for (const key of keys) {
     const value = source?.[key];
@@ -642,6 +665,23 @@ export default function AdminBoxingBookings() {
     }
   };
 
+  const extendBooking = async (id) => {
+    setMsg(null);
+    setBusyKey(`extend-${id}`);
+    try {
+      const res = await axiosClient.patch(`/boxing-bookings/${id}/extend`);
+      setMsg({ type: "success", text: res?.data?.message || "Booking end date extended." });
+      await loadBookings();
+    } catch (e) {
+      setMsg({
+        type: "danger",
+        text: e?.response?.data?.message || "Failed to extend booking end date.",
+      });
+    } finally {
+      setBusyKey(null);
+    }
+  };
+
   const updateSessionCount = async (booking, nextTotal) => {
     if (!booking?.id) return;
     const totalValue = Number(nextTotal);
@@ -1027,6 +1067,8 @@ export default function AdminBoxingBookings() {
                 const isPending = statusValue === "pending";
                 const isActive = statusValue === "active";
                 const isOnHold = statusValue === "on-hold";
+                const isExpired = isExpiredByDate(b?.end_date);
+                const canExtend = isExpired || isCompleted;
                 const coachName = getCoachName(b);
                 const coachPhone = getCoachPhone(b);
 
@@ -1090,6 +1132,14 @@ export default function AdminBoxingBookings() {
                             {busyKey === `active-${b.id}` ? "..." : "Resume"}
                           </button>
                         )}
+                        <button
+                          className="btn btn-sm btn-outline-info"
+                          disabled={!canExtend || busyKey === `extend-${b.id}`}
+                          onClick={() => extendBooking(b.id)}
+                          title="Extend booking end date"
+                        >
+                           {busyKey === `extend-${b.id}` ? "..." : "Extend"}
+                        </button>
                         <button
                           className="btn btn-sm btn-success"
                           disabled={isPaid || busyKey === `paid-${b.id}`}
