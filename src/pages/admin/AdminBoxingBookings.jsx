@@ -127,6 +127,25 @@ function normalizeBookingStatus(value) {
   return s || "pending";
 }
 
+function getBookingEndDateValue(booking) {
+  return pickFirstValue(booking, [
+    "month_end_date",
+    "monthly_end_date",
+    "sessions_end_date",
+    "session_end_date",
+    "end_date",
+    "ends_at",
+  ]);
+}
+
+function getDisplayBookingStatus(booking) {
+  const normalizedStatus = normalizeBookingStatus(booking?.status);
+  if (normalizedStatus === "active" && isExpiredByDate(getBookingEndDateValue(booking))) {
+    return "expired";
+  }
+  return normalizedStatus;
+}
+
 function getBookingPackageType(booking) {
   return String(
     booking?.package_type ||
@@ -857,10 +876,13 @@ export default function AdminBoxingBookings() {
     );
 
 
-  const statusBadge = (s) => {
-    const v = normalizeBookingStatus(s);
+  const statusBadge = (booking) => {
+    const v = getDisplayBookingStatus(booking);
     if (v === "active") {
       return <span className="badge bg-info text-dark">Active</span>;
+    }
+    if (v === "expired") {
+      return <span className="badge bg-danger">Expired</span>;
     }
     if (v === "on-hold") {
       return <span className="badge bg-secondary">On Hold</span>;
@@ -878,7 +900,7 @@ export default function AdminBoxingBookings() {
   };
 
   const getBookingPriority = (booking) => {
-    const statusValue = normalizeBookingStatus(booking?.status);
+    const statusValue = getDisplayBookingStatus(booking);
     const { total, remaining } = getSessionProgress(booking);
     const isCompleted = (total !== null && remaining === 0) || isCompletedStatus(booking?.status);
     if (isCompleted || statusValue === "completed") return 2;
@@ -894,7 +916,7 @@ export default function AdminBoxingBookings() {
 
     const list = bookings.filter((b) => {
       const paid = String(b?.paid_status || "").toLowerCase();
-      const st = normalizeBookingStatus(b?.status);
+      const st = getDisplayBookingStatus(b);
 
       if (paidF !== "all" && paid !== paidF) return false;
       if (statusF !== "all" && st !== statusF) return false;
@@ -1097,11 +1119,11 @@ export default function AdminBoxingBookings() {
                 const { total, remaining } = getSessionProgress(b);
                 const monthCount = getMonthCount(b);
                 const isCompleted = (total !== null && remaining === 0) || isCompletedStatus(b?.status);
-                const statusValue = normalizeBookingStatus(b?.status);
+                const statusValue = getDisplayBookingStatus(b);
                 const isPending = statusValue === "pending";
                 const isActive = statusValue === "active";
                 const isOnHold = statusValue === "on-hold";
-                const isExpired = isExpiredByDate(b?.end_date);
+                const isExpired = statusValue === "expired";
                 const canExtend = isExpired || isCompleted;
                 const coachName = getCoachName(b);
                 const coachPhone = getCoachPhone(b);
@@ -1115,7 +1137,7 @@ export default function AdminBoxingBookings() {
                     <td>{coachPhone}</td>
 
                     <td>{getBookingPackageLabel(b)}</td>
-                    <td>{statusBadge(b.status)}</td>
+                    <td>{statusBadge(b)}</td>
                     <td>{paidBadge(b.paid_status)}</td>
 
                     <td>
@@ -1363,7 +1385,7 @@ export default function AdminBoxingBookings() {
 
                       <div className="col-12">
                         <div className="fw-semibold">Status</div>
-                        <div>{statusBadge(selectedBooking.status)}</div>
+                        <div>{statusBadge(selectedBooking)}</div>
                       </div>
                       <div className="col-12">
                         <div className="admin-muted">
