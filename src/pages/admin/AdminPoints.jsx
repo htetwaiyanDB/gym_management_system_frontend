@@ -113,9 +113,7 @@ export default function AdminPoints() {
     setSaving(true);
     setMsg(null);
     try {
-      const existingRecordId = pointsMap[String(selectedUser.id)]?.id;
       const updated = await upsertUserPoints({
-        id: existingRecordId,
         userId: selectedUser.id,
         points: Number(nextPoints),
         note: "Adjusted by admin panel",
