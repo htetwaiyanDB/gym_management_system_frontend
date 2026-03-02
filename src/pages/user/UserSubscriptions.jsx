@@ -240,7 +240,7 @@ export default function UserSubscriptions() {
     <div>
       <h2 style={{ marginBottom: 12 }}>Memberships</h2>
 
-      {loading && <p>Loading subscriptions...</p>}
+      {loading && <p>Loading memberships...</p>}
 
       {!loading && error && (
         <div className="alert alert-danger" style={{ fontWeight: 600 }}>

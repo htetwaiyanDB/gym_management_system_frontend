@@ -206,7 +206,7 @@ export default function TrainerSettings() {
             <div className="small" style={{ opacity: 0.85 }}>
               Points
             </div>
-            <div style={{ fontSize: 20, fontWeight: 900 }}>{pointsCount}</div>
+             <div className="text-success fw-bold" style={{ fontSize: 20 }}>{pointsCount}</div>
           </div>
         </div>
       </div>
