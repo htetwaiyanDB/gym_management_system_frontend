@@ -11,7 +11,9 @@ const getUserId = (record) =>
 export const normalizePointRecord = (record = {}) => ({
   id: record?.id ?? null,
   user_id: getUserId(record),
-  points: toNumber(record?.points ?? record?.total_points ?? record?.balance ?? 0, 0),
+  points: toNumber(record?.points ?? record?.point ?? record?.total_points ?? record?.balance ?? 0, 0),
+  user_name: record?.user_name ?? record?.user?.name ?? null,
+  user_role: (record?.user_role ?? record?.user?.role ?? "").toString().toLowerCase() || null,
   updated_at: record?.updated_at ?? record?.created_at ?? null,
 });
 
@@ -36,9 +38,14 @@ export const createPoints = (payload) => axiosClient.post("/points", payload);
 
 export const updatePoints = (id, payload) => axiosClient.put(`/points/${id}`, payload);
 
-export const upsertUserPoints = async ({ userId, points, note }) => {
-  const all = await getPoints();
-  const existing = all.find((item) => String(item.user_id) === String(userId));
+export const upsertUserPoints = async ({ id, userId, points, note }) => {
+  let targetId = id;
+
+  if (!targetId) {
+    const all = await getPoints();
+    const existing = all.find((item) => String(item.user_id) === String(userId));
+    targetId = existing?.id;
+  }
 
   const payload = {
     user_id: Number(userId),
@@ -46,9 +53,9 @@ export const upsertUserPoints = async ({ userId, points, note }) => {
     note: note || undefined,
   };
 
-  if (existing?.id) {
-    const res = await updatePoints(existing.id, payload);
-    return normalizePointRecord(res?.data?.data ?? res?.data ?? { ...existing, ...payload });
+  if (targetId) {
+    const res = await updatePoints(targetId, payload);
+    return normalizePointRecord(res?.data?.data ?? res?.data ?? { ...payload, id: targetId });
   }
 
   const createRes = await createPoints(payload);

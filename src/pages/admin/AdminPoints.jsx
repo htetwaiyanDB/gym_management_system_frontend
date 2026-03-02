@@ -12,10 +12,12 @@ const normalizeUsers = (payload) => {
 
 const normalizeUser = (user) => ({
   id: user?.id ?? user?.user?.id ?? user?.member_id ?? null,
-  name: user?.name || "-",
+  name: user?.name || user?.user_name || "-",
   phone: user?.phone || "-",
-  role: String(user?.role || "").toLowerCase(),
+  role: String(user?.role || user?.user_role || "").toLowerCase(),
 });
+
+const allowedRoles = new Set(["user", "trainer"]);
 
 export default function AdminPoints() {
   const [loading, setLoading] = useState(false);
@@ -35,14 +37,42 @@ export default function AdminPoints() {
       const [usersRes, points] = await Promise.all([axiosClient.get("/users"), getPoints()]);
       const userRows = normalizeUsers(usersRes?.data)
         .map(normalizeUser)
-        .filter((u) => u.id && u.role === "user");
+        .filter((u) => u.id && allowedRoles.has(u.role));
 
       const mappedPoints = points.reduce((acc, item) => {
         acc[String(item.user_id)] = item;
         return acc;
       }, {});
 
-      setUsers(userRows);
+      const usersFromPoints = points
+        .filter((item) => item.user_id)
+        .map((item) =>
+          normalizeUser({
+            id: item.user_id,
+            name: item.user_name,
+            role: item.user_role,
+          })
+        )
+        .filter((u) => allowedRoles.has(u.role));
+
+      const mergedUsers = [...userRows, ...usersFromPoints].reduce((acc, user) => {
+        const key = String(user.id);
+        if (!acc[key]) {
+          acc[key] = user;
+          return acc;
+        }
+
+        // Keep richer values when duplicate user exists from different sources.
+        acc[key] = {
+          ...acc[key],
+          ...user,
+          name: acc[key].name !== "-" ? acc[key].name : user.name,
+          phone: acc[key].phone !== "-" ? acc[key].phone : user.phone,
+        };
+        return acc;
+      }, {});
+
+      setUsers(Object.values(mergedUsers));
       setPointsMap(mappedPoints);
     } catch (error) {
       setMsg({ type: "danger", text: error?.response?.data?.message || "Failed to load points data." });
@@ -83,7 +113,9 @@ export default function AdminPoints() {
     setSaving(true);
     setMsg(null);
     try {
+      const existingRecordId = pointsMap[String(selectedUser.id)]?.id;
       const updated = await upsertUserPoints({
+        id: existingRecordId,
         userId: selectedUser.id,
         points: Number(nextPoints),
         note: "Adjusted by admin panel",
@@ -121,7 +153,7 @@ export default function AdminPoints() {
         <div className="col-lg-7">
           <div className="card bg-dark text-light border-secondary">
             <div className="card-body">
-              <label className="form-label">Search user (name / phone)</label>
+              <label className="form-label">Search user/trainer (name / phone)</label>
               <input
                 className="form-control mb-3"
                 placeholder="Type name or phone..."
@@ -134,6 +166,7 @@ export default function AdminPoints() {
                   <thead>
                     <tr>
                       <th>Name</th>
+                      <th>Role</th>
                       <th>Phone</th>
                       <th className="text-end">Points</th>
                     </tr>
@@ -150,6 +183,7 @@ export default function AdminPoints() {
                           className={active ? "table-active" : ""}
                         >
                           <td>{user.name}</td>
+                          <td className="text-capitalize">{user.role || "-"}</td>
                           <td>{user.phone}</td>
                           <td className="text-end fw-semibold">{points}</td>
                         </tr>
@@ -157,7 +191,7 @@ export default function AdminPoints() {
                     })}
                     {!filteredUsers.length && !loading && (
                       <tr>
-                        <td colSpan={3} className="text-center text-secondary py-4">
+                        <td colSpan={4} className="text-center text-secondary py-4">
                           No users found.
                         </td>
                       </tr>
@@ -180,6 +214,7 @@ export default function AdminPoints() {
                   <div className="mb-2">
                     <div className="small text-secondary">User</div>
                     <div className="fw-semibold">{selectedUser.name}</div>
+                    <div className="small text-secondary text-capitalize">{selectedUser.role || "-"}</div>
                     <div className="small text-secondary">{selectedUser.phone}</div>
                   </div>
 
