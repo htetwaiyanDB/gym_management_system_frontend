@@ -20,6 +20,7 @@ const AdminMessages = lazy(() => import("./pages/admin/AdminMessages"));
 const AdminBlogs = lazy(() => import("./pages/admin/AdminBlogs"));
 const AdminSettings = lazy(() => import("./pages/admin/AdminSettings"));
 const AdminUserHistory = lazy(() => import("./pages/admin/AdminUserHistory"));
+const AdminPoints = lazy(() => import("./pages/admin/AdminPoints"));
 
 /* Trainer */
 const TrainerLayout = lazy(() => import("./layouts/TrainerLayout"));
@@ -154,6 +155,7 @@ export default function App() {
           <Route path="messages" element={<AdminMessages />} />
           <Route path="blogs" element={<AdminBlogs />} />
           <Route path="settings" element={<AdminSettings />} />
+          <Route path="points" element={<AdminPoints />} />
         </Route>
 
         {/* User ✅ FIXED (nested routes correctly under /user) */}

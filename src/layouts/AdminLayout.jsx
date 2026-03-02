@@ -77,6 +77,10 @@ export default function AdminLayout() {
                 <i className="bi bi-credit-card-2-front-fill"></i> Attendance
               </NavLink>
 
+              <NavLink to="/admin/points" className={({isActive}) => `admin-link ${isActive ? "active" : ""}`}>
+                <i className="bi bi-stars"></i> Points
+              </NavLink>
+
               <NavLink to="/admin/messages" className={({isActive}) => `admin-link ${isActive ? "active" : ""}`}>
                 <i className="bi bi-chat-dots"></i> Messages
               </NavLink>

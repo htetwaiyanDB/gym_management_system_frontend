@@ -9,6 +9,7 @@ import {
 } from "../../api/attendanceApi";
 import RfidInputListener from "../../components/RfidInputListener";
 import { isCardNotRegisteredError, normalizeCardId } from "../../utils/rfid";
+import { awardScanPoints } from "../../api/pointsApi";
 
 function parseBackendDateTime(s) {
   if (!s) return null;
@@ -490,6 +491,19 @@ export default function AdminAttendance() {
         attendance,
         message: message || "Scan recorded successfully.",
       });
+
+      const scannedUserId =
+        user?.id ??
+        user?.user_id ??
+        attendance?.user_id ??
+        attendance?.user?.id ??
+        attendance?.member_id ??
+        null;
+      const scannedAction = normalizeRecordType(attendance);
+      if (scannedUserId && (scannedAction === "check_in" || scannedAction === "check_out")) {
+        await awardScanPoints({ userId: scannedUserId, action: scannedAction, points: 50 });
+      }
+
       await Promise.all([loadRecords(false), loadCheckedIn(false), loadActiveCheckins(false), loadMemberCount(false)]);
       setScanValue("");
       setTimeout(() => scanInputRef.current?.focus(), 0);
