@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { FaLongArrowAltRight } from "react-icons/fa";
 import axiosClient from "../../api/axiosClient";
+import { getPoints } from "../../api/pointsApi";
 import { getUserProfile, updateUserProfile } from "../../api/userApi";
 
 export default function UserSettings() {
@@ -23,6 +24,7 @@ export default function UserSettings() {
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
+  const [pointsCount, setPointsCount] = useState(0);
 
   const card = {
     borderRadius: 16,
@@ -80,8 +82,24 @@ export default function UserSettings() {
     }
   };
 
+  const loadPoints = async (userId) => {
+    if (!userId) {
+      setPointsCount(0);
+      return;
+    }
+
+    try {
+      const points = await getPoints();
+      const currentUserPoints = points.find((item) => String(item.user_id) === String(userId));
+      setPointsCount(currentUserPoints?.points ?? 0);
+    } catch {
+      setPointsCount(0);
+    }
+  };
+
   useEffect(() => {
     loadProfile();
+    loadPoints(storedUser?.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -179,9 +197,19 @@ export default function UserSettings() {
     <div className="container py-3" style={{ maxWidth: 520 }}>
       {/* Header */}
       <div style={card} className="mb-3">
-        <div style={{ fontSize: 18, fontWeight: 900 }}>Settings</div>
-        <div className="small" style={{ opacity: 0.9, marginTop: 6 }}>
-          User account
+        <div className="d-flex justify-content-between align-items-start gap-2">
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 900 }}>Settings</div>
+            <div className="small" style={{ opacity: 0.9, marginTop: 6 }}>
+              User account
+            </div>
+          </div>
+          <div className="text-end">
+            <div className="small" style={{ opacity: 0.85 }}>
+              Points
+            </div>
+            <div style={{ fontSize: 20, fontWeight: 900 }}>{pointsCount}</div>
+          </div>
         </div>
       </div>
 
