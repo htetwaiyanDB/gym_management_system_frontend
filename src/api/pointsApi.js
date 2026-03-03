@@ -40,7 +40,7 @@ export const createPoints = (payload) => axiosClient.post("/points", payload);
 
 export const updatePointsByUserId = (userId, payload) => axiosClient.put(`/points/${userId}`, payload);
 
-export const adjustPoints = (payload) => axiosClient.patch("/points/adjust", payload);
+export const adjustPoints = (payload) => axiosClient.post("/points/adjust", payload);
 
 export const upsertUserPoints = async ({ userId, points, note }) => {
   const all = await getPoints();
@@ -55,7 +55,7 @@ export const upsertUserPoints = async ({ userId, points, note }) => {
   if (existing) {
     const currentPoints = toNumber(existing?.points, 0);
     const adjustment = payload.points - currentPoints;
-    const res = await updatePointsByUserId({
+    const res = await adjustPoints({
       ...payload,
       amount: adjustment,
       adjustment,
