@@ -61,9 +61,12 @@ export const upsertUserPoints = async ({ userId, points, note }) => {
 
 
 export const adjustUserPoints = async ({ userId, points, note }) => {
+  const normalizedPoints = toNumber(points, 0);
   const res = await axiosClient.post("/api/points/adjust", {
     user_id: Number(userId),
-    points: toNumber(points, 0),
+    // Keep both keys for backward/forward compatibility while backend settles on field naming.
+    points: normalizedPoints,
+    adjustment: normalizedPoints,
     ...(note ? { note } : {}),
   });
 

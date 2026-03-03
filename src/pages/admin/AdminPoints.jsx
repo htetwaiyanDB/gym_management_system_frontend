@@ -22,11 +22,15 @@ const allowedRoles = new Set(["user", "trainer"]);
 const getAdjustedBalance = (payload, fallback) => {
   const candidate =
     payload?.updated_points ??
+    payload?.current_points ??
+    payload?.new_balance ??
     payload?.new_points ??
     payload?.points_balance ??
     payload?.balance ??
     payload?.points ??
     payload?.data?.updated_points ??
+    payload?.data?.current_points ??
+    payload?.data?.new_balance ??
     payload?.data?.new_points ??
     payload?.data?.points_balance ??
     payload?.data?.balance ??
@@ -117,7 +121,7 @@ export default function AdminPoints() {
         points: adjustmentValue,
       });
 
-      const nextBalance = getAdjustedBalance(responseData, currentBalance + adjustmentValue);
+      const nextBalance = Math.max(0, getAdjustedBalance(responseData, currentBalance + adjustmentValue));
 
       setPointsMap((prev) => ({
         ...prev,
