@@ -49,9 +49,14 @@ function roleBadge(role) {
 }
 
 const normalizeRecordType = (record) => {
-  const rawType = String(record?.type || record?.scan_type || record?.action || "").toLowerCase();
-  if (rawType === "in") return "check_in";
-  if (rawType === "out") return "check_out";
+  const rawType = String(record?.type || record?.scan_type || record?.action || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
+
+  if (rawType === "in" || rawType === "checkin") return "check_in";
+  if (rawType === "out" || rawType === "checkout") return "check_out";
+  if (rawType === "check_in" || rawType === "check_out") return rawType;
   return rawType;
 };
 
