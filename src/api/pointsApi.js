@@ -61,17 +61,17 @@ export const upsertUserPoints = async ({ userId, points, note }) => {
 
 export const awardScanPoints = async ({ userId, action, points = 50 }) => {
   if (!userId) return null;
-  const payload = {
-    user_id: Number(userId),
-    points: toNumber(points, 50),
-    source: "attendance_scan",
-    action,
-    note: `Auto points for ${action || "attendance"}`,
-  };
-
   try {
-    const res = await createPoints(payload);
-    return normalizePointRecord(res?.data?.data ?? res?.data ?? payload);
+    const all = await getPoints();
+    const existing = all.find((item) => String(item.user_id) === String(userId));
+    const bonus = toNumber(points, 50);
+    const nextPoints = toNumber(existing?.points, 0) + bonus;
+
+    return upsertUserPoints({
+      userId,
+      points: nextPoints,
+      note: `Auto +${bonus} points for ${action || "attendance"}`,
+    });
   } catch {
     return null;
   }
