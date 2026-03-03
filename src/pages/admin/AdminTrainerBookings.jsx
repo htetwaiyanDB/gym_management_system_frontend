@@ -63,33 +63,6 @@ function pickFirstValue(source, keys) {
 }
 
 
-function promptExtendPayload() {
-  const nextEndDateInput = window.prompt(
-    "Enter new end date (YYYY-MM-DD).\nLeave blank to extend by days instead.",
-    "",
-  );
-  if (nextEndDateInput === null) return null;
-
-  const nextEndDate = nextEndDateInput.trim();
-  if (nextEndDate) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(nextEndDate)) {
-      return { error: "Invalid date format. Please use YYYY-MM-DD." };
-    }
-    return { payload: { new_end_date: nextEndDate } };
-  }
-
-  const extensionDaysInput = window.prompt("Enter extension days (example: 7)", "");
-  if (extensionDaysInput === null) return null;
-  const extensionDays = Number(extensionDaysInput.trim());
-
-  if (!Number.isInteger(extensionDays) || extensionDays <= 0) {
-    return { error: "Extension days must be a positive whole number." };
-  }
-
-  return { payload: { extension_days: extensionDays } };
-}
-
-
 function formatDateTimeVideoStyle(s) {
   // "2026-01-11 10:30 AM"
   const d = parseBackendDateTime(s);
@@ -252,6 +225,7 @@ export default function AdminTrainerBookings() {
   const [msg, setMsg] = useState(null);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
+  const [extendDateInput, setExtendDateInput] = useState("");
   const [openMenuId, setOpenMenuId] = useState(null);
 
   const [bookings, setBookings] = useState([]);
@@ -666,17 +640,20 @@ export default function AdminTrainerBookings() {
   };
 
   const extendBooking = async (id) => {
-    const extendConfig = promptExtendPayload();
-    if (!extendConfig) return;
-    if (extendConfig.error) {
-      setMsg({ type: "danger", text: extendConfig.error });
+    const nextEndDate = extendDateInput.trim();
+    if (!nextEndDate) {
+      setMsg({ type: "danger", text: "Please choose an extend date first." });
+      return;
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(nextEndDate)) {
+      setMsg({ type: "danger", text: "Invalid date format. Please use YYYY-MM-DD." });
       return;
     }
 
     setMsg(null);
     setBusyKey(`extend-${id}`);
     try {
-      const res = await axiosClient.patch(`/trainer-bookings/${id}/extend`, extendConfig.payload);
+      const res = await axiosClient.patch(`/trainer-bookings/${id}/extend`, { new_end_date: nextEndDate });
       setMsg({ type: "success", text: res?.data?.message || "Booking end date extended." });
       await loadBookings();
     } catch (e) {
@@ -724,7 +701,9 @@ export default function AdminTrainerBookings() {
   };
 
   const openDetails = (booking) => {
+    const existingEndDate = String(getBookingEndDateValue(booking) || "").split("T")[0].split(" ")[0];
     setSelectedBooking(booking);
+    setExtendDateInput(existingEndDate || "");
     setShowDetails(true);
     setOpenMenuId(null);
   };
@@ -1344,6 +1323,15 @@ export default function AdminTrainerBookings() {
                 })()}
               </div>
               <div className="modal-footer border-secondary">
+                <div className="me-auto" style={{ minWidth: 240 }}>
+                  <label className="form-label admin-muted mb-1">Extend Date</label>
+                  <input
+                    type="date"
+                    className="form-control form-control-sm bg-dark text-light border-secondary"
+                    value={extendDateInput}
+                    onChange={(e) => setExtendDateInput(e.target.value)}
+                  />
+                </div>
                 <button
                   className="btn btn-outline-info"
                   disabled={!canExtendBooking(selectedBooking) || busyKey === `extend-${selectedBooking.id}`}
