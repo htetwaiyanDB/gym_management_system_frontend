@@ -232,7 +232,7 @@ export default function AdminPoints() {
       )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <section className="rounded-2xl border border-slate-700 bg-slate-900/70 p-4 shadow-sm md:p-5">
+        <section className="rounded-3xl border border-slate-700/80 bg-gradient-to-b from-slate-900/95 to-slate-950/70 p-4 shadow-xl shadow-slate-950/30 md:p-5">
           <label htmlFor="search" className="mb-2 block text-sm font-medium text-slate-300">
             Search users
           </label>
@@ -244,50 +244,53 @@ export default function AdminPoints() {
             className="mb-4 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none ring-0 transition placeholder:text-slate-500 focus:border-cyan-400"
           />
 
-          <div className="max-h-[500px] overflow-y-auto rounded-xl border border-slate-800">
-            <table className="min-w-full divide-y divide-slate-800 text-sm">
-              <thead className="bg-slate-950/80 text-left text-xs uppercase tracking-wide text-slate-400">
-                <tr>
-                  <th className="px-3 py-2">Name</th>
-                  <th className="px-3 py-2">Role</th>
-                  <th className="px-3 py-2 text-right">Points</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800">
-                {filteredUsers.map((user) => {
-                  const active = String(user.id) === String(selectedUserId);
-                  const points = Number(pointsMap[String(user.id)]?.points ?? 0);
+          <div className="max-h-[500px] space-y-3 overflow-y-auto rounded-2xl border border-slate-800/80 bg-slate-950/40 p-3">
+            {filteredUsers.map((user) => {
+              const active = String(user.id) === String(selectedUserId);
+              const points = Number(pointsMap[String(user.id)]?.points ?? 0);
 
-                  return (
-                    <tr
-                      key={user.id}
-                      onClick={() => setSelectedUserId(String(user.id))}
-                      className={`cursor-pointer transition ${
-                        active ? "bg-cyan-500/15" : "hover:bg-slate-800/70"
-                      }`}
-                    >
-                      <td className="px-3 py-2">
-                        <p className="font-medium text-slate-100">{user.name}</p>
-                        <p className="text-xs text-slate-400">{user.phone}</p>
-                      </td>
-                      <td className="px-3 py-2 capitalize text-slate-300">{user.role || "-"}</td>
-                      <td className="px-3 py-2 text-right font-semibold text-cyan-300">{points}</td>
-                    </tr>
-                  );
-                })}
-                {!loading && !filteredUsers.length && (
-                  <tr>
-                    <td colSpan={3} className="px-3 py-8 text-center text-slate-400">
-                      No users found.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+              return (
+                <button
+                  key={user.id}
+                  type="button"
+                  onClick={() => setSelectedUserId(String(user.id))}
+                  className={`w-full rounded-2xl border p-4 text-left transition ${
+                    active
+                      ? "border-cyan-400/60 bg-cyan-500/10 shadow-lg shadow-cyan-950/30"
+                      : "border-slate-700/90 bg-slate-900/70 hover:border-slate-500 hover:bg-slate-800/80"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-800 text-sm font-bold text-cyan-200">
+                        {String(user.name || "?").slice(0, 1).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold text-slate-100">{user.name}</p>
+                        <p className="truncate text-xs text-slate-400">{user.phone}</p>
+                      </div>
+                    </div>
+                    <span className="rounded-full border border-cyan-400/40 bg-cyan-500/10 px-2 py-1 text-xs font-semibold text-cyan-200">
+                      {points.toLocaleString()} pts
+                    </span>
+                  </div>
+                  <div className="mt-3 flex items-center justify-between text-xs text-slate-400">
+                    <span className="capitalize">Role: {user.role || "-"}</span>
+                    {active && <span className="text-cyan-200">Selected</span>}
+                  </div>
+                </button>
+              );
+            })}
+
+            {!loading && !filteredUsers.length && (
+              <div className="rounded-xl border border-dashed border-slate-700 px-3 py-8 text-center text-slate-400">
+                No users found.
+              </div>
+            )}
           </div>
         </section>
 
-        <section className="rounded-2xl border border-slate-700 bg-slate-900/70 p-4 shadow-sm md:p-5">
+        <section className="rounded-3xl border border-slate-700/80 bg-gradient-to-b from-slate-900/95 to-slate-950/70 p-4 shadow-xl shadow-slate-950/30 md:p-5">
           <h2 className="text-lg font-semibold">Adjust User Points</h2>
 
           {!selectedUser ? (
