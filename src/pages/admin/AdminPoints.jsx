@@ -177,8 +177,8 @@ export default function AdminPoints() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.45fr_1fr]">
-        <section className="rounded-xl border border-slate-600/80 bg-slate-900/60 p-5">
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-[1.45fr_1fr]">
+        <section className="rounded-2xl border border-slate-700/45 bg-slate-900/65 p-5 shadow-lg shadow-black/20 transition duration-300 hover:-translate-y-1 hover:border-slate-400/65 hover:shadow-xl hover:shadow-black/35">
           <h2 className="mb-3 text-4xl font-semibold">Search user/trainer (name / phone)</h2>
           <input
             id="search"
@@ -188,7 +188,7 @@ export default function AdminPoints() {
             className="mb-5 w-full rounded-lg border border-slate-400 bg-white/90 px-4 py-3 text-2xl text-slate-900 outline-none"
           />
 
-          <div className="overflow-hidden rounded-lg border border-slate-700">
+          <div className="overflow-hidden rounded-lg border border-slate-700/70">
             <table className="w-full text-left">
               <thead className="bg-slate-950/90 text-2xl font-semibold text-white">
                 <tr>
@@ -207,7 +207,7 @@ export default function AdminPoints() {
                     <tr
                       key={user.id}
                       onClick={() => setSelectedUserId(String(user.id))}
-                      className={`cursor-pointer border-t border-slate-700/80 ${
+                      className={`cursor-pointer border-t border-slate-700/70 transition ${
                         isSelected ? "bg-slate-600/60" : "bg-slate-900/70 hover:bg-slate-800"
                       }`}
                     >
@@ -230,7 +230,7 @@ export default function AdminPoints() {
           </div>
         </section>
 
-        <section className="rounded-xl border border-slate-600/80 bg-slate-900/60 p-5">
+        <section className="rounded-2xl border border-slate-700/45 bg-slate-900/65 p-5 shadow-lg shadow-black/20 transition duration-300 hover:-translate-y-1 hover:border-slate-400/65 hover:shadow-xl hover:shadow-black/35">
           <h3 className="text-5xl font-semibold">Adjust Points</h3>
           {!selectedUser ? (
             <p className="mt-6 text-2xl text-slate-400">Select a user from the left table first.</p>
