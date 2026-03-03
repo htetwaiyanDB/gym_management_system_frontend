@@ -775,6 +775,14 @@ export default function AdminBoxingBookings() {
     setOpenMenuId(null);
   };
 
+  const canExtendBooking = (booking) => {
+    const { total, remaining } = getSessionProgress(booking);
+    const isCompleted = (total !== null && remaining === 0) || isCompletedStatus(booking?.status);
+    const statusValue = getDisplayBookingStatus(booking);
+    const isExpired = statusValue === "expired";
+    return isExpired || isCompleted;
+  };
+
   useEffect(() => {
     loadBookings();
   }, []);
@@ -1117,14 +1125,11 @@ export default function AdminBoxingBookings() {
               filteredBookings.map((b) => {
                 const isPaid = String(b.paid_status || "").toLowerCase() === "paid";
                 const { total, remaining } = getSessionProgress(b);
-                const monthCount = getMonthCount(b);
                 const isCompleted = (total !== null && remaining === 0) || isCompletedStatus(b?.status);
                 const statusValue = getDisplayBookingStatus(b);
                 const isPending = statusValue === "pending";
                 const isActive = statusValue === "active";
                 const isOnHold = statusValue === "on-hold";
-                const isExpired = statusValue === "expired";
-                const canExtend = isExpired || isCompleted;
                 const coachName = getCoachName(b);
                 const coachPhone = getCoachPhone(b);
 
@@ -1188,14 +1193,6 @@ export default function AdminBoxingBookings() {
                             {busyKey === `active-${b.id}` ? "..." : "Resume"}
                           </button>
                         )}
-                        <button
-                          className="btn btn-sm btn-outline-info"
-                          disabled={!canExtend || busyKey === `extend-${b.id}`}
-                          onClick={() => extendBooking(b.id)}
-                          title="Extend booking end date"
-                        >
-                           {busyKey === `extend-${b.id}` ? "..." : "Extend"}
-                        </button>
                         <button
                           className="btn btn-sm btn-success"
                           disabled={isPaid || busyKey === `paid-${b.id}`}
@@ -1398,6 +1395,14 @@ export default function AdminBoxingBookings() {
                 })()}
               </div>
               <div className="modal-footer border-secondary">
+                <button
+                  className="btn btn-outline-info"
+                  disabled={!canExtendBooking(selectedBooking) || busyKey === `extend-${selectedBooking.id}`}
+                  onClick={() => extendBooking(selectedBooking.id)}
+                  title="Extend booking end date"
+                >
+                  {busyKey === `extend-${selectedBooking.id}` ? "..." : "Extend"}
+                </button>
                 <button className="btn btn-outline-light" onClick={() => setShowDetails(false)}>
                   Close
                 </button>
