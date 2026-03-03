@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import axiosClient from "../../api/axiosClient";
-import { getPoints, upsertUserPoints } from "../../api/pointsApi";
+import { adjustUserPoints, getPoints } from "../../api/pointsApi";
 
 const normalizeUsers = (payload) => {
   if (Array.isArray(payload)) return payload;
@@ -19,70 +19,59 @@ const normalizeUser = (user) => ({
 
 const allowedRoles = new Set(["user", "trainer"]);
 
-export default function AdminPoints() {
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState(null);
+const getAdjustedBalance = (payload, fallback) => {
+  const candidate =
+    payload?.updated_points ??
+    payload?.new_points ??
+    payload?.points_balance ??
+    payload?.balance ??
+    payload?.points ??
+    payload?.data?.updated_points ??
+    payload?.data?.new_points ??
+    payload?.data?.points_balance ??
+    payload?.data?.balance ??
+    payload?.data?.points;
 
-  const [query, setQuery] = useState("");
+  const parsed = Number(candidate);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+export default function AdminPoints() {
   const [users, setUsers] = useState([]);
   const [pointsMap, setPointsMap] = useState({});
-  const [selectedUserId, setSelectedUserId] = useState(null);
-  const [nextPoints, setNextPoints] = useState("");
+  const [selectedUserId, setSelectedUserId] = useState("");
+  const [adjustment, setAdjustment] = useState("");
+  const [query, setQuery] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState(null);
 
-  const load = async () => {
+  const loadData = async () => {
     setLoading(true);
-    setMsg(null);
+    setMessage(null);
     try {
       const [usersRes, points] = await Promise.all([axiosClient.get("/users"), getPoints()]);
+
       const userRows = normalizeUsers(usersRes?.data)
         .map(normalizeUser)
         .filter((u) => u.id && allowedRoles.has(u.role));
 
-      const mappedPoints = points.reduce((acc, item) => {
+      const pointsByUser = points.reduce((acc, item) => {
         acc[String(item.user_id)] = item;
         return acc;
       }, {});
 
-      const usersFromPoints = points
-        .filter((item) => item.user_id)
-        .map((item) =>
-          normalizeUser({
-            id: item.user_id,
-            name: item.user_name,
-            role: item.user_role,
-          })
-        )
-        .filter((u) => allowedRoles.has(u.role));
-
-      const mergedUsers = [...userRows, ...usersFromPoints].reduce((acc, user) => {
-        const key = String(user.id);
-        if (!acc[key]) {
-          acc[key] = user;
-          return acc;
-        }
-
-        // Keep richer values when duplicate user exists from different sources.
-        acc[key] = {
-          ...acc[key],
-          ...user,
-          name: acc[key].name !== "-" ? acc[key].name : user.name,
-          phone: acc[key].phone !== "-" ? acc[key].phone : user.phone,
-        };
-        return acc;
-      }, {});
-
-      setUsers(Object.values(mergedUsers));
-      setPointsMap(mappedPoints);
+      setUsers(userRows);
+      setPointsMap(pointsByUser);
     } catch (error) {
-      setMsg({ type: "danger", text: error?.response?.data?.message || "Failed to load points data." });
+      setMessage({ type: "error", text: error?.response?.data?.message || "Failed to load users and points." });
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    load();
+    loadData();
   }, []);
 
   const filteredUsers = useMemo(() => {
@@ -92,151 +81,188 @@ export default function AdminPoints() {
   }, [users, query]);
 
   const selectedUser = useMemo(
-    () => users.find((u) => String(u.id) === String(selectedUserId)) || null,
+    () => users.find((user) => String(user.id) === String(selectedUserId)) || null,
     [users, selectedUserId]
   );
 
-  const currentPoints = selectedUser ? pointsMap[String(selectedUser.id)]?.points ?? 0 : 0;
+  const currentBalance = selectedUser ? Number(pointsMap[String(selectedUser.id)]?.points ?? 0) : 0;
+  const adjustmentValue = Number(adjustment);
+  const isAdjustmentValid = Number.isFinite(adjustmentValue) && adjustment.trim() !== "" && adjustmentValue !== 0;
+  const wouldGoNegative = isAdjustmentValid && currentBalance + adjustmentValue < 0;
 
-  const handleSelectUser = (user) => {
-    setSelectedUserId(user.id);
-    setNextPoints(String(pointsMap[String(user.id)]?.points ?? 0));
-    setMsg(null);
-  };
+  const handleSubmit = async (event) => {
+    event.preventDefault();
 
-  const handleUpdatePoints = async () => {
     if (!selectedUser) {
-      setMsg({ type: "danger", text: "Please choose a user first." });
+      setMessage({ type: "error", text: "Please select a user first." });
+      return;
+    }
+
+    if (!isAdjustmentValid) {
+      setMessage({ type: "error", text: "Enter a non-zero numeric adjustment value." });
+      return;
+    }
+
+    if (wouldGoNegative) {
+      setMessage({ type: "error", text: "Cannot subtract more points than the user currently has." });
       return;
     }
 
     setSaving(true);
-    setMsg(null);
+    setMessage(null);
+
     try {
-      const updated = await upsertUserPoints({
+      const responseData = await adjustUserPoints({
         userId: selectedUser.id,
-        points: Number(nextPoints),
-        note: "Adjusted by admin panel",
+        points: adjustmentValue,
       });
+
+      const nextBalance = getAdjustedBalance(responseData, currentBalance + adjustmentValue);
 
       setPointsMap((prev) => ({
         ...prev,
         [String(selectedUser.id)]: {
           ...(prev[String(selectedUser.id)] || {}),
-          ...updated,
           user_id: selectedUser.id,
+          points: nextBalance,
+          user_name: selectedUser.name,
+          user_role: selectedUser.role,
         },
       }));
 
-      setMsg({ type: "success", text: `Points updated for ${selectedUser.name}.` });
+      setAdjustment("");
+      setMessage({ type: "success", text: `${selectedUser.name}'s balance updated to ${nextBalance} points.` });
     } catch (error) {
-      setMsg({ type: "danger", text: error?.response?.data?.message || "Failed to update points." });
+      setMessage({ type: "error", text: error?.response?.data?.message || "Failed to adjust points." });
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <div className="container-fluid px-0">
-      <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
-        <h4 className="mb-0">Points</h4>
-        <button className="btn btn-outline-light btn-sm" onClick={load} disabled={loading}>
-          <i className="bi bi-arrow-clockwise me-1"></i>Refresh
+    <div className="mx-auto w-full max-w-6xl space-y-6 p-4 text-slate-100 md:p-6">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <h1 className="text-2xl font-semibold">Admin Point Manager</h1>
+        <button
+          type="button"
+          onClick={loadData}
+          disabled={loading}
+          className="inline-flex items-center justify-center rounded-lg border border-slate-600 px-4 py-2 text-sm font-medium transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {loading ? "Refreshing..." : "Refresh"}
         </button>
       </div>
 
-      {msg && <div className={`alert alert-${msg.type} py-2`}>{msg.text}</div>}
+      {message && (
+        <div
+          className={`rounded-lg border px-4 py-3 text-sm ${
+            message.type === "success"
+              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+              : "border-rose-500/40 bg-rose-500/10 text-rose-300"
+          }`}
+        >
+          {message.text}
+        </div>
+      )}
 
-      <div className="row g-3">
-        <div className="col-lg-7">
-          <div className="card bg-dark text-light border-secondary">
-            <div className="card-body">
-              <label className="form-label">Search user/trainer (name / phone)</label>
-              <input
-                className="form-control mb-3"
-                placeholder="Type name or phone..."
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <section className="rounded-xl border border-slate-700 bg-slate-900/70 p-4 shadow-sm md:p-5">
+          <label htmlFor="search" className="mb-2 block text-sm font-medium text-slate-300">
+            Search users
+          </label>
+          <input
+            id="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search by name or phone"
+            className="mb-4 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none ring-0 transition placeholder:text-slate-500 focus:border-cyan-400"
+          />
 
-              <div style={{ maxHeight: 420, overflowY: "auto" }}>
-                <table className="table table-dark table-hover align-middle mb-0">
-                  <thead>
-                    <tr>
-                      <th>Name</th>
-                      <th>Role</th>
-                      <th>Phone</th>
-                      <th className="text-end">Points</th>
+          <div className="max-h-[420px] overflow-y-auto rounded-lg border border-slate-800">
+            <table className="min-w-full divide-y divide-slate-800 text-sm">
+              <thead className="bg-slate-950/80 text-left text-xs uppercase tracking-wide text-slate-400">
+                <tr>
+                  <th className="px-3 py-2">Name</th>
+                  <th className="px-3 py-2">Role</th>
+                  <th className="px-3 py-2 text-right">Points</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800">
+                {filteredUsers.map((user) => {
+                  const active = String(user.id) === String(selectedUserId);
+                  const points = Number(pointsMap[String(user.id)]?.points ?? 0);
+
+                  return (
+                    <tr
+                      key={user.id}
+                      onClick={() => setSelectedUserId(String(user.id))}
+                      className={`cursor-pointer transition ${
+                        active ? "bg-cyan-500/10" : "hover:bg-slate-800/70"
+                      }`}
+                    >
+                      <td className="px-3 py-2">
+                        <p className="font-medium text-slate-100">{user.name}</p>
+                        <p className="text-xs text-slate-400">{user.phone}</p>
+                      </td>
+                      <td className="px-3 py-2 capitalize text-slate-300">{user.role || "-"}</td>
+                      <td className="px-3 py-2 text-right font-semibold text-cyan-300">{points}</td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {filteredUsers.map((user) => {
-                      const active = String(user.id) === String(selectedUserId);
-                      const points = pointsMap[String(user.id)]?.points ?? 0;
-                      return (
-                        <tr
-                          key={user.id}
-                          onClick={() => handleSelectUser(user)}
-                          style={{ cursor: "pointer" }}
-                          className={active ? "table-active" : ""}
-                        >
-                          <td>{user.name}</td>
-                          <td className="text-capitalize">{user.role || "-"}</td>
-                          <td>{user.phone}</td>
-                          <td className="text-end fw-semibold">{points}</td>
-                        </tr>
-                      );
-                    })}
-                    {!filteredUsers.length && !loading && (
-                      <tr>
-                        <td colSpan={4} className="text-center text-secondary py-4">
-                          No users found.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+                  );
+                })}
+                {!loading && !filteredUsers.length && (
+                  <tr>
+                    <td colSpan={3} className="px-3 py-8 text-center text-slate-400">
+                      No users found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section className="rounded-xl border border-slate-700 bg-slate-900/70 p-4 shadow-sm md:p-5">
+          <h2 className="text-lg font-semibold">Adjust User Points</h2>
+
+          {!selectedUser ? (
+            <p className="mt-4 text-sm text-slate-400">Select a user from the list to begin.</p>
+          ) : (
+            <form className="mt-4 space-y-4" onSubmit={handleSubmit}>
+              <div className="rounded-lg border border-slate-800 bg-slate-950/70 p-3">
+                <p className="text-sm text-slate-400">Selected user</p>
+                <p className="font-semibold text-slate-100">{selectedUser.name}</p>
+                <p className="text-xs text-slate-400">Current balance: {currentBalance} points</p>
               </div>
-            </div>
-          </div>
-        </div>
 
-        <div className="col-lg-5">
-          <div className="card bg-dark text-light border-secondary">
-            <div className="card-body">
-              <h5 className="card-title">Adjust Points</h5>
-              {!selectedUser ? (
-                <p className="text-secondary mb-0">Select a user from the list to view and update points.</p>
-              ) : (
-                <>
-                  <div className="mb-2">
-                    <div className="small text-secondary">User</div>
-                    <div className="fw-semibold">{selectedUser.name}</div>
-                    <div className="small text-secondary text-capitalize">{selectedUser.role || "-"}</div>
-                    <div className="small text-secondary">{selectedUser.phone}</div>
-                  </div>
+              <div>
+                <label htmlFor="points-adjust" className="mb-2 block text-sm font-medium text-slate-300">
+                  Point adjustment (use negative for subtraction)
+                </label>
+                <input
+                  id="points-adjust"
+                  type="number"
+                  value={adjustment}
+                  onChange={(event) => setAdjustment(event.target.value)}
+                  placeholder="e.g. -5000"
+                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-cyan-400"
+                />
+                {wouldGoNegative && (
+                  <p className="mt-2 text-xs text-rose-300">
+                    This adjustment would create a negative balance. Please enter a smaller deduction.
+                  </p>
+                )}
+              </div>
 
-                  <div className="mb-2">
-                    <div className="small text-secondary">Current points</div>
-                    <div className="display-6 fw-semibold">{currentPoints}</div>
-                  </div>
-
-                  <label className="form-label">New points value</label>
-                  <input
-                    type="number"
-                    className="form-control mb-3"
-                    value={nextPoints}
-                    onChange={(e) => setNextPoints(e.target.value)}
-                  />
-
-                  <button className="btn btn-primary w-100" onClick={handleUpdatePoints} disabled={saving}>
-                    {saving ? "Updating..." : "Update Points"}
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
+              <button
+                type="submit"
+                disabled={saving || !isAdjustmentValid || wouldGoNegative}
+                className="w-full rounded-lg bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {saving ? "Updating..." : "Apply Adjustment"}
+              </button>
+            </form>
+          )}
+        </section>
       </div>
     </div>
   );

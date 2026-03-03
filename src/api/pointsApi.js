@@ -59,6 +59,16 @@ export const upsertUserPoints = async ({ userId, points, note }) => {
   return normalizePointRecord(createRes?.data?.data ?? createRes?.data ?? payload);
 };
 
+
+export const adjustUserPoints = async ({ userId, points, note }) => {
+  const res = await axiosClient.post("/api/points/adjust", {
+    user_id: Number(userId),
+    points: toNumber(points, 0),
+    ...(note ? { note } : {}),
+  });
+
+  return res?.data?.data ?? res?.data ?? {};
+};
 export const awardScanPoints = async ({ userId, action, points = 50 }) => {
   if (!userId) return null;
   try {
