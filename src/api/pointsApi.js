@@ -55,7 +55,7 @@ export const upsertUserPoints = async ({ userId, points, note }) => {
   if (existing) {
     const currentPoints = toNumber(existing?.points, 0);
     const adjustment = payload.points - currentPoints;
-    const res = await adjustPoints({
+    const res = await updatePointsByUserId({
       ...payload,
       amount: adjustment,
       adjustment,
