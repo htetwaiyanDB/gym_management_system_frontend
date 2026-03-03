@@ -57,6 +57,7 @@ export const upsertUserPoints = async ({ userId, points, note }) => {
     const adjustment = payload.points - currentPoints;
     const res = await adjustPoints({
       ...payload,
+      amount: adjustment,
       adjustment,
     });
     return normalizePointRecord(res?.data?.data ?? res?.data ?? { ...payload, id: existing.id });
