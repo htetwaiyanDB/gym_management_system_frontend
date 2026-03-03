@@ -90,6 +90,20 @@ export default function AdminPoints() {
   );
 
   const currentBalance = selectedUser ? Number(pointsMap[String(selectedUser.id)]?.points ?? 0) : 0;
+  const totalUsers = users.length;
+  const totalPoints = useMemo(
+    () => users.reduce((sum, user) => sum + Number(pointsMap[String(user.id)]?.points ?? 0), 0),
+    [users, pointsMap]
+  );
+  const averagePoints = totalUsers ? Math.round(totalPoints / totalUsers) : 0;
+  const topUser = useMemo(() => {
+    if (!users.length) return null;
+    return users.reduce((leader, user) => {
+      const leaderScore = leader ? Number(pointsMap[String(leader.id)]?.points ?? 0) : -Infinity;
+      const userScore = Number(pointsMap[String(user.id)]?.points ?? 0);
+      return userScore > leaderScore ? user : leader;
+    }, null);
+  }, [users, pointsMap]);
   const adjustmentValue = Number(adjustment);
   const isAdjustmentValid = Number.isFinite(adjustmentValue) && adjustment.trim() !== "" && adjustmentValue !== 0;
   const wouldGoNegative = isAdjustmentValid && currentBalance + adjustmentValue < 0;
@@ -144,9 +158,57 @@ export default function AdminPoints() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6 p-4 text-slate-100 md:p-6">
+    <div className="mx-auto w-full max-w-7xl space-y-6 p-4 text-slate-100 md:p-6">
+      <div className="overflow-hidden rounded-2xl border border-slate-700/80 bg-gradient-to-br from-slate-900 via-slate-900 to-cyan-950/60 p-5 shadow-xl shadow-cyan-950/20 md:p-6">
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-cyan-300/80">Admin dashboard</p>
+            <h1 className="mt-1 text-2xl font-bold md:text-3xl">Points Management Hub</h1>
+            <p className="mt-2 text-sm text-slate-300">
+              Track user balances and apply adjustments with better visibility.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={loadData}
+            disabled={loading}
+            className="inline-flex items-center justify-center rounded-xl border border-slate-500/70 bg-slate-800/70 px-4 py-2 text-sm font-medium transition hover:border-cyan-300 hover:text-cyan-200 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {loading ? "Refreshing..." : "Refresh Data"}
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <article className="rounded-xl border border-slate-700 bg-slate-900/60 p-4">
+          <p className="text-xs uppercase tracking-wide text-slate-400">Members</p>
+          <p className="mt-1 text-2xl font-semibold text-white">{totalUsers}</p>
+          <p className="mt-1 text-xs text-slate-400">Total users with editable points</p>
+        </article>
+        <article className="rounded-xl border border-slate-700 bg-slate-900/60 p-4">
+          <p className="text-xs uppercase tracking-wide text-slate-400">Total Points</p>
+          <p className="mt-1 text-2xl font-semibold text-cyan-300">{totalPoints.toLocaleString()}</p>
+          <p className="mt-1 text-xs text-slate-400">Combined balance across all users</p>
+        </article>
+        <article className="rounded-xl border border-slate-700 bg-slate-900/60 p-4">
+          <p className="text-xs uppercase tracking-wide text-slate-400">Average Balance</p>
+          <p className="mt-1 text-2xl font-semibold text-white">{averagePoints.toLocaleString()}</p>
+          <p className="mt-1 text-xs text-slate-400">Average points per user</p>
+        </article>
+        <article className="rounded-xl border border-cyan-500/40 bg-cyan-500/10 p-4">
+          <p className="text-xs uppercase tracking-wide text-cyan-200/80">Top Balance</p>
+          <p className="mt-1 text-lg font-semibold text-cyan-100">{topUser?.name || "—"}</p>
+          <p className="mt-1 text-sm text-cyan-100/90">
+            {topUser ? `${Number(pointsMap[String(topUser.id)]?.points ?? 0).toLocaleString()} pts` : "No data"}
+          </p>
+        </article>
+      </div>
+
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <h1 className="text-2xl font-semibold">Admin Point Manager</h1>
+        <div>
+          <h2 className="text-lg font-semibold">Member balances</h2>
+          <p className="text-sm text-slate-400">Select a member and quickly update their point wallet.</p>
+        </div>
         <button
           type="button"
           onClick={loadData}
@@ -170,7 +232,7 @@ export default function AdminPoints() {
       )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <section className="rounded-xl border border-slate-700 bg-slate-900/70 p-4 shadow-sm md:p-5">
+        <section className="rounded-2xl border border-slate-700 bg-slate-900/70 p-4 shadow-sm md:p-5">
           <label htmlFor="search" className="mb-2 block text-sm font-medium text-slate-300">
             Search users
           </label>
@@ -182,7 +244,7 @@ export default function AdminPoints() {
             className="mb-4 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none ring-0 transition placeholder:text-slate-500 focus:border-cyan-400"
           />
 
-          <div className="max-h-[420px] overflow-y-auto rounded-lg border border-slate-800">
+          <div className="max-h-[500px] overflow-y-auto rounded-xl border border-slate-800">
             <table className="min-w-full divide-y divide-slate-800 text-sm">
               <thead className="bg-slate-950/80 text-left text-xs uppercase tracking-wide text-slate-400">
                 <tr>
@@ -201,7 +263,7 @@ export default function AdminPoints() {
                       key={user.id}
                       onClick={() => setSelectedUserId(String(user.id))}
                       className={`cursor-pointer transition ${
-                        active ? "bg-cyan-500/10" : "hover:bg-slate-800/70"
+                        active ? "bg-cyan-500/15" : "hover:bg-slate-800/70"
                       }`}
                     >
                       <td className="px-3 py-2">
@@ -225,17 +287,20 @@ export default function AdminPoints() {
           </div>
         </section>
 
-        <section className="rounded-xl border border-slate-700 bg-slate-900/70 p-4 shadow-sm md:p-5">
+        <section className="rounded-2xl border border-slate-700 bg-slate-900/70 p-4 shadow-sm md:p-5">
           <h2 className="text-lg font-semibold">Adjust User Points</h2>
 
           {!selectedUser ? (
             <p className="mt-4 text-sm text-slate-400">Select a user from the list to begin.</p>
           ) : (
             <form className="mt-4 space-y-4" onSubmit={handleSubmit}>
-              <div className="rounded-lg border border-slate-800 bg-slate-950/70 p-3">
-                <p className="text-sm text-slate-400">Selected user</p>
-                <p className="font-semibold text-slate-100">{selectedUser.name}</p>
-                <p className="text-xs text-slate-400">Current balance: {currentBalance} points</p>
+              <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-4">
+                <p className="text-xs uppercase tracking-wide text-slate-400">Selected user</p>
+                <p className="mt-1 font-semibold text-slate-100">{selectedUser.name}</p>
+                <p className="text-xs text-slate-400">{selectedUser.phone}</p>
+                <p className="mt-3 inline-flex rounded-full border border-cyan-400/40 bg-cyan-500/10 px-3 py-1 text-xs font-semibold text-cyan-200">
+                  Current balance: {currentBalance.toLocaleString()} points
+                </p>
               </div>
 
               <div>
@@ -250,6 +315,18 @@ export default function AdminPoints() {
                   placeholder="e.g. -5000"
                   className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-cyan-400"
                 />
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {[-100, -50, 50, 100].map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setAdjustment(String(value))}
+                      className="rounded-lg border border-slate-700 px-3 py-1 text-xs font-medium text-slate-300 transition hover:border-cyan-400 hover:text-cyan-200"
+                    >
+                      {value > 0 ? `+${value}` : value}
+                    </button>
+                  ))}
+                </div>
                 {wouldGoNegative && (
                   <p className="mt-2 text-xs text-rose-300">
                     This adjustment would create a negative balance. Please enter a smaller deduction.
