@@ -125,6 +125,25 @@ const extractScanPayload = (payload) => {
 };
 
 
+const hasCompletedAttendanceForDay = ({ records = [], userId, dayKey }) => {
+  if (!userId || !dayKey) return false;
+
+  let hasCheckIn = false;
+  let hasCheckOut = false;
+
+  records.forEach((record) => {
+    const recordUserId = record?.user_id ?? record?.user?.id ?? record?.member_id ?? null;
+    const recordDay = getRecordDayKey(record?.scanned_at || record?.created_at || record?.time || record?.timestamp);
+    if (String(recordUserId) !== String(userId) || recordDay !== dayKey) return;
+
+    const action = normalizeRecordType(record);
+    if (action === "check_in") hasCheckIn = true;
+    if (action === "check_out") hasCheckOut = true;
+  });
+
+  return hasCheckIn && hasCheckOut;
+};
+
 const normalizeReportPayload = (resData) => {
   let payload =
     resData?.data ??
@@ -500,8 +519,20 @@ export default function AdminAttendance() {
         attendance?.member_id ??
         null;
       const scannedAction = normalizeRecordType(attendance);
-      if (scannedUserId && (scannedAction === "check_in" || scannedAction === "check_out")) {
-        await awardScanPoints({ userId: scannedUserId, action: scannedAction, points: 50 });
+      const scannedAt = attendance?.scanned_at || attendance?.created_at || attendance?.time || attendance?.timestamp;
+      const scannedDayKey = getRecordDayKey(scannedAt);
+
+      // Award once per day after a completed attendance cycle (check-in + check-out).
+      if (scannedUserId && scannedAction === "check_out" && scannedDayKey) {
+        const alreadyCompletedToday = hasCompletedAttendanceForDay({
+          records,
+          userId: scannedUserId,
+          dayKey: scannedDayKey,
+        });
+
+        if (!alreadyCompletedToday) {
+          await awardScanPoints({ userId: scannedUserId, action: "daily_completion", points: 50 });
+        }
       }
 
       await Promise.all([loadRecords(false), loadCheckedIn(false), loadActiveCheckins(false), loadMemberCount(false)]);
