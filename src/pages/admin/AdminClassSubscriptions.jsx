@@ -650,13 +650,13 @@ export default function AdminClassSubscriptions() {
           <div className="admin-muted">Track members enrolled in the class plan and manage hold/resume status.</div>
         </div>
         <div className="d-flex gap-2">
-          <button className="btn btn-outline-info" onClick={() => nav("/admin/subscriptions")}>
+          <button className="btn btn-sm btn-outline-info" onClick={() => nav("/admin/subscriptions")}>
             <i className="bi bi-credit-card-2-front me-2"></i> Subscription Page
           </button>
-          <button className="btn btn-primary" onClick={openCreate}>
+          <button className="btn btn-sm btn-primary" onClick={openCreate}>
             <i className="bi bi-plus-circle me-2"></i> Add New Subscription
           </button>
-          <button className="btn btn-outline-light" onClick={loadRecords} disabled={loading}>
+          <button className="btn btn-sm btn-outline-light" onClick={loadRecords} disabled={loading}>
             <i className="bi bi-arrow-clockwise me-2"></i>
             {loading ? "Loading..." : "Refresh"}
           </button>
@@ -668,7 +668,7 @@ export default function AdminClassSubscriptions() {
       <div className="admin-card p-3 mb-4 border border-secondary-subtle">
         <div className="d-flex align-items-center justify-content-between mb-3">
           <h5 className="mb-0">Class Timetable</h5>
-          <button className="btn btn-primary" onClick={openCreateClass}>
+          <button className="btn btn-sm btn-primary" onClick={openCreateClass}>
             <i className="bi bi-plus-circle me-2"></i>Create Class
           </button>
         </div>
