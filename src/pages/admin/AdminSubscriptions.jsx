@@ -469,7 +469,7 @@ export default function AdminSubscriptions() {
         <div>
           <h4 className="mb-1">Subscription Management</h4>
           <div className="admin-muted">
-            Track active members, hold subscriptions, and resume when they return.
+            Track members active, hold  and resume when they return.
           </div>
         </div>
 
