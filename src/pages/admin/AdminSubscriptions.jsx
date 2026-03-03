@@ -149,6 +149,7 @@ export default function AdminSubscriptions() {
   const [loading, setLoading] = useState(false);
   const [busyId, setBusyId] = useState(null);
   const [holdAllBusy, setHoldAllBusy] = useState(false);
+  const [resumeAllBusy, setResumeAllBusy] = useState(false);
   const [msg, setMsg] = useState(null);
 
   const [subs, setSubs] = useState([]);
@@ -338,6 +339,23 @@ export default function AdminSubscriptions() {
     }
   };
 
+  const resumeAllSubscriptions = async () => {
+    setMsg(null);
+    setResumeAllBusy(true);
+    try {
+      const res = await axiosClient.post("/subscription/all-resume");
+      setMsg({ type: "success", text: res?.data?.message || "All on-hold subscriptions are resumed." });
+      await load();
+    } catch (e) {
+      setMsg({
+        type: "danger",
+        text: e?.response?.data?.message || "Failed to resume all subscriptions.",
+      });
+    } finally {
+      setResumeAllBusy(false);
+    }
+  };
+
   useEffect(() => {
     load();
   }, []);
@@ -440,6 +458,11 @@ export default function AdminSubscriptions() {
     return sortedSubscriptions.filter((record) => subscriptionSearchText(record).includes(keyword));
   }, [sortedSubscriptions, tableSearch]);
 
+  const hasOnHoldSubscriptions = useMemo(
+    () => subs.some((record) => !!record?.is_on_hold && !isExpiredByDate(record?.end_date)),
+    [subs],
+  );
+
   return (
     <div className="admin-card p-4">
       <div className="d-flex align-items-center justify-content-between mb-3">
@@ -451,20 +474,33 @@ export default function AdminSubscriptions() {
         </div>
 
         <div className="d-flex gap-2">
-          <button className="btn btn-outline-info" onClick={() => nav("/admin/subscriptions/classes")}>
+          <button className="btn btn-sm btn-outline-info" onClick={() => nav("/admin/subscriptions/classes")}>
             <i className="bi bi-collection-play me-2"></i> Class Page
           </button>
 
-          <button className="btn btn-warning" onClick={holdAllSubscriptions} disabled={loading || holdAllBusy}>
+          <button
+            className="btn btn-sm btn-warning"
+            onClick={holdAllSubscriptions}
+            disabled={loading || holdAllBusy || resumeAllBusy}
+          >
             <i className="bi bi-pause-circle me-2"></i>
             {holdAllBusy ? "Holding..." : "Hold All"}
           </button>
 
-          <button className="btn btn-primary" onClick={openCreateModal} disabled={loading || holdAllBusy}>
+          <button
+            className="btn btn-sm btn-success"
+            onClick={resumeAllSubscriptions}
+            disabled={loading || holdAllBusy || resumeAllBusy || !hasOnHoldSubscriptions}
+          >
+            <i className="bi bi-play-circle me-2"></i>
+            {resumeAllBusy ? "Resuming..." : "Resume All"}
+          </button>
+
+          <button className="btn btn-sm btn-primary" onClick={openCreateModal} disabled={loading || holdAllBusy || resumeAllBusy}>
             <i className="bi bi-plus-circle me-2"></i> Add Memberships
           </button>
 
-          <button className="btn btn-outline-light" onClick={load} disabled={loading || holdAllBusy}>
+          <button className="btn btn-sm btn-outline-light" onClick={load} disabled={loading || holdAllBusy || resumeAllBusy}>
             <i className="bi bi-arrow-clockwise me-2"></i>
             {loading ? "Loading..." : "Refresh"}
           </button>
@@ -514,7 +550,7 @@ export default function AdminSubscriptions() {
                 const rawStatus = String(s?.status || "");
                 const isOnHold = !!s?.is_on_hold;
                 const isExpired = rawStatus.toLowerCase() === "expired" || isExpiredByDate(s?.end_date);
-                const status = isExpired ? "Expired" : rawStatus || "-";
+                const status = isExpired ? "Expired" : isOnHold ? "On Hold" : rawStatus || "-";
                 const canHold = !isExpired && !isOnHold && rawStatus.toLowerCase() === "active";
                 const canResume = !isExpired && isOnHold;
                 const canExtend = isExpired;
