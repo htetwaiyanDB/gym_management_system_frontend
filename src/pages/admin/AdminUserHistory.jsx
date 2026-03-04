@@ -104,6 +104,28 @@ function parseDate(value) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+function parseDateOnly(value) {
+  if (!value) return null;
+  const text = String(value).trim();
+  if (!text) return null;
+  const dateOnly = text.includes("T") ? text.split("T")[0] : text.split(" ")[0];
+  const [year, month, day] = dateOnly.split("-").map((part) => Number(part));
+  if (!year || !month || !day) return null;
+
+  const parsed = new Date(year, month - 1, day);
+  if (Number.isNaN(parsed.getTime())) return null;
+  parsed.setHours(0, 0, 0, 0);
+  return parsed;
+}
+
+function isExpiredByDate(endDateValue) {
+  const endDate = parseDateOnly(endDateValue);
+  if (!endDate) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return today > endDate;
+}
+
 function buildSubscriptionEntry(source, typeLabel, nameSource) {
   const nestedPlanLikeObjects = [
     source?.plan,
@@ -187,18 +209,19 @@ function buildSubscriptionEntry(source, typeLabel, nameSource) {
 
   const isOnHoldFlag = [source?.is_on_hold, source?.on_hold, source?.onHold].some((value) => toBoolean(value));
   const isExpiredFlag = [source?.is_expired, source?.expired].some((value) => toBoolean(value));
+  const isExpiredByEndDate = isExpiredByDate(endDate);
   const startDateObj = parseDate(startDate);
   const endDateObj = parseDate(endDate);
   const now = new Date();
 
   // If status is explicitly active (or equivalent), or active flag is set, use active.
   let derivedStatus;
-  if (normalizedRawStatus === "active" || isActiveFlag) {
+  if (normalizedRawStatus === "expired" || normalizedRawStatus === "completed" || isExpiredFlag || isExpiredByEndDate) {
+    derivedStatus = "expired";
+  } else if (normalizedRawStatus === "active" || isActiveFlag) {
     derivedStatus = "active";
   } else if (normalizedRawStatus && normalizedRawStatus !== "pending") {
     derivedStatus = normalizedRawStatus;
-  } else if (isExpiredFlag) {
-    derivedStatus = "expired";
   } else if (isOnHoldFlag) {
     derivedStatus = "on-hold";
   } else {
