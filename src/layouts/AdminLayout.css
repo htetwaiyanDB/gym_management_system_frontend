@@ -182,6 +182,29 @@
   --bs-table-border-color: rgba(255, 255, 255, 0.2);
 }
 
+/* Improve readability of admin search/filter inputs on dark glass pages */
+.admin-shell .form-control {
+  background: rgba(255, 255, 255, 0.94);
+  color: #111827;
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.admin-shell .form-control::placeholder {
+  color: rgba(17, 24, 39, 0.5);
+}
+
+.admin-shell .form-control:focus {
+  background: #ffffff;
+  color: #111827;
+  border-color: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.2);
+}
+
+.admin-shell .form-control:disabled {
+  background: rgba(255, 255, 255, 0.78);
+  color: rgba(17, 24, 39, 0.7);
+}
+
 
 .admin-modal .form-select {
   background: rgba(33, 37, 41, 0.95);
