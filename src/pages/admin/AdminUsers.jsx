@@ -430,7 +430,7 @@ export default function AdminUsers() {
             style={{
               background: "rgba(0, 0, 0, 0.35)",
               color: "#fff",
-              border: "1px solid #0d6efd",
+              border: "1px solid",
               boxShadow: "0 0 0 0.2rem rgba(13, 110, 253, 0.25)",
             }}
           />
