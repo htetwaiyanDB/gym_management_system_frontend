@@ -822,7 +822,7 @@ export default function AdminTrainerBookings() {
       return <span className="badge bg-info text-dark">Active</span>;
     }
     if (v === "expired") {
-      return <span className="badge bg-danger">Expired</span>;
+      return <span className="badge bg-danger text-white">Expired</span>;
     }
     if (v === "on-hold") {
       return <span className="badge bg-secondary">On Hold</span>;

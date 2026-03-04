@@ -74,7 +74,7 @@ function statusBadge(status) {
   if (normalized === "active") return <span className="badge bg-success">Active</span>;
   if (normalized === "completed") return <span className="badge bg-secondary">Completed</span>;
   if (normalized === "on-hold") return <span className="badge bg-warning text-dark">On Hold</span>;
-  if (normalized === "expired") return <span className="badge bg-danger">Expired</span>;
+  if (normalized === "expired") return <span className="badge bg-danger text-white">Expired</span>;
   return <span className="badge bg-info text-dark">{normalized}</span>;
 }
 
