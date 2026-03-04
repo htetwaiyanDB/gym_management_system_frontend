@@ -219,7 +219,7 @@ export default function UserClassSubscriptions({ embedded = false }) {
         }
       } catch (e) {
         if (!alive) return;
-        setError(e?.response?.data?.message || "Failed to load class subscriptions.");
+        setError(e?.response?.data?.message || "Failed to load class memberships.");
       } finally {
         if (alive) setLoading(false);
       }
@@ -240,9 +240,9 @@ export default function UserClassSubscriptions({ embedded = false }) {
     <div>
       {!embedded && <h2 style={{ marginBottom: 12 }}>Class</h2>}
 
-      {loading && <p>Loading class subscriptions...</p>}
+      {loading && <p>Loading class memberships...</p>}
       {!loading && error && <div className="alert alert-danger">{error}</div>}
-      {hasNoData && <p>No class subscription data available.</p>}
+      {hasNoData && <p>No class membership data available.</p>}
 
       <h3 style={{ marginBottom: 10 }}>Class Timetable</h3>
       <div

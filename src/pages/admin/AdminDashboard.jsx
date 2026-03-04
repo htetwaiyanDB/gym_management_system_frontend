@@ -627,7 +627,7 @@ export default function AdminDashboard() {
             fill="rgba(96,165,250,0.22)"
           />
           <MetricAreaChart
-            title="Subscriptions"
+            title="Memberships"
             data={subscriptionsData}
             stroke="#34d399"
             fill="rgba(52,211,153,0.20)"

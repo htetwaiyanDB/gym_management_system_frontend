@@ -285,7 +285,7 @@ export default function AdminClassSubscriptions() {
       const classRecords = normalizeList(res.data).filter(isClassSubscription);
       setRecords(classRecords);
     } catch (e) {
-      setMsg({ type: "danger", text: e?.response?.data?.message || "Failed to load class subscriptions." });
+      setMsg({ type: "danger", text: e?.response?.data?.message || "Failed to load class memberships." });
     } finally {
       setLoading(false);
     }
@@ -555,11 +555,11 @@ export default function AdminClassSubscriptions() {
 
     try {
       await axiosClient.post("/subscriptions", payload);
-      setMsg({ type: "success", text: "Class subscription created successfully." });
+      setMsg({ type: "success", text: "Class membership created successfully." });
       closeModal();
       await loadRecords();
     } catch (e) {
-      setMsg({ type: "danger", text: e?.response?.data?.message || "Failed to save class subscription." });
+      setMsg({ type: "danger", text: e?.response?.data?.message || "Failed to save class membership." });
     } finally {
       setSaving(false);
     }
@@ -570,10 +570,10 @@ export default function AdminClassSubscriptions() {
     setBusyId(id);
     try {
       const res = await axiosClient.post(`/subscriptions/${id}/hold`);
-      setMsg({ type: "success", text: res?.data?.message || "Class subscription placed on hold." });
+      setMsg({ type: "success", text: res?.data?.message || "Class membership placed on hold." });
       await loadRecords();
     } catch (e) {
-      setMsg({ type: "danger", text: e?.response?.data?.message || "Failed to change class subscription status." });
+      setMsg({ type: "danger", text: e?.response?.data?.message || "Failed to change class membership status." });
     } finally {
       setBusyId(null);
     }
@@ -584,10 +584,10 @@ export default function AdminClassSubscriptions() {
     setBusyId(id);
     try {
       const res = await axiosClient.post(`/subscriptions/${id}/resume`);
-      setMsg({ type: "success", text: res?.data?.message || "Class subscription resumed." });
+      setMsg({ type: "success", text: res?.data?.message || "Class membership resumed." });
       await loadRecords();
     } catch (e) {
-      setMsg({ type: "danger", text: e?.response?.data?.message || "Failed to resume class subscription." });
+      setMsg({ type: "danger", text: e?.response?.data?.message || "Failed to resume class membership." });
     } finally {
       setBusyId(null);
     }
@@ -605,10 +605,10 @@ export default function AdminClassSubscriptions() {
     setBusyId(id);
     try {
       const res = await axiosClient.patch(`/subscriptions/${id}/extend`, extendConfig.payload);
-      setMsg({ type: "success", text: res?.data?.message || "Class subscription end date extended." });
+      setMsg({ type: "success", text: res?.data?.message || "Class membership end date extended." });
       await loadRecords();
     } catch (e) {
-      setMsg({ type: "danger", text: e?.response?.data?.message || "Failed to extend class subscription." });
+      setMsg({ type: "danger", text: e?.response?.data?.message || "Failed to extend class membership." });
     } finally {
       setBusyId(null);
     }
@@ -646,15 +646,15 @@ export default function AdminClassSubscriptions() {
     <div className="admin-card p-4">
       <div className="d-flex align-items-center justify-content-between mb-3">
         <div>
-          <h4 className="mb-1">Class Subscription Management</h4>
+          <h4 className="mb-1">Class Membership Management</h4>
           <div className="admin-muted">Track members enrolled in the class plan and manage hold/resume status.</div>
         </div>
         <div className="d-flex gap-2">
           <button className="btn btn-sm btn-outline-info" onClick={() => nav("/admin/subscriptions")}>
-            <i className="bi bi-credit-card-2-front me-2"></i> Subscription Page
+            <i className="bi bi-credit-card-2-front me-2"></i> Membership Page
           </button>
           <button className="btn btn-sm btn-primary" onClick={openCreate}>
-            <i className="bi bi-plus-circle me-2"></i> Add New Subscription
+            <i className="bi bi-plus-circle me-2"></i> Add New Membership
           </button>
           <button className="btn btn-sm btn-outline-light" onClick={loadRecords} disabled={loading}>
             <i className="bi bi-arrow-clockwise me-2"></i>
@@ -745,7 +745,7 @@ export default function AdminClassSubscriptions() {
           <tbody>
             {filteredRecords.length === 0 ? (
               <tr>
-                <td colSpan="12" className="text-center text-muted py-4">{loading ? "Loading..." : tableSearch.trim() ? "No class subscriptions matched your search." : "No class subscriptions found."}</td>
+                <td colSpan="12" className="text-center text-muted py-4">{loading ? "Loading..." : tableSearch.trim() ? "No class memberships matched your search." : "No class memberships found."}</td>
               </tr>
             ) : (
               filteredRecords.map((r, index) => {
@@ -789,7 +789,7 @@ export default function AdminClassSubscriptions() {
                         className="btn btn-sm btn-warning"
                         disabled={!canHold || busyId === r.id}
                         onClick={() => setRecordOnHold(r.id)}
-                        title="Place class subscription on hold"
+                        title="Place class membership on hold"
                       >
                         {busyId === r.id ? "..." : "Hold"}
                       </button>
@@ -797,7 +797,7 @@ export default function AdminClassSubscriptions() {
                         className="btn btn-sm btn-success"
                         disabled={!canResume || busyId === r.id}
                         onClick={() => resumeRecord(r.id)}
-                        title="Resume class subscription"
+                        title="Resume class membership"
                       >
                         {busyId === r.id ? "..." : "Resume"}
                       </button>
@@ -805,7 +805,7 @@ export default function AdminClassSubscriptions() {
                         className="btn btn-sm btn-info"
                         disabled={!canExtend || busyId === r.id}
                         onClick={() => extendRecord(r.id)}
-                        title="Extend expired class subscription end date"
+                        title="Extend expired class membership end date"
                       >
                         {busyId === r.id ? "..." : "Extend"}
                       </button>
@@ -824,7 +824,7 @@ export default function AdminClassSubscriptions() {
             <div className="modal-dialog modal-dialog-centered">
               <div className="modal-content bg-dark text-white">
                 <div className="modal-header">
-                  <h5 className="modal-title fw-bolder">Create Class Subscription</h5>
+                  <h5 className="modal-title fw-bolder">Create Class Membership</h5>
                   <button className="btn-close btn-close-white" onClick={closeModal} aria-label="Close"></button>
                 </div>
                 <div className="modal-body">

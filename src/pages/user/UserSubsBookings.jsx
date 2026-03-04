@@ -335,7 +335,7 @@ function UserBoxingBookings() {
           <div>
             <div style={{ fontSize: 18, fontWeight: 900 }}>Boxing Bookings</div>
             <div className="small" style={{ opacity: 0.9 }}>
-              From subscriptions
+              From memberships
             </div>
           </div>
 
@@ -555,7 +555,7 @@ export default function UserSubsBookings() {
     { id: "subscriptions", label: "Memberships" },
     { id: "bookings", label: "Trainer Bookings" },
     { id: "boxing-bookings", label: "Boxing Bookings" },
-    { id: "class-subscriptions", label: "Class Subscriptions" },
+    { id: "class-subscriptions", label: "Class Memberships" },
   ];
 
   return (
