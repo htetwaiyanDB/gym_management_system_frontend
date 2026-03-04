@@ -85,6 +85,10 @@ body {
   color: #f5f7fa;
 }
 
+.admin-shell input[type="date"].admin-search-input {
+  color-scheme: dark;
+}
+
 /*
   Keep native <select> dropdown options readable in dark themed pages.
   Some browsers open the option list on a light popup; with text-white classes
