@@ -68,6 +68,23 @@ body {
   color: var(--app-text);
 }
 
+.admin-shell .admin-search-input {
+  background: rgba(9, 12, 16, 0.72);
+  border-color: rgba(255, 255, 255, 0.24);
+  color: #f5f7fa;
+}
+
+.admin-shell .admin-search-input::placeholder {
+  color: rgba(245, 247, 250, 0.72);
+}
+
+.admin-shell .admin-search-input:focus {
+  border-color: rgba(13, 110, 253, 0.6);
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.2);
+  background: rgba(9, 12, 16, 0.8);
+  color: #f5f7fa;
+}
+
 /*
   Keep native <select> dropdown options readable in dark themed pages.
   Some browsers open the option list on a light popup; with text-white classes

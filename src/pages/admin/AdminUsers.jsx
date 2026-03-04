@@ -417,7 +417,7 @@ export default function AdminUsers() {
         <div className="col-md-6">
           <input
             type="search"
-            className="form-control admin-search"
+            className="form-control admin-search-input"
             placeholder="Search name / email / phone / role"
             value={query}
             autoComplete="new-password"
@@ -428,16 +428,6 @@ export default function AdminUsers() {
             id="admin-user-search"
             onChange={(e) => setQuery(e.target.value)}
           />
-
-          <style>
-            {`
-              .admin-search::placeholder {
-                color: #ffffff !important;
-                font-weight: 600;
-                opacity: 1;
-              }
-            `}
-          </style>
         </div>
 
         <div className="col-md-6 d-flex justify-content-md-end gap-2">

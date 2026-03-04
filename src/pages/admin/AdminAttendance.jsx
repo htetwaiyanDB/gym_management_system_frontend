@@ -816,7 +816,7 @@ export default function AdminAttendance() {
               </label>
               <input
                 type="text"
-                className="form-control"
+                className="form-control admin-search-input"
                 placeholder="e.g. john"
                 value={recordSearch}
                 onChange={(e) => setRecordSearch(e.target.value)}
