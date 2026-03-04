@@ -586,7 +586,7 @@ export default function AdminUsers() {
         <>
           <div className="modal fade show d-block" tabIndex="-1">
             <div className="modal-dialog modal-dialog-centered">
-              <div className="modal-content bg-dark text-white">
+              <div className="modal-content bg-dark text-white admin-modal">
                 <div className="modal-header">
                   <h5 className="modal-title fw-bold">Create User</h5>
                   <button className="btn-close btn-close-white" onClick={closeCreate}></button>
@@ -710,7 +710,7 @@ export default function AdminUsers() {
         <>
           <div className="modal fade show d-block" tabIndex="-1">
             <div className="modal-dialog modal-dialog-centered">
-              <div className="modal-content bg-dark text-white">
+              <div className="modal-content bg-dark text-white admin-modal">
                 <div className="modal-header">
                   <h5 className="modal-title">Update User</h5>
                   <button className="btn-close btn-close-white" onClick={closeEdit}></button>

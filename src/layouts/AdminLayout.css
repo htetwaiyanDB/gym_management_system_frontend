@@ -205,6 +205,16 @@
   color: #ffffff;
 }
 
+.admin-modal .form-control:-webkit-autofill,
+.admin-modal .form-control:-webkit-autofill:hover,
+.admin-modal .form-control:-webkit-autofill:focus,
+.admin-modal .form-control:-webkit-autofill:active {
+  -webkit-text-fill-color: #ffffff;
+  -webkit-box-shadow: 0 0 0 1000px rgba(33, 37, 41, 0.98) inset;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+
 .admin-modal input[type="date"].form-control {
   color-scheme: dark;
 }
