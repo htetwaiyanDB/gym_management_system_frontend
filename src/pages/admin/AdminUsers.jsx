@@ -95,6 +95,9 @@ export default function AdminUsers() {
 
   const [query, setQuery] = useState("");
   const [users, setUsers] = useState([]);
+  
+  // Force disable autofill for search input
+  const searchInputRef = React.useRef(null);
 
   // Pagination (client-side)
   const [page, setPage] = useState(1);
@@ -157,6 +160,14 @@ export default function AdminUsers() {
 
   useEffect(() => {
     load();
+  }, []);
+  
+  // Disable autocomplete attribute on mount
+  useEffect(() => {
+    if (searchInputRef.current) {
+      searchInputRef.current.setAttribute('autocomplete', 'off');
+      searchInputRef.current.setAttribute('data-lpignore', 'true');
+    }
   }, []);
 
   const filtered = useMemo(() => {
@@ -416,17 +427,19 @@ export default function AdminUsers() {
       <div className="row g-2 align-items-center mb-3">
         <div className="col-md-6">
           <input
+            ref={searchInputRef}
             type="search"
             className="form-control admin-search-input"
             placeholder="Search name / email / phone / role"
             value={query}
-            autoComplete="new-password"
+            autoComplete="off"
             autoCorrect="off"
             autoCapitalize="none"
             spellCheck={false}
             name="admin-user-search-filter"
             id="admin-user-search"
             data-form-type="other"
+            data-lpignore="true"
             onChange={(e) => setQuery(e.target.value)}
           />
         </div>
