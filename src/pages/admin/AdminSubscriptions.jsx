@@ -467,7 +467,7 @@ export default function AdminSubscriptions() {
     <div className="admin-card p-4">
       <div className="d-flex align-items-center justify-content-between mb-3">
         <div>
-          <h4 className="mb-1">Subscription Management</h4>
+          <h4 className="mb-1">Subscription & Memberships Management</h4>
           <div className="admin-muted">
             Track members active, hold  and resume when they return.
           </div>
