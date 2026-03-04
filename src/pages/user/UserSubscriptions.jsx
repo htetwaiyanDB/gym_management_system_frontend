@@ -169,7 +169,11 @@ function StatusBadge({ status }) {
     s === "active"
       ? "bg-success"
       : s === "expired" || s === "inactive"
+<<<<<<< codex/fix-expired-status-background-and-text-color
       ? "bg-danger text-white"
+=======
+      ? "bg-danger"
+>>>>>>> main
       : s === "pending"
       ? "bg-warning text-dark"
       : "bg-info";
