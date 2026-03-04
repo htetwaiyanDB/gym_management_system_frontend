@@ -427,6 +427,12 @@ export default function AdminUsers() {
             name="user-search"
             id="admin-user-search"
             onChange={(e) => setQuery(e.target.value)}
+            style={{
+              background: "rgba(0, 0, 0, 0.35)",
+              color: "#fff",
+              border: "1px solid #0d6efd",
+              boxShadow: "0 0 0 0.2rem rgba(13, 110, 253, 0.25)",
+            }}
           />
 
           <style>
