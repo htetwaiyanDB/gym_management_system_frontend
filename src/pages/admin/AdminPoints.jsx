@@ -153,7 +153,7 @@ export default function AdminPoints() {
             <div className="card-body">
               <label className="form-label">Search user/trainer (name / phone)</label>
               <input
-                className="form-control mb-3"
+                className="form-control admin-search-input mb-3"
                 placeholder="Type name or phone..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
