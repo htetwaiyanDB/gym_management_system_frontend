@@ -872,7 +872,7 @@ export default function AdminBoxingBookings() {
       return <span className="badge bg-danger">Expired</span>;
     }
     if (v === "on-hold") {
-      return <span className="badge bg-secondary">On Hold</span>;
+      return <span className="badge bg-danger">On Hold</span>;
     }
     if (v === "completed") {
       return <span className="badge bg-success">Completed</span>;
