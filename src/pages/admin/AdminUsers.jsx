@@ -420,12 +420,13 @@ export default function AdminUsers() {
             className="form-control admin-search-input"
             placeholder="Search name / email / phone / role"
             value={query}
-            autoComplete="new-password"
+            autoComplete="off"
             autoCorrect="off"
             autoCapitalize="none"
             spellCheck={false}
-            name="user-search"
+            name="admin-user-search-filter"
             id="admin-user-search"
+            data-form-type="other"
             onChange={(e) => setQuery(e.target.value)}
           />
         </div>
@@ -636,8 +637,9 @@ export default function AdminUsers() {
                     <label className="form-label fw-bold">Email</label>
                     <input
                       className="form-control"
+                      type="email"
                       value={createForm.email}
-                      autoComplete="new-password"
+                      autoComplete="off"
                       name="create-email"
                       onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
                     />
