@@ -629,6 +629,7 @@ export default function AdminUsers() {
                       className="form-control"
                       autoComplete="off"
                       name="create-name"
+                      placeholder="Enter user name"
                       value={createForm.name}
                       onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
                     />
@@ -654,6 +655,7 @@ export default function AdminUsers() {
                       value={createForm.email}
                       autoComplete="off"
                       name="create-email"
+                      placeholder="Enter user email"
                       onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
                     />
                   </div>
@@ -664,6 +666,7 @@ export default function AdminUsers() {
                       className="form-control"
                       autoComplete="new-password"
                       name="create-phone"
+                      placeholder="Enter user phone number"
                       value={createForm.phone}
                       onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value })}
                     />
@@ -687,6 +690,7 @@ export default function AdminUsers() {
                     <input
                       type="password"
                       className="form-control"
+                      placeholder="Enter user password"
                       value={createForm.password}
                       onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
                     />
@@ -697,6 +701,7 @@ export default function AdminUsers() {
                     <input
                       type="password"
                       className="form-control"
+                      placeholder="Confirm user password"
                       value={createForm.password_confirmation}
                       onChange={(e) =>
                         setCreateForm({ ...createForm, password_confirmation: e.target.value })
@@ -783,7 +788,7 @@ export default function AdminUsers() {
                     <input
                       type="password"
                       className="form-control"
-                      placeholder="Leave blank to keep current password"
+                      placeholder="Enter user password"
                       autoComplete="new-password"
                       value={editForm.password}
                       onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
@@ -795,7 +800,7 @@ export default function AdminUsers() {
                     <input
                       type="password"
                       className="form-control"
-                      placeholder="Leave blank to keep current password"
+                      placeholder="Confirm user password"
                       autoComplete="new-password"
                       value={editForm.password_confirmation}
                       onChange={(e) =>
