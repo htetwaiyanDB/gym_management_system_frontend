@@ -188,6 +188,37 @@
   color: #ffffff;
 }
 
+.admin-modal .form-control {
+  background: rgba(33, 37, 41, 0.95);
+  border-color: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+.admin-modal .form-control::placeholder {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.admin-modal .form-control:focus {
+  background: rgba(33, 37, 41, 0.98);
+  border-color: rgba(13, 110, 253, 0.7);
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.2);
+  color: #ffffff;
+}
+
+.admin-modal input[type="date"].form-control {
+  color-scheme: dark;
+}
+
+.admin-modal input[type="number"].form-control {
+  -moz-appearance: textfield;
+}
+
+.admin-modal input[type="number"].form-control::-webkit-outer-spin-button,
+.admin-modal input[type="number"].form-control::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 .admin-modal .form-select option {
   background: rgba(33, 37, 41, 0.98);
   color: #ffffff;
