@@ -24,7 +24,7 @@ function normalizeSubscriptionRecord(raw) {
     pick(raw, ["plan_name", "membership_plan_name", "package_name", "name", "title"]) ||
     pick(raw?.plan, ["name", "title", "plan_name"]) ||
     pick(raw?.package, ["name", "title", "plan_name"]) ||
-    "Subscription";
+    "Membership";
 
   const price = pickFromSources([raw, raw?.plan, raw?.package], [
     "price",
@@ -219,7 +219,7 @@ export default function UserSubscriptions() {
         if (alive) setItems(sorted);
       } catch (e) {
         console.log("GET /user/subscriptions ERROR:", e?.response?.data || e);
-        if (alive) setError(e?.response?.data?.message || "Failed to load subscriptions.");
+        if (alive) setError(e?.response?.data?.message || "Failed to load memberships.");
       } finally {
         if (alive) setLoading(false);
       }
@@ -233,7 +233,7 @@ export default function UserSubscriptions() {
   const emptyText = useMemo(() => {
     if (loading) return "";
     if (error) return "";
-    return "No subscriptions available.";
+    return "No memberships available.";
   }, [loading, error]);
 
   return (
@@ -267,7 +267,7 @@ export default function UserSubscriptions() {
             pick(sub, ["plan_name", "package_name", "name", "title"]) ||
             pick(sub?.plan, ["name", "title"]) ||
             pick(sub?.package, ["name", "title"]) ||
-            "Subscription";
+            "Membership";
 
           const status = resolveSubscriptionStatus(sub);
 

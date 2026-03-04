@@ -409,7 +409,7 @@ export default function AdminUserHistory() {
         const boxingBookings = normalizeArray(payload.boxing_bookings ?? payload.boxingbookings);
         const entries = [
           ...subscriptions.map((item) =>
-            buildSubscriptionEntry(item, "Subscription", ["plan_name", "package_name", "name"]),
+            buildSubscriptionEntry(item, "Membership", ["plan_name", "package_name", "name"]),
           ),
           ...trainerBookings.map((item) =>
             buildBookingEntry(item, "Trainer Package"),
@@ -469,7 +469,7 @@ function UserRecordsDetail({
   const subscriptionGroups = records?.subscriptions ?? emptyRecords.subscriptions;
   const renderTable = (items) => {
     if (items.length === 0) {
-      return <div className="text-center text-muted py-4">No subscriptions found for this category.</div>;
+      return <div className="text-center text-muted py-4">No memberships found for this category.</div>;
     }
 
     return (
@@ -512,9 +512,9 @@ function UserRecordsDetail({
           <div className="admin-muted">
             {isTrainer
               ? "View trainer profile, assigned bookings, and attendance history."
-              : "View user profile, subscriptions, and booking history."}
+              : "View user profile, memberships, and booking history."}
           </div>
-          {loading && <div className="text-muted small">Loading {isTrainer ? "records" : "subscriptions"}...</div>}
+          {loading && <div className="text-muted small">Loading {isTrainer ? "records" : "memberships"}...</div>}
         </div>
         <div className="d-flex gap-2">
           {onClose && (
@@ -567,7 +567,7 @@ function UserRecordsDetail({
             <div>
               <div className="text-muted small">Summary</div>
               <div className="fw-bold fs-5">
-                {isTrainer ? "Trainer Booking Records" : "Subscription & Package Records"}
+                {isTrainer ? "Trainer Booking Records" : "Membership & Package Records"}
               </div>
               <div className="text-muted small">
                 Total: {subscriptionGroups.active.length + subscriptionGroups.onHold.length + subscriptionGroups.upcoming.length + subscriptionGroups.past.length}
@@ -584,7 +584,7 @@ function UserRecordsDetail({
       </div>
 
       <div className="mb-4">
-        <h5 className="mb-3">{isTrainer ? "Active Bookings" : "Active Subscriptions"}</h5>
+        <h5 className="mb-3">{isTrainer ? "Active Bookings" : "Active Memberships"}</h5>
         {loading && subscriptionGroups.active.length === 0 ? (
           <div className="text-center text-muted py-4">Loading...</div>
         ) : (
@@ -593,7 +593,7 @@ function UserRecordsDetail({
       </div>
 
       <div className="mb-4">
-        <h5 className="mb-3">{isTrainer ? "On Hold Bookings" : "On Hold Subscriptions"}</h5>
+        <h5 className="mb-3">{isTrainer ? "On Hold Bookings" : "On Hold Memberships"}</h5>
         {loading && subscriptionGroups.onHold.length === 0 ? (
           <div className="text-center text-muted py-4">Loading...</div>
         ) : (
@@ -602,7 +602,7 @@ function UserRecordsDetail({
       </div>
 
       <div className="mb-4">
-        <h5 className="mb-3">{isTrainer ? "Completed / Past Bookings" : "Expired / Past Subscriptions"}</h5>
+        <h5 className="mb-3">{isTrainer ? "Completed / Past Bookings" : "Expired / Past Memberships"}</h5>
         {loading && subscriptionGroups.past.length === 0 ? (
           <div className="text-center text-muted py-4">Loading...</div>
         ) : (
@@ -611,7 +611,7 @@ function UserRecordsDetail({
       </div>
 
       <div>
-        <h5 className="mb-3">{isTrainer ? "Upcoming / Pending Bookings" : "Upcoming / Pre-purchased Subscriptions"}</h5>
+        <h5 className="mb-3">{isTrainer ? "Upcoming / Pending Bookings" : "Upcoming / Pre-purchased Memberships"}</h5>
         {loading && subscriptionGroups.upcoming.length === 0 ? (
           <div className="text-center text-muted py-4">Loading...</div>
         ) : (

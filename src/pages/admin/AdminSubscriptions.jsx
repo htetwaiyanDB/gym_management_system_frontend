@@ -185,7 +185,7 @@ export default function AdminSubscriptions() {
     } catch (e) {
       setMsg({
         type: "danger",
-        text: e?.response?.data?.message || "Failed to load subscriptions.",
+        text: e?.response?.data?.message || "Failed to load memberships.",
       });
     } finally {
       setLoading(false);
@@ -207,7 +207,7 @@ export default function AdminSubscriptions() {
     } catch (e) {
       setMsg({
         type: "danger",
-        text: e?.response?.data?.message || "Failed to load subscription options.",
+        text: e?.response?.data?.message || "Failed to load membership options.",
       });
       // keep modal open so admin can try again
     } finally {
@@ -253,13 +253,13 @@ export default function AdminSubscriptions() {
       setShowModal(false);
       setMsg({
         type: "success",
-        text: res?.data?.message || "Subscription created successfully.",
+        text: res?.data?.message || "Membership created successfully.",
       });
       await load();
     } catch (e) {
       setMsg({
         type: "danger",
-        text: e?.response?.data?.message || "Failed to create subscription.",
+        text: e?.response?.data?.message || "Failed to create membership.",
       });
     }
   };
@@ -269,12 +269,12 @@ export default function AdminSubscriptions() {
     setBusyId(id);
     try {
       const res = await axiosClient.post(`/subscriptions/${id}/hold`);
-      setMsg({ type: "success", text: res?.data?.message || "Subscription placed on hold." });
+      setMsg({ type: "success", text: res?.data?.message || "Membership placed on hold." });
       await load();
     } catch (e) {
       setMsg({
         type: "danger",
-        text: e?.response?.data?.message || "Failed to hold subscription.",
+        text: e?.response?.data?.message || "Failed to hold membership.",
       });
     } finally {
       setBusyId(null);
@@ -286,12 +286,12 @@ export default function AdminSubscriptions() {
     setBusyId(id);
     try {
       const res = await axiosClient.post(`/subscriptions/${id}/resume`);
-      setMsg({ type: "success", text: res?.data?.message || "Subscription resumed." });
+      setMsg({ type: "success", text: res?.data?.message || "Membership resumed." });
       await load();
     } catch (e) {
       setMsg({
         type: "danger",
-        text: e?.response?.data?.message || "Failed to resume subscription.",
+        text: e?.response?.data?.message || "Failed to resume membership.",
       });
     } finally {
       setBusyId(null);
@@ -310,12 +310,12 @@ export default function AdminSubscriptions() {
     setBusyId(id);
     try {
       const res = await axiosClient.patch(`/subscriptions/${id}/extend`, extendConfig.payload);
-      setMsg({ type: "success", text: res?.data?.message || "Subscription end date extended." });
+      setMsg({ type: "success", text: res?.data?.message || "Membership end date extended." });
       await load();
     } catch (e) {
       setMsg({
         type: "danger",
-        text: e?.response?.data?.message || "Failed to extend subscription end date.",
+        text: e?.response?.data?.message || "Failed to extend membership end date.",
       });
     } finally {
       setBusyId(null);
@@ -327,12 +327,12 @@ export default function AdminSubscriptions() {
     setHoldAllBusy(true);
     try {
       const res = await axiosClient.post("/subscription/all-hold");
-      setMsg({ type: "success", text: res?.data?.message || "All active subscriptions are now on hold." });
+      setMsg({ type: "success", text: res?.data?.message || "All active memberships are now on hold." });
       await load();
     } catch (e) {
       setMsg({
         type: "danger",
-        text: e?.response?.data?.message || "Failed to hold all subscriptions.",
+        text: e?.response?.data?.message || "Failed to hold all memberships.",
       });
     } finally {
       setHoldAllBusy(false);
@@ -344,12 +344,12 @@ export default function AdminSubscriptions() {
     setResumeAllBusy(true);
     try {
       const res = await axiosClient.post("/subscription/all-resume");
-      setMsg({ type: "success", text: res?.data?.message || "All on-hold subscriptions are resumed." });
+      setMsg({ type: "success", text: res?.data?.message || "All on-hold memberships are resumed." });
       await load();
     } catch (e) {
       setMsg({
         type: "danger",
-        text: e?.response?.data?.message || "Failed to resume all subscriptions.",
+        text: e?.response?.data?.message || "Failed to resume all memberships.",
       });
     } finally {
       setResumeAllBusy(false);
@@ -467,7 +467,7 @@ export default function AdminSubscriptions() {
     <div className="admin-card p-4">
       <div className="d-flex align-items-center justify-content-between mb-3">
         <div>
-          <h4 className="mb-1">Subscription & Memberships Management</h4>
+          <h4 className="mb-1">Memberships Management</h4>
           <div className="admin-muted">
             Track members active, hold  and resume when they return.
           </div>
@@ -542,7 +542,7 @@ export default function AdminSubscriptions() {
             {filteredSubscriptions.length === 0 ? (
               <tr>
                 <td colSpan="12" className="text-center text-muted py-4">
-                  {loading ? "Loading..." : tableSearch.trim() ? "No subscriptions matched your search." : "No subscriptions found."}
+                  {loading ? "Loading..." : tableSearch.trim() ? "No memberships matched your search." : "No memberships found."}
                 </td>
               </tr>
             ) : (
@@ -598,7 +598,7 @@ export default function AdminSubscriptions() {
                           className="btn btn-sm btn-success"
                           disabled={!canResume || busyId === s.id}
                           onClick={() => resumeSubscription(s.id)}
-                          title="Resume subscription"
+                          title="Resume membership"
                         >
                           {busyId === s.id ? "..." : "Resume"}
                         </button>
@@ -607,7 +607,7 @@ export default function AdminSubscriptions() {
                           className="btn btn-sm btn-info"
                           disabled={!canExtend || busyId === s.id}
                           onClick={() => extendSubscription(s.id)}
-                          title="Extend expired subscription end date"
+                          title="Extend expired membership end date"
                         >
                           {busyId === s.id ? "..." : "Extend"}
                         </button>
@@ -756,7 +756,7 @@ export default function AdminSubscriptions() {
                     onClick={createSubscription}
                     disabled={optionsLoading}
                   >
-                    {optionsLoading ? "Loading..." : "Save Subscription"}
+                    {optionsLoading ? "Loading..." : "Save Membership"}
                   </button>
                 </div>
               </div>
