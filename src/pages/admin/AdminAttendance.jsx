@@ -646,7 +646,7 @@ export default function AdminAttendance() {
           <input
             ref={scanInputRef}
             type="text"
-            className="form-control"
+            className="form-control admin-search-input"
             value={scanValue}
             onChange={handleScanChange}
             onKeyDown={handleScanKeyDown}
@@ -829,7 +829,7 @@ export default function AdminAttendance() {
               </label>
               <input
                 type="date"
-                className="form-control"
+                className="form-control admin-search-input"
                 value={recordStartDateFilter}
                 onChange={(e) => setRecordStartDateFilter(e.target.value)}
               />
@@ -842,7 +842,7 @@ export default function AdminAttendance() {
               </label>
               <input
                 type="date"
-                className="form-control"
+                className="form-control admin-search-input"
                 value={recordEndDateFilter}
                 min={recordStartDateFilter || undefined}
                 onChange={(e) => setRecordEndDateFilter(e.target.value)}
