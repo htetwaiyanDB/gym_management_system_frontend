@@ -169,7 +169,7 @@ function StatusBadge({ status }) {
     s === "active"
       ? "bg-success"
       : s === "expired" || s === "inactive"
-      ? "bg-danger"
+      ? "bg-danger text-white"
       : s === "pending"
       ? "bg-warning text-dark"
       : "bg-info";

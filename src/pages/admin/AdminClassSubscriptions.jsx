@@ -777,7 +777,7 @@ export default function AdminClassSubscriptions() {
                       <span className="badge bg-warning text-dark">On Hold</span>
                     )}
                     {status.toLowerCase() === "expired" && (
-                      <span className="badge bg-danger">Expired</span>
+                      <span className="badge bg-danger text-white">Expired</span>
                     )}
                     {!['active', 'on hold', 'expired'].includes(status.toLowerCase()) && (
                       <span className="badge bg-info text-dark">{status || '-'}</span>
