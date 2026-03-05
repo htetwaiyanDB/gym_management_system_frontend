@@ -1157,9 +1157,9 @@ export default function AdminBoxingBookings() {
               <th style={{ width: 150 }}>Coach Name</th>
               <th style={{ width: 150 }}>Coach Phone</th>
               <th style={{ width: 140 }}>Package Type</th>
-              <th style={{ width: 120 }}>Status</th>
-              <th style={{ width: 100 }}>Paid</th>
-              <th style={{ width: 240 }}>Actions</th>
+              <th style={{ width: 100 }}>Status</th>
+              <th style={{ width: 80 }}>Paid</th>
+              <th style={{ width: 280 }}>Actions</th>
             </tr>
           </thead>
 
