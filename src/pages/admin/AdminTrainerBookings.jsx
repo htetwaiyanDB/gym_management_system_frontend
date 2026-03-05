@@ -169,8 +169,8 @@ function isMonthlyBasedBooking(booking) {
 
   if (getBookingPackageType(booking) === "monthly") return true;
 
-  const monthCount = getMonthCount(booking);
-  if (monthCount !== null && monthCount > 0) return true;
+  const explicitMonthCount = toNumber(booking?.month_count ?? booking?.months_count);
+  if (explicitMonthCount !== null && explicitMonthCount > 0) return true;
 
   const hasMonthlyDates = pickFirstValue(booking, [
     "month_start_date",
@@ -223,12 +223,19 @@ function getSessionProgress(booking) {
 }
 
 function getMonthCount(booking) {
-  const monthValue =
-    booking?.trainer_package?.duration_months ??
-    booking?.duration_months ??
+  const explicitMonthValue =
     booking?.month_count ??
-    booking?.months_count;
-  return toNumber(monthValue);
+    booking?.months_count ??
+    booking?.duration_months;
+  const explicitMonthCount = toNumber(explicitMonthValue);
+  if (explicitMonthCount !== null) return explicitMonthCount;
+
+  const shouldUsePackageMonthFallback =
+    getBookingBillingMode(booking) === "monthly" || getBookingPackageType(booking) === "monthly";
+
+  if (!shouldUsePackageMonthFallback) return null;
+
+  return toNumber(booking?.trainer_package?.duration_months);
 }
 
 function formatDateInputValue(date) {
