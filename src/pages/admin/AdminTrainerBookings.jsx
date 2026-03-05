@@ -234,7 +234,7 @@ export default function AdminTrainerBookings() {
   const [optionsLoading, setOptionsLoading] = useState(false);
   const [members, setMembers] = useState([]);
   const [trainers, setTrainers] = useState([]);
-  const [packageTypeOptions, setPackageTypeOptions] = useState(["personal", "monthly", "duo"]);
+  const [packageTypeOptions, setPackageTypeOptions] = useState(["personal", "monthly", "duo", "trio"]);
   const [trainerPackages, setTrainerPackages] = useState([]);
   const [packagesLoading, setPackagesLoading] = useState(false);
    const [statusOptions, setStatusOptions] = useState([
@@ -284,7 +284,7 @@ export default function AdminTrainerBookings() {
     const normalized = normalizePackageType(
       pkg?.package_type ?? pkg?.type ?? pkg?.packageType ?? pkg?.category
     );
-    if (["personal", "monthly", "duo"].includes(normalized)) {
+    if (["personal", "monthly", "duo", "trio"].includes(normalized)) {
       return normalized;
     }
     const durationMonths = toNumber(pkg?.duration_months ?? pkg?.months_count ?? pkg?.month_count);
@@ -292,6 +292,7 @@ export default function AdminTrainerBookings() {
     const sessions = toNumber(pkg?.sessions_count ?? pkg?.session_count);
     if (sessions !== null && sessions > 0) return "personal";
     const name = normalizePackageType(pkg?.name ?? pkg?.title);
+    if (name.includes("trio")) return "trio";
     if (name.includes("duo")) return "duo";
     if (name.includes("month")) return "monthly";
     if (name.includes("session") || name.includes("personal")) return "personal";
@@ -406,7 +407,7 @@ export default function AdminTrainerBookings() {
       setPackageTypeOptions(
         Array.isArray(res.data?.package_types) && res.data.package_types.length > 0
           ? res.data.package_types
-          : ["personal", "monthly", "duo"]
+          : ["personal", "monthly", "duo", "trio"]
       );
       setDefaultPrice(Number(res.data?.default_price_per_session ?? 30000));
       setStatusOptions(
@@ -776,12 +777,13 @@ export default function AdminTrainerBookings() {
 
     const packagesByType = useMemo(() => {
     if (!Array.isArray(trainerPackages)) {
-      return { personal: [], monthly: [], duo: [] };
+      return { personal: [], monthly: [], duo: [], trio: [] };
     }
     return {
       personal: trainerPackages.filter((pkg) => inferPackageGroup(pkg) === "personal"),
       monthly: trainerPackages.filter((pkg) => inferPackageGroup(pkg) === "monthly"),
       duo: trainerPackages.filter((pkg) => inferPackageGroup(pkg) === "duo"),
+      trio: trainerPackages.filter((pkg) => inferPackageGroup(pkg) === "trio"),
     };
   }, [trainerPackages]);
 
@@ -1442,7 +1444,7 @@ export default function AdminTrainerBookings() {
                     <div className="col-12">
                     <label className="form-label fw-bold">Package Type</label>
                     <div className="row g-2">
-                      <div className="col-12 col-md-4">
+                      <div className="col-12 col-md-3">
                         <label className="form-label admin-muted">Personal</label>
                         <select
                           className="form-select admin-select-dark"
@@ -1465,7 +1467,7 @@ export default function AdminTrainerBookings() {
                         </select>
                       </div>
 
-                      <div className="col-12 col-md-4">
+                      <div className="col-12 col-md-3">
                         <label className="form-label admin-muted">Monthly</label>
                         <select
                           className="form-select admin-select-dark"
@@ -1488,7 +1490,7 @@ export default function AdminTrainerBookings() {
                         </select>
                       </div>
 
-                      <div className="col-12 col-md-4">
+                      <div className="col-12 col-md-3">
                         <label className="form-label admin-muted">Duo</label>
                         <select
                           className="form-select admin-select-dark"
@@ -1503,6 +1505,29 @@ export default function AdminTrainerBookings() {
                             ? renderPackageOptions(packagesByType.duo, "duo")
                             : packageTypeOptions
                               .filter((type) => normalizePackageType(type) === "duo")
+                              .map((type) => (
+                                <option key={type} value={type}>
+                                  {type.charAt(0).toUpperCase() + type.slice(1)}
+                                </option>
+                              ))}
+                        </select>
+                      </div>
+
+                      <div className="col-12 col-md-3">
+                        <label className="form-label admin-muted">Trio</label>
+                        <select
+                          className="form-select admin-select-dark"
+                          value={packageGroup === "trio" ? packageType : ""}
+                          onChange={handlePackageSelect("trio")}
+                          disabled={optionsLoading || packagesLoading}
+                        >
+                          <option value="" className="fw-bold">
+                            Select trio package
+                          </option>
+                          {trainerPackages.length > 0
+                            ? renderPackageOptions(packagesByType.trio, "trio")
+                            : packageTypeOptions
+                              .filter((type) => normalizePackageType(type) === "trio")
                               .map((type) => (
                                 <option key={type} value={type}>
                                   {type.charAt(0).toUpperCase() + type.slice(1)}
