@@ -543,7 +543,7 @@ export default function AdminSubscriptions() {
         <table className="table table-dark table-hover align-middle mb-0">
           <thead>
             <tr>
-              <th style={{ width: 90 }}>ID</th>
+              <th style={{ width: 30 }}>ID</th>
               <th>Member</th>
               <th>Member Phone</th>
               <th>Plan</th>
