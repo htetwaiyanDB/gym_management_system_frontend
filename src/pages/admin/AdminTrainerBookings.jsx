@@ -717,6 +717,26 @@ export default function AdminTrainerBookings() {
     }
   };
 
+  const deleteBooking = async (id) => {
+    const shouldDelete = window.confirm("Are you sure you want to delete this trainer booking?");
+    if (!shouldDelete) return;
+
+    setMsg(null);
+    setBusyKey(`delete-${id}`);
+    try {
+      const res = await axiosClient.delete(`/trainer-bookings/${id}`);
+      setMsg({ type: "success", text: res?.data?.message || "Trainer booking deleted successfully." });
+      await loadBookings();
+    } catch (e) {
+      setMsg({
+        type: "danger",
+        text: e?.response?.data?.message || "Failed to delete trainer booking.",
+      });
+    } finally {
+      setBusyKey(null);
+    }
+  };
+
   const updateSessionCount = async (booking, nextTotal) => {
     if (!booking?.id) return;
     const totalValue = Number(nextTotal);
@@ -1180,6 +1200,14 @@ export default function AdminTrainerBookings() {
                           title={isPaid ? "Already paid" : "Mark as paid"}
                         >
                            {busyKey === `paid-${b.id}` ? "..." : "Paid"}
+                        </button>
+                        <button
+                          className="btn btn-sm btn-danger"
+                          disabled={busyKey === `delete-${b.id}`}
+                          onClick={() => deleteBooking(b.id)}
+                          title="Delete trainer booking"
+                        >
+                          {busyKey === `delete-${b.id}` ? "..." : "Delete"}
                         </button>
                       </div>
                     </td>
