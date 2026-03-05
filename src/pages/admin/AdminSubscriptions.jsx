@@ -554,7 +554,7 @@ export default function AdminSubscriptions() {
               <th>Start</th>
               <th>End</th>
               <th>Status</th>
-              <th style={{ width: 140 }}>Action</th>
+              <th style={{ width: 280 }}>Action</th>
             </tr>
           </thead>
 
