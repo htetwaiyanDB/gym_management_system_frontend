@@ -1248,19 +1248,26 @@ export default function AdminTrainerBookings() {
                   const monthStartRaw = pickFirstValue(selectedBooking, [
                     "month_start_date",
                     "monthly_start_date",
+                    "sessions_start_date",
+                    "session_start_date",
                     "start_date",
+                    "starts_at",
                   ]);
                   const monthEndRaw = pickFirstValue(selectedBooking, [
                     "month_end_date",
                     "monthly_end_date",
+                    "sessions_end_date",
+                    "session_end_date",
                     "end_date",
+                    "ends_at",
                   ]);
                   const sessionStart = sessionStartRaw ? formatDateTimeVideoStyle(sessionStartRaw) : "-";
                   const sessionEnd = sessionEndRaw ? formatDateTimeVideoStyle(sessionEndRaw) : "-";
                   const monthStart = monthStartRaw ? formatDateTimeVideoStyle(monthStartRaw) : "-";
+                  const monthStartDate = monthStartRaw ? parseBackendDateTime(monthStartRaw) : null;
                   const monthEndFallbackDate =
-                    monthStartRaw && monthCount !== null
-                      ? addMonthsToDate(new Date(`${monthStartRaw}T00:00:00`), monthCount)
+                    monthStartDate && monthCount !== null
+                      ? addMonthsToDate(monthStartDate, monthCount)
                       : null;
                   const monthEndDate = monthEndRaw
                     ? parseBackendDateTime(monthEndRaw)
