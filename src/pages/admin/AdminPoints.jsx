@@ -139,9 +139,12 @@ export default function AdminPoints() {
   return (
     <div className="container-fluid px-0">
       <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
-        <h4 className="mb-0">Points</h4>
+        <h4 className="mb-0 d-flex align-items-center gap-2">
+          <i className="bi bi-award-fill text-warning" aria-hidden="true"></i>
+          <span>Points</span>
+        </h4>
         <button className="btn btn-outline-light btn-sm" onClick={load} disabled={loading}>
-          <i className="bi bi-arrow-clockwise me-1"></i>Refresh
+          <i className="bi bi-arrow-repeat me-1" aria-hidden="true"></i>Refresh
         </button>
       </div>
 
@@ -151,7 +154,10 @@ export default function AdminPoints() {
         <div className="col-lg-7">
           <div className="card bg-dark text-light border-secondary">
             <div className="card-body">
-              <label className="form-label">Search user/trainer (name / phone)</label>
+              <label className="form-label d-flex align-items-center gap-2">
+                <i className="bi bi-person-badge-fill text-info" aria-hidden="true"></i>
+                <span>Search user/trainer (name / phone)</span>
+              </label>
               <input
                 className="form-control admin-search-input mb-3"
                 placeholder="Type name or phone..."
@@ -204,7 +210,10 @@ export default function AdminPoints() {
         <div className="col-lg-5">
           <div className="card bg-dark text-light border-secondary">
             <div className="card-body">
-              <h5 className="card-title">Adjust Points</h5>
+              <h5 className="card-title d-flex align-items-center gap-2">
+                <i className="bi bi-sliders2-vertical text-primary" aria-hidden="true"></i>
+                <span>Adjust Points</span>
+              </h5>
               {!selectedUser ? (
                 <p className="text-secondary mb-0">Select a user from the list to view and update points.</p>
               ) : (
@@ -217,11 +226,17 @@ export default function AdminPoints() {
                   </div>
 
                   <div className="mb-2">
-                    <div className="small text-secondary">Current points</div>
+                    <div className="small text-secondary d-flex align-items-center gap-2">
+                      <i className="bi bi-wallet2" aria-hidden="true"></i>
+                      <span>Current points</span>
+                    </div>
                     <div className="display-6 fw-semibold">{currentPoints}</div>
                   </div>
 
-                  <label className="form-label">New points value</label>
+                  <label className="form-label d-flex align-items-center gap-2">
+                    <i className="bi bi-pencil-square text-warning" aria-hidden="true"></i>
+                    <span>New points value</span>
+                  </label>
                   <input
                     type="number"
                     className="form-control mb-3"
@@ -230,6 +245,7 @@ export default function AdminPoints() {
                   />
 
                   <button className="btn btn-primary w-100" onClick={handleUpdatePoints} disabled={saving}>
+                    <i className="bi bi-check2-circle me-2" aria-hidden="true"></i>
                     {saving ? "Updating..." : "Update Points"}
                   </button>
                 </>
