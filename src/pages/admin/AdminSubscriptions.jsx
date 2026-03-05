@@ -305,7 +305,7 @@ export default function AdminSubscriptions() {
     setMsg(null);
     setBusyId(id);
     try {
-      const res = await axiosClient.delete(`/subscriptons/${id}`);
+      const res = await axiosClient.delete(`/subscriptions/${id}`);
       setMsg({ type: "success", text: res?.data?.message || "Membership deleted successfully." });
       await load();
     } catch (e) {
