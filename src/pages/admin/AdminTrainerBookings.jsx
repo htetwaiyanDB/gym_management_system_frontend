@@ -131,6 +131,56 @@ function getBookingPackageType(booking) {
   ).toLowerCase();
 }
 
+function getBookingBillingMode(booking) {
+  const normalizeMode = (value) => {
+    const raw = String(value || "").trim().toLowerCase();
+    if (!raw) return "";
+    if (["month", "months", "monthly"].includes(raw)) return "monthly";
+    if (["session", "sessions", "personal"].includes(raw)) return "session";
+    return raw;
+  };
+
+  const candidates = [
+    booking?.billing_type,
+    booking?.base_type,
+    booking?.package_base,
+    booking?.duration_type,
+    booking?.plan_type,
+    booking?.trainer_package?.billing_type,
+    booking?.trainer_package?.base_type,
+    booking?.trainer_package?.package_base,
+    booking?.trainer_package?.duration_type,
+  ];
+
+  for (const candidate of candidates) {
+    const normalized = normalizeMode(candidate);
+    if (normalized === "monthly" || normalized === "session") {
+      return normalized;
+    }
+  }
+
+  return "";
+}
+
+function isMonthlyBasedBooking(booking) {
+  const explicitBillingMode = getBookingBillingMode(booking);
+  if (explicitBillingMode === "monthly") return true;
+  if (explicitBillingMode === "session") return false;
+
+  if (getBookingPackageType(booking) === "monthly") return true;
+
+  const monthCount = getMonthCount(booking);
+  if (monthCount !== null && monthCount > 0) return true;
+
+  const hasMonthlyDates = pickFirstValue(booking, [
+    "month_start_date",
+    "monthly_start_date",
+    "month_end_date",
+    "monthly_end_date",
+  ]);
+  return Boolean(hasMonthlyDates);
+}
+
 function getBookingPackageLabel(booking) {
   const raw =
     booking?.package_type ||
@@ -1165,7 +1215,7 @@ export default function AdminTrainerBookings() {
                 {(() => {
                   const { total, remaining } = getSessionProgress(selectedBooking);
                   const monthCount = getMonthCount(selectedBooking);
-                  const packageTypeValue = getBookingPackageType(selectedBooking);
+                  const isMonthlyBased = isMonthlyBasedBooking(selectedBooking);
                   const totalPrice = pickFirstValue(selectedBooking, [
                     "total_price",
                     "price",
@@ -1290,24 +1340,24 @@ export default function AdminTrainerBookings() {
 
                       <div className="col-12 col-md-6">
                         <div className="fw-semibold">Session Start Date</div>
-                        <div>{packageTypeValue === "monthly" ? "-" : sessionStart}</div>
+                        <div>{isMonthlyBased ? "-" : sessionStart}</div>
                       </div>
                       <div className="col-12 col-md-6">
                         <div className="fw-semibold">Session End Date</div>
-                        <div>{packageTypeValue === "monthly" ? "-" : sessionEnd}</div>
+                        <div>{isMonthlyBased ? "-" : sessionEnd}</div>
                       </div>
 
                       <div className="col-12 col-md-4">
                         <div className="fw-semibold">Month Count</div>
-                          <div>{packageTypeValue === "monthly" ? monthCount ?? "-" : "-"}</div>
+                          <div>{isMonthlyBased ? monthCount ?? "-" : "-"}</div>
                       </div>
                       <div className="col-12 col-md-4">
                         <div className="fw-semibold">Month Start Date</div>
-                        <div>{packageTypeValue === "monthly" ? monthStart : "-"}</div>
+                        <div>{isMonthlyBased ? monthStart : "-"}</div>
                       </div>
                       <div className="col-12 col-md-4">
                         <div className="fw-semibold">Month End Date</div>
-                        <div>{packageTypeValue === "monthly" ? monthEnd : "-"}</div>
+                        <div>{isMonthlyBased ? monthEnd : "-"}</div>
                       </div>
 
                       <div className="col-12">
