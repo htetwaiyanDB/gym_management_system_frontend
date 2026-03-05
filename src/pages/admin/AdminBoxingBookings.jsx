@@ -1153,7 +1153,7 @@ export default function AdminBoxingBookings() {
             <tr>
               <th style={{ width: 70 }}>ID</th>
               <th style={{ width: 150 }}>User Name</th>
-              <th>User Phone</th>
+              <th style={{ width: 150 }}>User Phone</th>
               <th style={{ width: 150 }}>Coach Name</th>
               <th style={{ width: 150 }}>Coach Phone</th>
               <th style={{ width: 140 }}>Package Type</th>
