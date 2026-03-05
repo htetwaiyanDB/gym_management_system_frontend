@@ -298,6 +298,26 @@ export default function AdminSubscriptions() {
     }
   };
 
+  const deleteSubscription = async (id) => {
+    const shouldDelete = window.confirm("Are you sure you want to delete this membership?");
+    if (!shouldDelete) return;
+
+    setMsg(null);
+    setBusyId(id);
+    try {
+      const res = await axiosClient.delete(`/subscriptons/${id}`);
+      setMsg({ type: "success", text: res?.data?.message || "Membership deleted successfully." });
+      await load();
+    } catch (e) {
+      setMsg({
+        type: "danger",
+        text: e?.response?.data?.message || "Failed to delete membership.",
+      });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const extendSubscription = async (id) => {
     const extendConfig = promptExtendPayload();
     if (!extendConfig) return;
@@ -584,7 +604,7 @@ export default function AdminSubscriptions() {
                       )}
                     </td>
                     <td>
-                      <div className="d-flex gap-2">
+                      <div className="d-flex gap-2 flex-wrap">
                         <button
                           className="btn btn-sm btn-warning"
                           disabled={!canHold || busyId === s.id}
@@ -610,6 +630,15 @@ export default function AdminSubscriptions() {
                           title="Extend expired membership end date"
                         >
                           {busyId === s.id ? "..." : "Extend"}
+                        </button>
+
+                        <button
+                          className="btn btn-sm btn-danger"
+                          disabled={busyId === s.id}
+                          onClick={() => deleteSubscription(s.id)}
+                          title="Delete membership"
+                        >
+                          {busyId === s.id ? "..." : "Delete"}
                         </button>
                       </div>
                     </td>
