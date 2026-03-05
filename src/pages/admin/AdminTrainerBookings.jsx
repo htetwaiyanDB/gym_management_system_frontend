@@ -1444,7 +1444,7 @@ export default function AdminTrainerBookings() {
                     <div className="col-12">
                     <label className="form-label fw-bold">Package Type</label>
                     <div className="row g-2">
-                      <div className="col-12 col-md-3">
+                      <div className="col-12 col-md-6">
                         <label className="form-label admin-muted">Personal</label>
                         <select
                           className="form-select admin-select-dark"
@@ -1467,7 +1467,7 @@ export default function AdminTrainerBookings() {
                         </select>
                       </div>
 
-                      <div className="col-12 col-md-3">
+                      <div className="col-12 col-md-6">
                         <label className="form-label admin-muted">Monthly</label>
                         <select
                           className="form-select admin-select-dark"
@@ -1490,7 +1490,7 @@ export default function AdminTrainerBookings() {
                         </select>
                       </div>
 
-                      <div className="col-12 col-md-3">
+                      <div className="col-12 col-md-6">
                         <label className="form-label admin-muted">Duo</label>
                         <select
                           className="form-select admin-select-dark"
@@ -1513,7 +1513,7 @@ export default function AdminTrainerBookings() {
                         </select>
                       </div>
 
-                      <div className="col-12 col-md-3">
+                      <div className="col-12 col-md-6">
                         <label className="form-label admin-muted">Trio</label>
                         <select
                           className="form-select admin-select-dark"
