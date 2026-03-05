@@ -1110,9 +1110,9 @@ export default function AdminTrainerBookings() {
               <th style={{ width: 150 }}>Trainer Name</th>
               <th style={{ width: 150 }}>Trainer Phone</th>
               <th style={{ width: 140 }}>Package Type</th>
-              <th style={{ width: 100 }}>Status</th>
-              <th style={{ width: 800 }}>Paid</th>
-              <th style={{ width: 280 }}>Actions</th>
+              <th style={{ width: 90 }}>Status</th>
+              <th style={{ width: 70 }}>Paid</th>
+              <th style={{ width: 300 }}>Actions</th>
             </tr>
           </thead>
 
