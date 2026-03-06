@@ -184,12 +184,6 @@ const cardGlass = {
 const titleText = { color: "rgba(255,255,255,0.92)" };
 const mutedText = { color: "rgba(255,255,255,0.60)" };
 
-const glassInputStyle = {
-  background: "rgba(0,0,0,0.55)",
-  color: "#fff",
-  border: "1px solid rgba(255,255,255,0.18)",
-};
-
 function MetricAreaChart({ title, data, stroke, fill }) {
   return (
     <div className="p-3 mb-3" style={{ ...cardGlass, background: "rgba(255,255,255,0.06)" }}>
@@ -223,14 +217,7 @@ function MetricAreaChart({ title, data, stroke, fill }) {
 
 export default function AdminDashboard() {
   const [msg, setMsg] = useState(null);
-  const [loading, setLoading] = useState(false);
-
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
-
-  const [raw, setRaw] = useState(null);
   const [report, setReport] = useState({});
-  const [showDebug, setShowDebug] = useState(false);
 
   // ✅ chart series states (from /api/dashboard/growth-summary)
   const [usersGrowthData, setUsersGrowthData] = useState([]);
@@ -249,17 +236,14 @@ export default function AdminDashboard() {
   }, []);
 
   const loadReport = async () => {
-    setLoading(true);
     setMsg(null);
 
     try {
       const res = await axiosClient.get(API.ATTENDANCE_REPORT, {
         signal: abortRef.current?.signal,
-        params: { from: from || undefined, to: to || undefined },
         cache: false,
       });
 
-      setRaw(res?.data || null);
       const payload = normalizeReportPayload(res?.data);
       setReport(payload || {});
     } catch (e) {
@@ -269,8 +253,6 @@ export default function AdminDashboard() {
         type: "danger",
         text: e?.response?.data?.message || "Failed to load dashboard report.",
       });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -417,7 +399,6 @@ export default function AdminDashboard() {
     try {
       const res = await axiosClient.get(API.EXPORT_EXCEL, {
         signal: abortRef.current?.signal,
-        params: { from: from || undefined, to: to || undefined },
         responseType: "blob",
         headers: { Accept: "*/*" },
       });
@@ -447,7 +428,6 @@ export default function AdminDashboard() {
     try {
       const res = await axiosClient.get(API.EXPORT_JSON, {
         signal: abortRef.current?.signal,
-        params: { from: from || undefined, to: to || undefined },
         responseType: "json",
         headers: { Accept: "application/json" },
       });
@@ -483,96 +463,9 @@ export default function AdminDashboard() {
           <div style={mutedText}>Attendance report overview and growth graphs.</div>
         </div>
 
-        <div className="d-flex flex-wrap gap-2 align-items-end">
-          <div>
-            <div className="small mb-1" style={mutedText}>
-              From
-            </div>
-            <input
-              type="date"
-              className="form-control"
-              style={glassInputStyle}
-              value={from}
-              onChange={(e) => setFrom(e.target.value)}
-              id="dashboard-from"
-              name="dashboard_from"
-            />
-          </div>
-
-          <div>
-            <div className="small mb-1" style={mutedText}>
-              To
-            </div>
-            <input
-              type="date"
-              className="form-control"
-              style={glassInputStyle}
-              value={to}
-              onChange={(e) => setTo(e.target.value)}
-              id="dashboard-to"
-              name="dashboard_to"
-            />
-          </div>
-
-          <button
-            className="btn btn-outline-light"
-            onClick={loadReport}
-            disabled={loading}
-            style={{ height: 38, marginTop: 19 }}
-          >
-            {loading ? "Loading..." : "Apply"}
-          </button>
-
-          <button
-            className="btn btn-outline-info"
-            onClick={() => setShowDebug((s) => !s)}
-            style={{ height: 38, marginTop: 19 }}
-          >
-            {showDebug ? "Hide Debug" : "Debug"}
-          </button>
-        </div>
       </div>
 
       {msg && <div className={`alert alert-${msg.type}`}>{msg.text}</div>}
-
-      {/* Debug Panel */}
-      {showDebug && (
-        <div className="mb-3 p-3" style={{ ...cardGlass, overflowX: "auto" }}>
-          <div className="d-flex justify-content-between align-items-center mb-2">
-            <div style={titleText} className="fw-semibold">
-              Debug Response
-            </div>
-            <button
-              className="btn btn-sm btn-outline-light"
-              onClick={() => {
-                setRaw(null);
-                setReport({});
-              }}
-            >
-              Clear
-            </button>
-          </div>
-
-          <div className="row g-2">
-            <div className="col-12 col-lg-6">
-              <div className="small mb-1" style={mutedText}>
-                RAW (res.data)
-              </div>
-              <pre style={{ color: "#fff", fontSize: 12, whiteSpace: "pre-wrap" }}>
-                {raw ? JSON.stringify(raw, null, 2) : "No raw yet"}
-              </pre>
-            </div>
-            <div className="col-12 col-lg-6">
-              <div className="small mb-1" style={mutedText}>
-                NORMALIZED (used by UI)
-              </div>
-              <pre style={{ color: "#fff", fontSize: 12, whiteSpace: "pre-wrap" }}>
-                {report ? JSON.stringify(report, null, 2) : "No normalized yet"}
-              </pre>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Top cards */}
       <div className="row g-3 mb-3">
@@ -696,7 +589,7 @@ export default function AdminDashboard() {
               Export Report
             </div>
             <div className="small" style={mutedText}>
-              Download attendance report for selected date range.
+              Download attendance report data.
             </div>
           </div>
 
