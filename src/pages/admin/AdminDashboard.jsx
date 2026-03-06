@@ -34,6 +34,9 @@ const MEMBERSHIP_EXPORT_PARAMS = {
   type: "memberships",
   report_type: "memberships",
   membership_type: "all",
+  subscription_type: "all",
+  plan_type: "all",
+  plan: "all",
 };
 
 const POLL_GROWTH_EVERY_MS = 30000; // 30s (set to 0 to disable)
@@ -416,7 +419,7 @@ export default function AdminDashboard() {
 
       const a = document.createElement("a");
       a.href = url;
-      a.download = `membership-report_${metrics.period}.xls`;
+      a.download = "report.xls";
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -446,7 +449,7 @@ export default function AdminDashboard() {
 
       const a = document.createElement("a");
       a.href = url;
-      a.download = `membership-report_${metrics.period}.json`;
+      a.download = "report.json";
       document.body.appendChild(a);
       a.click();
       a.remove();
