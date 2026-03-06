@@ -398,6 +398,11 @@ export default function AdminDashboard() {
     setMsg(null);
     try {
       const res = await axiosClient.get(API.EXPORT_EXCEL, {
+        params: {
+          type: "subscription",
+          report_type: "subscription",
+          membership_type: "subscription",
+        },
         signal: abortRef.current?.signal,
         responseType: "blob",
         headers: { Accept: "*/*" },
@@ -409,7 +414,7 @@ export default function AdminDashboard() {
 
       const a = document.createElement("a");
       a.href = url;
-      a.download = `attendance-report_${metrics.period}.xls`;
+      a.download = `membership-report_${metrics.period}.xls`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -427,6 +432,11 @@ export default function AdminDashboard() {
     setMsg(null);
     try {
       const res = await axiosClient.get(API.EXPORT_JSON, {
+        params: {
+          type: "subscription",
+          report_type: "subscription",
+          membership_type: "subscription",
+        },
         signal: abortRef.current?.signal,
         responseType: "json",
         headers: { Accept: "application/json" },
@@ -438,7 +448,7 @@ export default function AdminDashboard() {
 
       const a = document.createElement("a");
       a.href = url;
-      a.download = `attendance-report_${metrics.period}.json`;
+      a.download = `membership-report_${metrics.period}.json`;
       document.body.appendChild(a);
       a.click();
       a.remove();
