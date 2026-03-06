@@ -30,6 +30,14 @@ const API = {
   EXPORT_JSON: "/dashboard/export/json",
 };
 
+const MEMBERSHIP_EXPORT_PARAMS = {
+  type: "membership",
+  report_type: "membership",
+  membership_type: "membership",
+  plan_type: "membership",
+  is_class: false,
+};
+
 const POLL_GROWTH_EVERY_MS = 30000; // 30s (set to 0 to disable)
 
 // ---------------- helpers ----------------
@@ -398,11 +406,7 @@ export default function AdminDashboard() {
     setMsg(null);
     try {
       const res = await axiosClient.get(API.EXPORT_EXCEL, {
-        params: {
-          type: "subscription",
-          report_type: "subscription",
-          membership_type: "subscription",
-        },
+        params: MEMBERSHIP_EXPORT_PARAMS,
         signal: abortRef.current?.signal,
         responseType: "blob",
         headers: { Accept: "*/*" },
@@ -432,11 +436,7 @@ export default function AdminDashboard() {
     setMsg(null);
     try {
       const res = await axiosClient.get(API.EXPORT_JSON, {
-        params: {
-          type: "subscription",
-          report_type: "subscription",
-          membership_type: "subscription",
-        },
+        params: MEMBERSHIP_EXPORT_PARAMS,
         signal: abortRef.current?.signal,
         responseType: "json",
         headers: { Accept: "application/json" },
