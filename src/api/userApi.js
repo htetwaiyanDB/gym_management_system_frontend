@@ -18,3 +18,5 @@ export const sendUserMessage = (message) =>
 
 export const updateUserProfile = (payload) =>
   axiosClient.patch("/user/profile", payload);
+export const getUserClassSubscriptions = () =>
+  axiosClient.get("/user/subscriptions");
