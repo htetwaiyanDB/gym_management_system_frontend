@@ -132,32 +132,6 @@ function memberIdOf(member) {
 }
 
 
-function promptExtendPayload() {
-  const nextEndDateInput = window.prompt(
-    "Enter new end date (YYYY-MM-DD).\nLeave blank to extend by days instead.",
-    "",
-  );
-  if (nextEndDateInput === null) return null;
-
-  const nextEndDate = nextEndDateInput.trim();
-  if (nextEndDate) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(nextEndDate)) {
-      return { error: "Invalid date format. Please use YYYY-MM-DD." };
-    }
-    return { payload: { new_end_date: nextEndDate } };
-  }
-
-  const extensionDaysInput = window.prompt("Enter extension days (example: 7)", "");
-  if (extensionDaysInput === null) return null;
-  const extensionDays = Number(extensionDaysInput.trim());
-
-  if (!Number.isInteger(extensionDays) || extensionDays <= 0) {
-    return { error: "Extension days must be a positive whole number." };
-  }
-
-  return { payload: { extension_days: extensionDays } };
-}
-
 function formatUserCode(value) {
   if (value === null || value === undefined || value === "") return "";
   const text = String(value).trim();
@@ -243,6 +217,10 @@ export default function AdminClassSubscriptions() {
   const [planId, setPlanId] = useState("");
   const [startDate, setStartDate] = useState("");
   const [discountPercentage, setDiscountPercentage] = useState("");
+  const [extendTargetId, setExtendTargetId] = useState(null);
+  const [showExtendModal, setShowExtendModal] = useState(false);
+  const [extendEndDate, setExtendEndDate] = useState("");
+  const [extendDays, setExtendDays] = useState("");
 
   const weekDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
@@ -610,19 +588,60 @@ export default function AdminClassSubscriptions() {
       setBusyId(null);
     }
   };
-  const extendRecord = async (id) => {
-    const extendConfig = promptExtendPayload();
-    if (!extendConfig) return;
-    if (extendConfig.error) {
-      setMsg({ type: "danger", text: extendConfig.error });
+  const openExtendModal = (id) => {
+    setExtendTargetId(id);
+    setExtendEndDate("");
+    setExtendDays("");
+    setShowExtendModal(true);
+  };
+
+  const closeExtendModal = () => {
+    if (busyId !== null) return;
+    setShowExtendModal(false);
+    setExtendTargetId(null);
+    setExtendEndDate("");
+    setExtendDays("");
+  };
+
+  const extendRecord = async () => {
+    if (!extendTargetId) return;
+
+    const nextEndDate = extendEndDate.trim();
+    const extensionDaysInput = extendDays.trim();
+    const hasDate = !!nextEndDate;
+    const hasDays = !!extensionDaysInput;
+
+    if (!hasDate && !hasDays) {
+      setMsg({ type: "danger", text: "Please provide a new end date or extension days." });
+      return;
+    }
+    if (hasDate && hasDays) {
+      setMsg({ type: "danger", text: "Please fill only one field: new end date or extension days." });
       return;
     }
 
+    let payload = null;
+    if (hasDate) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(nextEndDate)) {
+        setMsg({ type: "danger", text: "Invalid date format. Please use YYYY-MM-DD." });
+        return;
+      }
+      payload = { new_end_date: nextEndDate };
+    } else {
+      const days = Number(extensionDaysInput);
+      if (!Number.isInteger(days) || days <= 0) {
+        setMsg({ type: "danger", text: "Extension days must be a positive whole number." });
+        return;
+      }
+      payload = { extension_days: days };
+    }
+
     setMsg(null);
-    setBusyId(id);
+    setBusyId(extendTargetId);
     try {
-      const res = await axiosClient.patch(`/subscriptions/${id}/extend`, extendConfig.payload);
+      const res = await axiosClient.patch(`/subscriptions/${extendTargetId}/extend`, payload);
       setMsg({ type: "success", text: res?.data?.message || "Class membership end date extended." });
+      closeExtendModal();
       await loadRecords();
     } catch (e) {
       setMsg({ type: "danger", text: e?.response?.data?.message || "Failed to extend class membership." });
@@ -821,7 +840,7 @@ export default function AdminClassSubscriptions() {
                       <button
                         className="btn btn-sm btn-info"
                         disabled={!canExtend || busyId === r.id}
-                        onClick={() => extendRecord(r.id)}
+                        onClick={() => openExtendModal(r.id)}
                         title="Extend expired class membership end date"
                       >
                         {busyId === r.id ? "..." : "Extend"}
@@ -843,6 +862,62 @@ export default function AdminClassSubscriptions() {
           </tbody>
         </table>
       </div>
+
+
+      {showExtendModal && (
+        <>
+          <div className="modal fade show d-block" tabIndex="-1">
+            <div className="modal-dialog modal-dialog-centered">
+              <div className="modal-content bg-dark text-white">
+                <div className="modal-header">
+                  <h5 className="modal-title fw-bolder">Extend Class Membership</h5>
+                  <button
+                    className="btn-close btn-close-white"
+                    onClick={closeExtendModal}
+                    aria-label="Close"
+                    disabled={busyId !== null}
+                  ></button>
+                </div>
+                <div className="modal-body">
+                  <div className="mb-3">
+                    <label className="form-label fw-bold">New End Date</label>
+                    <input
+                      type="date"
+                      className="form-control bg-dark text-white"
+                      value={extendEndDate}
+                      onChange={(e) => setExtendEndDate(e.target.value)}
+                      disabled={busyId !== null}
+                    />
+                  </div>
+                  <div className="text-center text-white-50 mb-3">OR</div>
+                  <div>
+                    <label className="form-label fw-bold">Extension Days</label>
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      className="form-control bg-dark text-white"
+                      placeholder="Example: 7"
+                      value={extendDays}
+                      onChange={(e) => setExtendDays(e.target.value)}
+                      disabled={busyId !== null}
+                    />
+                  </div>
+                </div>
+                <div className="modal-footer">
+                  <button className="btn btn-outline-light" onClick={closeExtendModal} disabled={busyId !== null}>
+                    Cancel
+                  </button>
+                  <button className="btn btn-info" onClick={extendRecord} disabled={busyId !== null}>
+                    {busyId !== null ? "Extending..." : "Extend"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="modal-backdrop fade show" onClick={closeExtendModal}></div>
+        </>
+      )}
 
       {showModal && (
         <>
