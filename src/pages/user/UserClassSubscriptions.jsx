@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import axiosClient from "../../api/axiosClient";
+import { getUserClassSubscriptions, getUserSubscriptions } from "../../api/userApi";
 
 function pick(obj, keys) {
   for (const k of keys) {
@@ -196,8 +197,9 @@ export default function UserClassSubscriptions({ embedded = false }) {
         setError("");
 
         const subsRes = await requestWithFallback([
+          () => getUserClassSubscriptions(),
           () => axiosClient.get("/user/class-subscriptions"),
-          () => axiosClient.get("/user/subscriptions"),
+          () => getUserSubscriptions(),
         ]);
 
         if (!alive) return;

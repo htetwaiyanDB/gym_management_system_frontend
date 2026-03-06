@@ -593,6 +593,23 @@ export default function AdminClassSubscriptions() {
     }
   };
 
+
+  const deleteRecord = async (id) => {
+    const shouldDelete = window.confirm("Are you sure you want to delete this class membership?");
+    if (!shouldDelete) return;
+
+    setMsg(null);
+    setBusyId(id);
+    try {
+      const res = await axiosClient.delete(`/subscriptions/${id}`);
+      setMsg({ type: "success", text: res?.data?.message || "Class membership deleted successfully." });
+      await loadRecords();
+    } catch (e) {
+      setMsg({ type: "danger", text: e?.response?.data?.message || "Failed to delete class membership." });
+    } finally {
+      setBusyId(null);
+    }
+  };
   const extendRecord = async (id) => {
     const extendConfig = promptExtendPayload();
     if (!extendConfig) return;
@@ -808,6 +825,15 @@ export default function AdminClassSubscriptions() {
                         title="Extend expired class membership end date"
                       >
                         {busyId === r.id ? "..." : "Extend"}
+                      </button>
+
+                      <button
+                        className="btn btn-sm btn-danger"
+                        disabled={busyId === r.id}
+                        onClick={() => deleteRecord(r.id)}
+                        title="Delete class membership"
+                      >
+                        {busyId === r.id ? "..." : "Delete"}
                       </button>
                     </div>
                   </td>
