@@ -350,7 +350,7 @@ export default function UserSubscriptions() {
 
           const computedFinalPrice =
             finalPriceNum ??
-            priceNum ??
+          
             (basePriceNum !== null && discountPercentNum !== null
               ? basePriceNum * (1 - discountPercentNum / 100)
               : priceNum);
