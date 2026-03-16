@@ -69,6 +69,20 @@ function getEndDateValue(booking) {
   return pick(booking, ["end_date", "ends_at", "expiry_date", "expires_at", "expiration_date"]);
 }
 
+function parseDateValue(value) {
+  if (!value) return null;
+  const str = String(value).trim();
+  const dateOnlyMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dateOnlyMatch) {
+    const [, year, month, day] = dateOnlyMatch;
+    return new Date(Number(year), Number(month) - 1, Number(day));
+  }
+
+  const normalized = str.includes("T") ? str : str.replace(" ", "T");
+  const parsed = new Date(normalized);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 function isExpiredBooking(booking, status) {
   const normalizedStatus = String(status || "").toLowerCase();
   if (normalizedStatus.includes("expire")) return true;
@@ -76,13 +90,18 @@ function isExpiredBooking(booking, status) {
   const endDateValue = getEndDateValue(booking);
   if (!endDateValue) return false;
 
-  const endDate = new Date(endDateValue);
-  if (Number.isNaN(endDate.getTime())) return false;
+  const endDate = parseDateValue(endDateValue);
+  if (!endDate) return false;
 
   const now = new Date();
   now.setHours(0, 0, 0, 0);
   endDate.setHours(0, 0, 0, 0);
   return endDate.getTime() < now.getTime();
+}
+
+function getDisplayBookingStatus(booking) {
+  const resolvedStatus = resolveBookingStatus(booking);
+  return isExpiredBooking(booking, resolvedStatus) ? "expired" : resolvedStatus;
 }
 
 function getSessionProgress(booking) {
@@ -288,6 +307,7 @@ function UserBoxingBookings() {
 
   const statusPill = (status) => {
     const s = String(status || "").toLowerCase();
+    if (s.includes("expire")) return pill("rgba(220,53,69,0.55)");
     if (s.includes("cancel")) return pill("rgba(220,53,69,0.35)");
     if (s.includes("complete")) return pill("rgba(25,135,84,0.35)");
     if (s.includes("pending")) return pill("rgba(255,193,7,0.35)");
@@ -374,7 +394,7 @@ function UserBoxingBookings() {
         <div className="d-flex flex-column gap-2">
           {filtered.map((b, i) => {
             const bookingId = b?.id ?? i;
-            const status = resolveBookingStatus(b);
+            const status = getDisplayBookingStatus(b);
             const startDateValue = getStartDateValue(b);
             const endDateValue = getEndDateValue(b);
             const isExpired = isExpiredBooking(b, status);
@@ -387,8 +407,6 @@ function UserBoxingBookings() {
                 style={{
                   ...cardStyle,
                   cursor: "pointer",
-                  background: isExpired ? "rgba(220,53,69,0.35)" : cardStyle.background,
-                  border: isExpired ? "1px solid rgba(220,53,69,0.65)" : cardStyle.border,
                 }}
                 onClick={() =>
                   setSelectedId((prev) => (prev === bookingId ? null : bookingId))
