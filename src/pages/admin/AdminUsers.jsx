@@ -32,6 +32,8 @@ const emptyEdit = {
   password_confirmation: "",
 };
 
+const sanitizeNameInput = (value = "") => value.replace(/[^a-zA-Z0-9\s]/g, "");
+
 function roleBadge(roleRaw) {
   const role = (roleRaw || "").toLowerCase();
   if (role === "administrator" || role === "admin")
@@ -631,7 +633,11 @@ export default function AdminUsers() {
                       name="create-name"
                       placeholder="Enter user name"
                       value={createForm.name}
-                      onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
+                      pattern="[A-Za-z0-9 ]+"
+                      title="Name can contain letters, numbers, and spaces only."
+                      onChange={(e) =>
+                        setCreateForm({ ...createForm, name: sanitizeNameInput(e.target.value) })
+                      }
                     />
                   </div>
 
@@ -747,7 +753,11 @@ export default function AdminUsers() {
                     <input
                       className="form-control"
                       value={editForm.name}
-                      onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                      pattern="[A-Za-z0-9 ]+"
+                      title="Name can contain letters, numbers, and spaces only."
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, name: sanitizeNameInput(e.target.value) })
+                      }
                     />
                   </div>
 
