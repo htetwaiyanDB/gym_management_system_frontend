@@ -41,6 +41,30 @@ function resolveBookingStatus(booking) {
   return rawStatus || "—";
 }
 
+function getStartDate(booking) {
+  return pick(booking, ["start_date", "starts_at", "start_time", "session_datetime", "booking_date", "date"]);
+}
+
+function getEndDate(booking) {
+  return pick(booking, ["end_date", "ends_at", "expiry_date", "expires_at", "expiration_date"]);
+}
+
+function isExpiredBooking(booking, status) {
+  const normalizedStatus = String(status || "").toLowerCase();
+  if (normalizedStatus.includes("expire")) return true;
+
+  const endDateValue = getEndDate(booking);
+  if (!endDateValue) return false;
+
+  const endDate = new Date(endDateValue);
+  if (Number.isNaN(endDate.getTime())) return false;
+
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  endDate.setHours(0, 0, 0, 0);
+  return endDate.getTime() < now.getTime();
+}
+
 function toText(v) {
   // ✅ Convert objects safely to readable text (prevents React crash)
   if (v === null || v === undefined) return "—";
@@ -342,6 +366,9 @@ export default function UserBookings() {
         {filtered.map((b, idx) => {
           const id = pick(b, ["id", "booking_id", "reference_id"]) ?? idx;
           const status = resolveBookingStatus(b);
+          const startDate = getStartDate(b);
+          const endDate = getEndDate(b);
+          const isExpired = isExpiredBooking(b, status);
 
           // Trainer might be object: {id,name,phone,email}
           const trainerObj = pick(b, ["trainer"]) || b?.trainer;
@@ -400,7 +427,12 @@ export default function UserBookings() {
           return (
             <div
               key={id}
-              style={{ ...cardStyle, cursor: "pointer" }}
+              style={{
+                ...cardStyle,
+                cursor: "pointer",
+                background: isExpired ? "rgba(220,53,69,0.35)" : cardStyle.background,
+                border: isExpired ? "1px solid rgba(220,53,69,0.65)" : cardStyle.border,
+              }}
               onClick={() => setSelectedId((prev) => (prev === id ? null : id))}
               role="button"
               tabIndex={0}
@@ -433,6 +465,8 @@ export default function UserBookings() {
                   <span style={pill("rgba(255,255,255,0.12)")}>
                     <FaClock /> {sessionDateTime ? fmtDateTime(sessionDateTime).split(", ")[1] || "—" : "—"}
                   </span>
+                  <span style={pill("rgba(255,255,255,0.12)")}>Start: {startDate ? String(startDate).slice(0, 10) : "—"}</span>
+                  <span style={pill(isExpired ? "rgba(220,53,69,0.45)" : "rgba(255,255,255,0.12)")}>End: {endDate ? String(endDate).slice(0, 10) : "—"}</span>
                 </div>
 
                 {selectedId === id && (
@@ -483,6 +517,18 @@ export default function UserBookings() {
 
               
                     <div className="d-flex justify-content-between" style={{ gap: 12 }}>
+                    <span style={{ opacity: 0.8 }}>Start date</span>
+                    <b style={{ textAlign: "right" }}>{startDate ? String(startDate).slice(0, 10) : "—"}</b>
+                  </div>
+
+                  <div className="d-flex justify-content-between" style={{ gap: 12 }}>
+                    <span style={{ opacity: 0.8 }}>End date</span>
+                    <b style={{ textAlign: "right", color: isExpired ? "#ff9aa2" : undefined }}>
+                      {endDate ? String(endDate).slice(0, 10) : "—"}
+                    </b>
+                  </div>
+
+                  <div className="d-flex justify-content-between" style={{ gap: 12 }}>
                      <span style={{ opacity: 0.8 }}>Status</span>
                     <b style={{ textAlign: "right" }}>{toText(status)}</b>
                   </div>
