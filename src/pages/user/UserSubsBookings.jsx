@@ -23,6 +23,20 @@ function parseBackendDateTime(value) {
   return d;
 }
 
+function parseDateValue(value) {
+  if (!value) return null;
+  const str = String(value).trim();
+  const dateOnlyMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dateOnlyMatch) {
+    const [, year, month, day] = dateOnlyMatch;
+    return new Date(Number(year), Number(month) - 1, Number(day));
+  }
+
+  const normalized = str.includes("T") ? str : str.replace(" ", "T");
+  const parsed = new Date(normalized);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 function pad2(n) {
   return String(n).padStart(2, "0");
 }
@@ -99,6 +113,32 @@ function getPackageType(booking) {
     pick(booking?.package_detail, ["type", "package_type", "package_kind", "package_category"]) ||
     "—"
   );
+}
+
+function getStartDateValue(booking) {
+  return pick(booking, ["start_date", "starts_at", "start_time", "session_datetime", "date"]);
+}
+
+function getEndDateValue(booking) {
+  return pick(booking, ["end_date", "ends_at", "expiry_date", "expires_at", "expiration_date"]);
+}
+
+function getMonthCount(booking) {
+  const configuredMonths = toNumber(
+    pick(booking, ["months_count", "month_count", "duration_months", "months", "duration"])
+  );
+  if (configuredMonths !== null && configuredMonths > 0) return configuredMonths;
+
+  const start = parseDateValue(getStartDateValue(booking));
+  const end = parseDateValue(getEndDateValue(booking));
+  if (!start || !end || end.getTime() < start.getTime()) return null;
+
+  let months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+  const anchor = new Date(start);
+  anchor.setMonth(anchor.getMonth() + months);
+  if (end.getTime() > anchor.getTime()) months += 1;
+
+  return Math.max(1, months);
 }
 
 function getDate(b) {
@@ -399,6 +439,7 @@ function UserBoxingBookings() {
             const bookingId = b?.id ?? i;
             const { total: totalSessions, remaining: remainingSessions } = getSessionProgress(b);
             const isMonthlyPackage = isMonthlyPackageType(getPackageType(b));
+            const monthCount = getMonthCount(b);
             const isCompleted =
               remainingSessions === 0 || isCompletedStatus(resolveBookingStatus(b));
             const { totalPrice, discountPercent, finalPrice } = getPricingDetails(b);
@@ -472,9 +513,13 @@ function UserBoxingBookings() {
                         <span>{getPackageType(b)}</span>
                       </div>
                       <div className="d-flex justify-content-between">
-                        <span style={{ opacity: 0.8 }}>Session Count</span>
+                        <span style={{ opacity: 0.8 }}>
+                          {isMonthlyPackage ? "Month Count" : "Session Count"}
+                        </span>
                         <span>
-                          {totalSessions === null && remainingSessions !== null
+                          {isMonthlyPackage
+                            ? monthCount ?? "—"
+                            : totalSessions === null && remainingSessions !== null
                             ? `${remainingSessions} / —`
                             : totalSessions === null
                             ? b?.sessions_count ?? "—"
