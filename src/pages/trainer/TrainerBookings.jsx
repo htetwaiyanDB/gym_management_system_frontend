@@ -32,6 +32,77 @@ function formatISODate(d) {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 }
 
+function parseDateOnly(value) {
+  if (!value) return null;
+  const s = String(value).trim();
+  if (!s) return null;
+  const dateOnly = s.includes("T") ? s.split("T")[0] : s.split(" ")[0];
+  const parts = dateOnly.split("-").map((part) => Number(part));
+  if (parts.length !== 3) return null;
+  const [year, month, day] = parts;
+  if (!year || !month || !day) return null;
+
+  const parsed = new Date(year, month - 1, day);
+  if (Number.isNaN(parsed.getTime())) return null;
+  parsed.setHours(0, 0, 0, 0);
+  return parsed;
+}
+
+function isExpiredByDate(endDateValue) {
+  const endDate = parseDateOnly(endDateValue);
+  if (!endDate) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return today > endDate;
+}
+
+function normalizeBookingStatus(value) {
+  const s = String(value || "").toLowerCase();
+  if (s === "confirmed") return "active";
+  if (s === "cancelled" || s === "canceled") return "on-hold";
+  if (s === "hold" || s === "on-hold") return "on-hold";
+  if (s === "completed" || s === "complete" || s === "done") return "completed";
+  return s || "pending";
+}
+
+function getBookingEndDateValue(booking) {
+  return pick(booking, [
+    "month_end_date",
+    "monthly_end_date",
+    "sessions_end_date",
+    "session_end_date",
+    "end_date",
+    "expires_at",
+    "expiration_date",
+    "ends_at",
+  ]);
+}
+
+function getBookingStartDateValue(booking) {
+  return pick(booking, [
+    "month_start_date",
+    "monthly_start_date",
+    "sessions_start_date",
+    "session_start_date",
+    "start_date",
+    "starts_at",
+  ]);
+}
+
+function getDisplayBookingStatus(booking) {
+  const normalizedStatus = normalizeBookingStatus(booking?.status);
+  if (normalizedStatus === "active" && isExpiredByDate(getBookingEndDateValue(booking))) {
+    return "expired";
+  }
+  return normalizedStatus;
+}
+
+function formatDisplayDate(value) {
+  const d = parseBackendDateTime(value) || parseDateOnly(value);
+  if (!d) return "—";
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
 function toNumber(value) {
   const n = Number(value);
   return Number.isNaN(n) ? null : n;
@@ -387,9 +458,12 @@ export default function TrainerBooking() {
             const bookingId = b?.id ?? i;
             const packageType = getPackageType(b);
             const isMonthlyPackage = isMonthlyPackageType(packageType);
+            const displayStatus = getDisplayBookingStatus(b);
+            const startDate = getBookingStartDateValue(b);
+            const endDate = getBookingEndDateValue(b);
             const { total: totalSessions, remaining: remainingSessions } = getSessionProgress(b);
             const isCompleted =
-              remainingSessions === 0 || isCompletedStatus(b?.status);
+              remainingSessions === 0 || isCompletedStatus(displayStatus);
             return (
               <div
                 key={bookingId}
@@ -409,8 +483,8 @@ export default function TrainerBooking() {
               >
                 <div className="d-flex justify-content-between">
                   <div style={{ fontWeight: 900 }}>{getMemberName(b)}</div>
-                  <span style={statusPill(b.status)}>
-                    {String(b.status || "ACTIVE").toUpperCase()}
+                  <span style={statusPill(displayStatus)}>
+                    {String(displayStatus || "ACTIVE").toUpperCase()}
                   </span>
                 </div>
 
@@ -469,7 +543,15 @@ export default function TrainerBooking() {
                       </div>
                       <div className="d-flex justify-content-between">
                         <span style={{ opacity: 0.8 }}>Status</span>
-                        <span>{String(b?.status || "—")}</span>
+                        <span>{String(displayStatus || "—")}</span>
+                      </div>
+                      <div className="d-flex justify-content-between">
+                        <span style={{ opacity: 0.8 }}>Start Date</span>
+                        <span>{formatDisplayDate(startDate)}</span>
+                      </div>
+                      <div className="d-flex justify-content-between">
+                        <span style={{ opacity: 0.8 }}>End Date</span>
+                        <span>{formatDisplayDate(endDate)}</span>
                       </div>
 
                         {!isMonthlyPackage && (
