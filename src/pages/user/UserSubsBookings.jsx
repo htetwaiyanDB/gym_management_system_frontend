@@ -60,6 +60,35 @@ function isMonthlyPackageType(value) {
   return s.includes("month");
 }
 
+function getBookingBillingMode(booking) {
+  const normalizeMode = (value) => {
+    const raw = String(value || "").trim().toLowerCase();
+    if (!raw) return "";
+    if (["month", "months", "monthly"].includes(raw)) return "monthly";
+    if (["session", "sessions", "personal"].includes(raw)) return "session";
+    return raw;
+  };
+
+  const candidates = [
+    booking?.billing_type,
+    booking?.base_type,
+    booking?.package_base,
+    booking?.duration_type,
+    booking?.plan_type,
+    booking?.boxing_package?.billing_type,
+    booking?.boxing_package?.base_type,
+    booking?.boxing_package?.package_base,
+    booking?.boxing_package?.duration_type,
+  ];
+
+  for (const candidate of candidates) {
+    const normalized = normalizeMode(candidate);
+    if (normalized === "monthly" || normalized === "session") return normalized;
+  }
+
+  return "";
+}
+
 
 function hasStarted(value) {
   if (!value) return false;
@@ -139,6 +168,30 @@ function getMonthCount(booking) {
   if (end.getTime() > anchor.getTime()) months += 1;
 
   return Math.max(1, months);
+}
+
+function isMonthlyBasedBooking(booking) {
+  const explicitBillingMode = getBookingBillingMode(booking);
+  if (explicitBillingMode === "monthly") return true;
+  if (explicitBillingMode === "session") return false;
+
+  if (isMonthlyPackageType(getPackageType(booking))) return true;
+
+  const packageName = String(
+    pick(booking, ["package_name", "plan_name", "name", "title"]) ||
+      pick(booking?.boxing_package, ["name", "title", "package_name", "plan_name"]) ||
+      ""
+  ).toLowerCase();
+  if (packageName.includes("month")) return true;
+
+  const explicitMonthCount = toNumber(
+    pick(booking, ["months_count", "month_count", "duration_months", "months", "duration"])
+  );
+  if (explicitMonthCount !== null && explicitMonthCount > 0) return true;
+
+  return Boolean(
+    pick(booking, ["month_start_date", "monthly_start_date", "month_end_date", "monthly_end_date"])
+  );
 }
 
 function getDate(b) {
@@ -438,7 +491,7 @@ function UserBoxingBookings() {
           {filtered.map((b, i) => {
             const bookingId = b?.id ?? i;
             const { total: totalSessions, remaining: remainingSessions } = getSessionProgress(b);
-            const isMonthlyPackage = isMonthlyPackageType(getPackageType(b));
+            const isMonthlyPackage = isMonthlyBasedBooking(b);
             const monthCount = getMonthCount(b);
             const isCompleted =
               remainingSessions === 0 || isCompletedStatus(resolveBookingStatus(b));
@@ -518,7 +571,9 @@ function UserBoxingBookings() {
                         </span>
                         <span>
                           {isMonthlyPackage
-                            ? monthCount ?? "—"
+                            ? monthCount === null
+                              ? "—"
+                              : `${monthCount} / ${monthCount}`
                             : totalSessions === null && remainingSessions !== null
                             ? `${remainingSessions} / —`
                             : totalSessions === null
