@@ -143,10 +143,23 @@ function getMonthProgress(booking) {
     pick(booking, ["months_remaining", "remaining_months", "month_left", "months_left"])
   );
 
-  if (total === null) return { total: null, remaining: null };
+  if (total === null || total <= 0) return { total: null, remaining: null };
   if (remaining !== null) return { total, remaining: Math.max(0, remaining) };
 
   return { total, remaining: total };
+}
+
+function getMonthCountFromDateRange(startValue, endValue) {
+  const start = parseDateValue(startValue);
+  const end = parseDateValue(endValue);
+  if (!start || !end || end.getTime() < start.getTime()) return null;
+
+  let months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+  const anchor = new Date(start);
+  anchor.setMonth(anchor.getMonth() + months);
+  if (end.getTime() > anchor.getTime()) months += 1;
+
+  return Math.max(1, months);
 }
 
 function getSessionProgress(booking) {
@@ -444,7 +457,10 @@ export default function UserBookings() {
             ]) || pick(b, ["booking_date", "date"]);
           const sessionsCount = pick(b, ["sessions_count", "session_count", "sessions"]);
           const { total: totalSessions, remaining: remainingSessions } = getSessionProgress(b);
-          const { total: totalMonths, remaining: remainingMonths } = getMonthProgress(b);
+          const { total: totalMonths } = getMonthProgress(b);
+          const monthlyCountFromDates = getMonthCountFromDateRange(startDate, endDate);
+          const displayMonthCount =
+            totalMonths !== null ? totalMonths : monthlyCountFromDates;
           const isCompleted =
             (totalSessions !== null && remainingSessions === 0) ||
             isCompletedStatus(pick(b, ["status", "state"]));
@@ -544,11 +560,10 @@ export default function UserBookings() {
                       </span>
                       <b style={{ textAlign: "right" }}>
                         {isMonthlyPackage
-                          ? totalMonths === null
-                            ? toText(
+                          ? toText(
+                              displayMonthCount ??
                                 pick(b, ["months_count", "month_count", "duration_months", "months", "duration"])
-                              )
-                            : `${remainingMonths ?? "—"} / ${totalMonths}`
+                            )
                           : totalSessions === null
                           ? toText(sessionsCount)
                           : `${remainingSessions ?? "—"} / ${totalSessions}`}

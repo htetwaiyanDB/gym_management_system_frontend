@@ -41,6 +41,11 @@ function isCompletedStatus(value) {
   return s.includes("complete") || s.includes("completed") || s.includes("done");
 }
 
+function isMonthlyPackageType(value) {
+  const s = String(value || "").toLowerCase();
+  return s.includes("month");
+}
+
 
 function hasStarted(value) {
   if (!value) return false;
@@ -137,6 +142,24 @@ function getPackageType(booking) {
     pick(booking?.package_detail, ["type", "package_type", "package_kind", "package_category"]) ||
     "—"
   );
+}
+
+function getMonthCount(booking) {
+  const configuredMonths = toNumber(
+    pick(booking, ["months_count", "month_count", "duration_months", "months", "duration"])
+  );
+  if (configuredMonths !== null && configuredMonths > 0) return configuredMonths;
+
+  const start = parseDateValue(getStartDateValue(booking));
+  const end = parseDateValue(getEndDateValue(booking));
+  if (!start || !end || end.getTime() < start.getTime()) return null;
+
+  let months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+  const anchor = new Date(start);
+  anchor.setMonth(anchor.getMonth() + months);
+  if (end.getTime() > anchor.getTime()) months += 1;
+
+  return Math.max(1, months);
 }
 
 function getDate(b) {
@@ -399,6 +422,8 @@ function UserBoxingBookings() {
             const endDateValue = getEndDateValue(b);
             const isExpired = isExpiredBooking(b, status);
             const { total: totalSessions, remaining: remainingSessions } = getSessionProgress(b);
+            const isMonthlyPackage = isMonthlyPackageType(getPackageType(b));
+            const monthCount = getMonthCount(b);
             const isCompleted =
               remainingSessions === 0 || isCompletedStatus(status);
             return (
@@ -470,9 +495,13 @@ function UserBoxingBookings() {
                         <span>{getPackageType(b)}</span>
                       </div>
                       <div className="d-flex justify-content-between">
-                        <span style={{ opacity: 0.8 }}>Session Count</span>
+                        <span style={{ opacity: 0.8 }}>
+                          {isMonthlyPackage ? "Month Count" : "Session Count"}
+                        </span>
                         <span>
-                          {totalSessions === null && remainingSessions !== null
+                          {isMonthlyPackage
+                            ? monthCount ?? "—"
+                            : totalSessions === null && remainingSessions !== null
                             ? `${remainingSessions} / —`
                             : totalSessions === null
                             ? b?.sessions_count ?? "—"
@@ -493,19 +522,21 @@ function UserBoxingBookings() {
                         <span style={{ opacity: 0.8 }}>Status</span>
                         <span>{String(status || "—")}</span>
                       </div>
-                      <div className="d-flex justify-content-between align-items-center">
-                        <span style={{ opacity: 0.8 }}>Session confirmation</span>
-                        <button
-                          className="btn btn-sm btn-outline-info"
-                          onClick={() => confirmSession(bookingId)}
-                          disabled={isCompleted || busyKey === `confirm-${bookingId}`}
-                          title={
-                            isCompleted ? "All sessions completed" : "Confirm this session"
-                          }
-                        >
-                          {busyKey === `confirm-${bookingId}` ? "..." : "Confirm"}
-                        </button>
-                      </div>
+                      {!isMonthlyPackage && (
+                        <div className="d-flex justify-content-between align-items-center">
+                          <span style={{ opacity: 0.8 }}>Session confirmation</span>
+                          <button
+                            className="btn btn-sm btn-outline-info"
+                            onClick={() => confirmSession(bookingId)}
+                            disabled={isCompleted || busyKey === `confirm-${bookingId}`}
+                            title={
+                              isCompleted ? "All sessions completed" : "Confirm this session"
+                            }
+                          >
+                            {busyKey === `confirm-${bookingId}` ? "..." : "Confirm"}
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     {b?.notes && (
