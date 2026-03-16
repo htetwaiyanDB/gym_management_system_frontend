@@ -32,6 +32,13 @@ const emptyEdit = {
   password_confirmation: "",
 };
 
+const NAME_REGEX = /^[A-Za-z\s]+$/;
+
+function isValidName(value) {
+  const trimmed = (value || "").trim();
+  return !!trimmed && NAME_REGEX.test(trimmed);
+}
+
 function roleBadge(roleRaw) {
   const role = (roleRaw || "").toLowerCase();
   if (role === "administrator" || role === "admin")
@@ -117,6 +124,11 @@ export default function AdminUsers() {
   const handleCreateUserIdChange = (value) => {
     const sanitized = value.replace(/\D/g, "").slice(0, 5);
     setCreateForm((prev) => ({ ...prev, user_id: sanitized }));
+  };
+
+  const handleNameChange = (formSetter, key) => (e) => {
+    const sanitized = e.target.value.replace(/[^A-Za-z\s]/g, "");
+    formSetter((prev) => ({ ...prev, [key]: sanitized }));
   };
 
   const load = async () => {
@@ -213,6 +225,12 @@ export default function AdminUsers() {
         return;
       }
 
+      if (!isValidName(createForm.name)) {
+        setMsg({ type: "danger", text: "Name may only contain letters and spaces." });
+        setSavingCreate(false);
+        return;
+      }
+
       await axiosClient.post("/admin/register", {
         user_id: createForm.user_id || undefined,
         card_id: createForm.card_id || undefined,
@@ -272,6 +290,12 @@ export default function AdminUsers() {
     try {
       if (!editForm.id) {
         setMsg({ type: "danger", text: "Missing user id for this record." });
+        setSavingEdit(false);
+        return;
+      }
+
+      if (!isValidName(editForm.name)) {
+        setMsg({ type: "danger", text: "Name may only contain letters and spaces." });
         setSavingEdit(false);
         return;
       }
@@ -631,7 +655,7 @@ export default function AdminUsers() {
                       name="create-name"
                       placeholder="Enter user name"
                       value={createForm.name}
-                      onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
+                      onChange={handleNameChange(setCreateForm, "name")}
                     />
                   </div>
 
@@ -747,7 +771,7 @@ export default function AdminUsers() {
                     <input
                       className="form-control"
                       value={editForm.name}
-                      onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                      onChange={handleNameChange(setEditForm, "name")}
                     />
                   </div>
 
