@@ -135,6 +135,20 @@ function isMonthlyPackageType(value) {
   return s.includes("month");
 }
 
+function getMonthProgress(booking) {
+  const total = toNumber(
+    pick(booking, ["months_count", "month_count", "duration_months", "months", "duration"])
+  );
+  const remaining = toNumber(
+    pick(booking, ["months_remaining", "remaining_months", "month_left", "months_left"])
+  );
+
+  if (total === null) return { total: null, remaining: null };
+  if (remaining !== null) return { total, remaining: Math.max(0, remaining) };
+
+  return { total, remaining: total };
+}
+
 function getSessionProgress(booking) {
   const total = toNumber(pick(booking, ["sessions_count", "session_count", "sessions"]));
   const remaining = toNumber(
@@ -430,6 +444,7 @@ export default function UserBookings() {
             ]) || pick(b, ["booking_date", "date"]);
           const sessionsCount = pick(b, ["sessions_count", "session_count", "sessions"]);
           const { total: totalSessions, remaining: remainingSessions } = getSessionProgress(b);
+          const { total: totalMonths, remaining: remainingMonths } = getMonthProgress(b);
           const isCompleted =
             (totalSessions !== null && remainingSessions === 0) ||
             isCompletedStatus(pick(b, ["status", "state"]));
@@ -523,14 +538,22 @@ export default function UserBookings() {
                   </div>
 
                 
-                  <div className="d-flex justify-content-between" style={{ gap: 12 }}>
-                     <span style={{ opacity: 0.8 }}>Sessions Count</span>
+                    <div className="d-flex justify-content-between" style={{ gap: 12 }}>
+                      <span style={{ opacity: 0.8 }}>
+                        {isMonthlyPackage ? "Month Count" : "Session Count"}
+                      </span>
                       <b style={{ textAlign: "right" }}>
-                      {totalSessions === null
-                        ? toText(sessionsCount)
-                        : `${remainingSessions ?? "—"} / ${totalSessions}`}
-                    </b>
-                  </div>
+                        {isMonthlyPackage
+                          ? totalMonths === null
+                            ? toText(
+                                pick(b, ["months_count", "month_count", "duration_months", "months", "duration"])
+                              )
+                            : `${remainingMonths ?? "—"} / ${totalMonths}`
+                          : totalSessions === null
+                          ? toText(sessionsCount)
+                          : `${remainingSessions ?? "—"} / ${totalSessions}`}
+                      </b>
+                    </div>
            
 
               
