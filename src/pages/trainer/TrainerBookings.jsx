@@ -554,7 +554,7 @@ export default function TrainerBooking() {
                         <span>{packageType}</span>
                       </div>
                       <div className="d-flex justify-content-between">
-                        <span style={{ opacity: 0.8 }}>Session Count</span>
+                        <span style={{ opacity: 0.8 }}>Count</span>
                         <span>
                           {totalSessions === null && remainingSessions !== null
                             ? `${remainingSessions} / —`

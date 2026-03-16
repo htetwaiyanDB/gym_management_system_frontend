@@ -556,7 +556,7 @@ export default function UserBookings() {
                 
                     <div className="d-flex justify-content-between" style={{ gap: 12 }}>
                       <span style={{ opacity: 0.8 }}>
-                        {isMonthlyPackage ? "Month Count" : "Session Count"}
+                        Count
                       </span>
                       <b style={{ textAlign: "right" }}>
                         {isMonthlyPackage
