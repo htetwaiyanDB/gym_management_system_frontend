@@ -28,7 +28,11 @@ function pad2(n) {
   return String(n).padStart(2, "0");
 }
 
-function formatISODate(d) {
+function formatDDMMYYYY(d) {
+  return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
+}
+
+function formatYYYYMMDD(d) {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 }
 
@@ -100,7 +104,7 @@ function getDisplayBookingStatus(booking) {
 function formatDisplayDate(value) {
   const d = parseBackendDateTime(value) || parseDateOnly(value);
   if (!d) return "—";
-  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+  return formatDDMMYYYY(d);
 }
 
 function toNumber(value) {
@@ -173,13 +177,30 @@ function getDate(b) {
     b?.start_time;
 
   const d = parseBackendDateTime(dtRaw);
-  if (d) return formatISODate(d);
+  if (d) return formatDDMMYYYY(d);
 
-  if (b?.date) return b.date;
-  if (b?.start_date) return b.start_date;
-  if (typeof dtRaw === "string" && dtRaw.length >= 10) return dtRaw.slice(0, 10);
+  if (b?.date) return formatDisplayDate(b.date);
+  if (b?.start_date) return formatDisplayDate(b.start_date);
+  if (typeof dtRaw === "string" && dtRaw.length >= 10) return formatDisplayDate(dtRaw);
 
   return "";
+}
+
+function isMatchingSelectedDate(booking, selectedDate) {
+  if (!selectedDate) return true;
+  const bookingDateValue =
+    booking?.session_datetime ||
+    booking?.session_time ||
+    booking?.datetime ||
+    booking?.date_time ||
+    booking?.starts_at ||
+    booking?.start_time ||
+    booking?.date ||
+    booking?.start_date;
+
+  const bookingDate = parseBackendDateTime(bookingDateValue) || parseDateOnly(bookingDateValue);
+  if (!bookingDate) return false;
+  return formatYYYYMMDD(bookingDate) === selectedDate;
 }
 
 function getTime(b) {
@@ -199,9 +220,9 @@ function getTime(b) {
   if (b?.time) return b.time;
 
   if (typeof dtRaw === "string") {
-    if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(dtRaw)) return dtRaw;
+    if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(dtRaw)) return dtRaw.slice(0, 5);
     const maybe = dtRaw.split(" ")[1] || dtRaw.split("T")[1];
-    if (maybe) return maybe;
+    if (maybe) return maybe.slice(0, 5);
   }
 
   return "—";
@@ -327,7 +348,7 @@ export default function TrainerBooking() {
     return currentBookings.filter((b) => {
       const nameMatch =
         !search || getMemberName(b).toLowerCase().includes(search.toLowerCase());
-      const dateMatch = !date || getDate(b) === date;
+      const dateMatch = isMatchingSelectedDate(b, date);
       return nameMatch && dateMatch;
     });
   }, [currentBookings, search, date]);
@@ -352,6 +373,7 @@ export default function TrainerBooking() {
 
   const statusPill = (status) => {
     const s = String(status || "").toLowerCase();
+    if (s.includes("expired")) return pill("rgba(220,53,69,0.7)");
     if (s.includes("cancel")) return pill("rgba(220,53,69,0.35)");
     if (s.includes("complete")) return pill("rgba(25,135,84,0.35)");
     if (s.includes("pending")) return pill("rgba(255,193,7,0.35)");
