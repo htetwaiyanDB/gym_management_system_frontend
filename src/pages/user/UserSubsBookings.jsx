@@ -514,7 +514,7 @@ function UserBoxingBookings() {
                       </div>
                       <div className="d-flex justify-content-between">
                         <span style={{ opacity: 0.8 }}>
-                          {isMonthlyPackage ? "Month Count" : "Session Count"}
+                          Count
                         </span>
                         <span>
                           {isMonthlyPackage
