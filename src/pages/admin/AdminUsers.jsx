@@ -33,6 +33,7 @@ const emptyEdit = {
 };
 
 const sanitizeNameInput = (value = "") => value.replace(/[^a-zA-Z0-9\s]/g, "");
+const normalizeName = (value = "") => sanitizeNameInput(value).replace(/\s+/g, " ").trim();
 
 function roleBadge(roleRaw) {
   const role = (roleRaw || "").toLowerCase();
@@ -218,7 +219,7 @@ export default function AdminUsers() {
       await axiosClient.post("/admin/register", {
         user_id: createForm.user_id || undefined,
         card_id: createForm.card_id || undefined,
-        name: createForm.name,
+        name: normalizeName(createForm.name),
         email: createForm.email,
         phone: createForm.phone,
         role: createForm.role,
@@ -294,7 +295,7 @@ export default function AdminUsers() {
       }
 
       const payload = {};
-      const trimmedName = editForm.name.trim();
+      const trimmedName = normalizeName(editForm.name);
       const trimmedEmail = editForm.email.trim();
       const trimmedPhone = editForm.phone.trim();
 
@@ -633,7 +634,6 @@ export default function AdminUsers() {
                       name="create-name"
                       placeholder="Enter user name"
                       value={createForm.name}
-                      pattern="[A-Za-z0-9 ]+"
                       title="Name can contain letters, numbers, and spaces only."
                       onChange={(e) =>
                         setCreateForm({ ...createForm, name: sanitizeNameInput(e.target.value) })
@@ -753,7 +753,6 @@ export default function AdminUsers() {
                     <input
                       className="form-control"
                       value={editForm.name}
-                      pattern="[A-Za-z0-9 ]+"
                       title="Name can contain letters, numbers, and spaces only."
                       onChange={(e) =>
                         setEditForm({ ...editForm, name: sanitizeNameInput(e.target.value) })
