@@ -600,7 +600,7 @@ export default function TrainerBooking() {
 
                     {b?.notes && (
                       <div className="small mt-2" style={{ opacity: 0.9 }}>
-                        {b.notes}
+                        <span style={{ fontWeight: 700 }}>Noted:</span> {b.notes}
                       </div>
                     )}
                   </div>
