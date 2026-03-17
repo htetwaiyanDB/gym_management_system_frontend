@@ -117,6 +117,7 @@ function subscriptionSearchText(record) {
 }
 
 export default function AdminSubscriptions() {
+  const statusOptions = ["pending", "active", "on-hold", "complete", "expired"];
   const nav = useNavigate();
   const [loading, setLoading] = useState(false);
   const [busyId, setBusyId] = useState(null);
@@ -137,6 +138,7 @@ export default function AdminSubscriptions() {
   const [memberSearch, setMemberSearch] = useState("");
   const [planId, setPlanId] = useState("");
   const [startDate, setStartDate] = useState(""); // optional
+  const [status, setStatus] = useState("active");
   const [discountPercentage, setDiscountPercentage] = useState("");
   const [extendTargetId, setExtendTargetId] = useState(null);
   const [showExtendModal, setShowExtendModal] = useState(false);
@@ -148,6 +150,7 @@ export default function AdminSubscriptions() {
     setMemberSearch("");
     setPlanId("");
     setStartDate("");
+    setStatus("active");
     setDiscountPercentage("");
   };
 
@@ -207,6 +210,10 @@ export default function AdminSubscriptions() {
       setMsg({ type: "danger", text: "Please select a plan." });
       return;
     }
+    if (!statusOptions.includes(status)) {
+      setMsg({ type: "danger", text: "Please choose a valid status." });
+      return;
+    }
 
     const hasDiscount = discountPercentage !== "" && discountPercentage !== null && discountPercentage !== undefined;
     const normalizedDiscount = hasDiscount ? Number(discountPercentage) : null;
@@ -219,6 +226,7 @@ export default function AdminSubscriptions() {
       const payload = {
         member_id: Number(memberId),
         membership_plan_id: Number(planId),
+        status,
         discount_percentage: normalizedDiscount,
         final_price: calculatedFinalPrice,
       };
@@ -807,6 +815,22 @@ export default function AdminSubscriptions() {
         onChange={(e) => setStartDate(e.target.value)}
         disabled={optionsLoading}
       />
+    </div>
+
+    <div className="col-md-4">
+      <label className="form-label fw-bold">Status</label>
+      <select
+        className="form-select bg-dark text-white"
+        value={status}
+        onChange={(e) => setStatus(e.target.value)}
+        disabled={optionsLoading}
+      >
+        {statusOptions.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
     </div>
 
     <div className="col-md-4">
