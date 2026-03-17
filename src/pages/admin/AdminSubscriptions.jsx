@@ -834,7 +834,7 @@ export default function AdminSubscriptions() {
     </div>
 
     <div className="col-md-4">
-      <label className="form-label fw-bold">Discount Percentage (%)</label>
+      <label className="form-label fw-bold">Discount(%)</label>
       <input
         type="number"
         className="form-control bg-dark text-white"
