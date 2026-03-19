@@ -259,7 +259,30 @@ function buildBookingEntry(source, typeLabel) {
     ]) ??
     "-";
 
-  return buildSubscriptionEntry(source, typeLabel, packageType);
+  const packageName =
+    pickFirstValue(source, [
+      "package_name",
+      "trainer_package_name",
+      "boxing_package_name",
+      "plan_name",
+      "name",
+      "title",
+    ]) ??
+    pickNameFromSources([source?.trainer_package, source?.boxing_package, source?.package], [
+      "name",
+      "title",
+      "package_name",
+      "plan_name",
+    ]);
+
+  const normalizedPackageType = String(packageType || "").trim();
+  const normalizedPackageName = String(packageName || "").trim();
+  const displayPackageLabel =
+    normalizedPackageType && normalizedPackageName && normalizedPackageType.toLowerCase() !== normalizedPackageName.toLowerCase()
+      ? `${normalizedPackageType} (${normalizedPackageName})`
+      : normalizedPackageType || normalizedPackageName || "-";
+
+  return buildSubscriptionEntry(source, typeLabel, displayPackageLabel);
 }
 
 function groupSubscriptions(entries) {
