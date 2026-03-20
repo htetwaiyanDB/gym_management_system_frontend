@@ -636,7 +636,7 @@ export default function AdminSubscriptions() {
           <input
             type="text"
             className="form-control admin-search-input"
-            placeholder="Search by member / ID / phone"
+            placeholder="Search by member / name / phone"
             value={tableSearch}
             onChange={(e) => setTableSearch(e.target.value)}
           />
