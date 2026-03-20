@@ -529,9 +529,8 @@ export default function AdminSubscriptions() {
 
       if (!selectedStartDate && !selectedEndDate) return true;
       const membershipStartDate = parseDateOnly(record?.start_date);
-      const membershipEndDate = parseDateOnly(record?.end_date);
-      if (!membershipStartDate || !membershipEndDate) return false;
-      if (selectedStartDate && membershipEndDate < selectedStartDate) return false;
+      if (!membershipStartDate) return false;
+      if (selectedStartDate && membershipStartDate < selectedStartDate) return false;
       if (selectedEndDate && membershipStartDate > selectedEndDate) return false;
       return true;
     });
