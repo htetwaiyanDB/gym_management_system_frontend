@@ -193,6 +193,7 @@ async function requestWithFallback(requests) {
 }
 
 export default function AdminClassSubscriptions() {
+  const PAGE_SIZE = 10;
   const nav = useNavigate();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -200,6 +201,7 @@ export default function AdminClassSubscriptions() {
   const [msg, setMsg] = useState(null);
   const [records, setRecords] = useState([]);
   const [tableSearch, setTableSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
   const [members, setMembers] = useState([]);
   const [plans, setPlans] = useState([]);
 
@@ -678,6 +680,21 @@ export default function AdminClassSubscriptions() {
     return sortedRecords.filter((record) => subscriptionSearchText(record).includes(keyword));
   }, [sortedRecords, tableSearch]);
 
+  const totalPages = Math.max(1, Math.ceil(filteredRecords.length / PAGE_SIZE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const pageStartIndex = (safeCurrentPage - 1) * PAGE_SIZE;
+  const paginatedRecords = filteredRecords.slice(pageStartIndex, pageStartIndex + PAGE_SIZE);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [tableSearch]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
   return (
     <div className="admin-card p-4">
       <div className="d-flex align-items-center justify-content-between mb-3">
@@ -784,7 +801,7 @@ export default function AdminClassSubscriptions() {
                 <td colSpan="12" className="text-center text-muted py-4">{loading ? "Loading..." : tableSearch.trim() ? "No class memberships matched your search." : "No class memberships found."}</td>
               </tr>
             ) : (
-              filteredRecords.map((r, index) => {
+              paginatedRecords.map((r, index) => {
                 const rawStatus = String(r?.status || "");
                 const isOnHold = !!r?.is_on_hold;
                 const isExpired = rawStatus.toLowerCase() === "expired" || isExpiredByDate(r?.end_date);
@@ -795,7 +812,7 @@ export default function AdminClassSubscriptions() {
 
                 return (
                 <tr key={r.id}>
-                  <td>{index + 1}</td>
+                  <td>{pageStartIndex + index + 1}</td>
                   <td>{r.member_name || r.user_name || "-"}</td>
                   <td>{r.member_phone || r.user_phone || "-"}</td>
                   <td><span className="badge bg-primary">{r.class_plan_name || r.class_package_name || r.membership_plan_name || r.plan_name || "-"}</span></td>
@@ -862,6 +879,34 @@ export default function AdminClassSubscriptions() {
           </tbody>
         </table>
       </div>
+
+      {filteredRecords.length > 0 && (
+        <div className="d-flex justify-content-between align-items-center mt-3">
+          <small className="text-muted">
+            Showing {pageStartIndex + 1}-{Math.min(pageStartIndex + PAGE_SIZE, filteredRecords.length)} of{" "}
+            {filteredRecords.length} class memberships
+          </small>
+          <div className="d-flex align-items-center gap-2">
+            <button
+              className="btn btn-sm btn-outline-light"
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              disabled={safeCurrentPage === 1}
+            >
+              Previous
+            </button>
+            <span className="text-muted small">
+              Page {safeCurrentPage} of {totalPages}
+            </span>
+            <button
+              className="btn btn-sm btn-outline-light"
+              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+              disabled={safeCurrentPage === totalPages}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
 
 
       {showExtendModal && (
