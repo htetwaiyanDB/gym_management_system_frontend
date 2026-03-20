@@ -292,6 +292,7 @@ function personDisplayLabel(person, fallback = "Unknown") {
 
 
 export default function AdminBoxingBookings() {
+  const PAGE_SIZE = 10;
   const [loading, setLoading] = useState(false);
   const [busyKey, setBusyKey] = useState(null);
   const [msg, setMsg] = useState(null);
@@ -327,6 +328,7 @@ export default function AdminBoxingBookings() {
   const [filterPaid, setFilterPaid] = useState("all");     // all | paid | unpaid
   const [filterStatus, setFilterStatus] = useState("all"); // all | pending | active | on-hold | completed
   const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
   // modal
   const [showModal, setShowModal] = useState(false);
 
@@ -1007,6 +1009,21 @@ export default function AdminBoxingBookings() {
     return list;
   }, [bookings, filterPaid, filterStatus, searchTerm]);
 
+  const totalPages = Math.max(1, Math.ceil(filteredBookings.length / PAGE_SIZE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const pageStartIndex = (safeCurrentPage - 1) * PAGE_SIZE;
+  const paginatedBookings = filteredBookings.slice(pageStartIndex, pageStartIndex + PAGE_SIZE);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterPaid, filterStatus, searchTerm]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
   return (
     <div className="admin-card p-4">
             <style>
@@ -1171,7 +1188,7 @@ export default function AdminBoxingBookings() {
                 </td>
               </tr>
             ) : (
-              filteredBookings.map((b) => {
+              paginatedBookings.map((b) => {
                 const isPaid = String(b.paid_status || "").toLowerCase() === "paid";
                 const { total, remaining } = getSessionProgress(b);
                 const isCompleted = (total !== null && remaining === 0) || isCompletedStatus(b?.status);
@@ -1267,6 +1284,34 @@ export default function AdminBoxingBookings() {
           </tbody>
         </table>
       </div>
+
+      {filteredBookings.length > 0 && (
+        <div className="d-flex justify-content-between align-items-center mt-3">
+          <small className="text-muted">
+            Showing {pageStartIndex + 1}-{Math.min(pageStartIndex + PAGE_SIZE, filteredBookings.length)} of{" "}
+            {filteredBookings.length} bookings
+          </small>
+          <div className="d-flex align-items-center gap-2">
+            <button
+              className="btn btn-sm btn-outline-light"
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              disabled={safeCurrentPage === 1}
+            >
+              Previous
+            </button>
+            <span className="text-muted small">
+              Page {safeCurrentPage} of {totalPages}
+            </span>
+            <button
+              className="btn btn-sm btn-outline-light"
+              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+              disabled={safeCurrentPage === totalPages}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ===== Booking Details Modal ===== */}
       {showDetails && selectedBooking && (

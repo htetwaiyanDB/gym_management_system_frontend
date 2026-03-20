@@ -117,6 +117,7 @@ function subscriptionSearchText(record) {
 }
 
 export default function AdminSubscriptions() {
+  const PAGE_SIZE = 10;
   const statusOptions = ["pending", "active", "on-hold", "complete", "expired"];
   const nav = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -127,6 +128,7 @@ export default function AdminSubscriptions() {
 
   const [subs, setSubs] = useState([]);
   const [tableSearch, setTableSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
 
   // modal state
   const [showModal, setShowModal] = useState(false);
@@ -503,6 +505,21 @@ export default function AdminSubscriptions() {
     return sortedSubscriptions.filter((record) => subscriptionSearchText(record).includes(keyword));
   }, [sortedSubscriptions, tableSearch]);
 
+  const totalPages = Math.max(1, Math.ceil(filteredSubscriptions.length / PAGE_SIZE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const pageStartIndex = (safeCurrentPage - 1) * PAGE_SIZE;
+  const paginatedSubscriptions = filteredSubscriptions.slice(pageStartIndex, pageStartIndex + PAGE_SIZE);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [tableSearch]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
   const hasOnHoldSubscriptions = useMemo(
     () => subs.some((record) => !!record?.is_on_hold && !isExpiredByDate(record?.end_date)),
     [subs],
@@ -591,7 +608,7 @@ export default function AdminSubscriptions() {
                 </td>
               </tr>
             ) : (
-              filteredSubscriptions.map((s, index) => {
+              paginatedSubscriptions.map((s, index) => {
                 const rawStatus = String(s?.status || "");
                 const isOnHold = !!s?.is_on_hold;
                 const isExpired = rawStatus.toLowerCase() === "expired" || isExpiredByDate(s?.end_date);
@@ -602,7 +619,7 @@ export default function AdminSubscriptions() {
 
                 return (
                   <tr key={s.id}>
-                    <td>{index + 1}</td>
+                    <td>{pageStartIndex + index + 1}</td>
                     <td>{s.member_name || "-"}</td>
                     <td>{s.member_phone || "-"}</td>
                     <td>
@@ -674,6 +691,34 @@ export default function AdminSubscriptions() {
           </tbody>
         </table>
       </div>
+
+      {filteredSubscriptions.length > 0 && (
+        <div className="d-flex justify-content-between align-items-center mt-3">
+          <small className="text-muted">
+            Showing {pageStartIndex + 1}-{Math.min(pageStartIndex + PAGE_SIZE, filteredSubscriptions.length)} of{" "}
+            {filteredSubscriptions.length} memberships
+          </small>
+          <div className="d-flex align-items-center gap-2">
+            <button
+              className="btn btn-sm btn-outline-light"
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              disabled={safeCurrentPage === 1}
+            >
+              Previous
+            </button>
+            <span className="text-muted small">
+              Page {safeCurrentPage} of {totalPages}
+            </span>
+            <button
+              className="btn btn-sm btn-outline-light"
+              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+              disabled={safeCurrentPage === totalPages}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
 
       {showExtendModal && (
         <>
