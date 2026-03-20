@@ -881,28 +881,39 @@ export default function AdminClassSubscriptions() {
       </div>
 
       {filteredRecords.length > 0 && (
-        <div className="d-flex justify-content-between align-items-center mt-3">
-          <small className="text-muted">
-            Showing {pageStartIndex + 1}-{Math.min(pageStartIndex + PAGE_SIZE, filteredRecords.length)} of{" "}
-            {filteredRecords.length} class memberships
-          </small>
-          <div className="d-flex align-items-center gap-2">
+        <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3">
+          <div className="text-white small">
+            Page <b>{safeCurrentPage}</b> of <b>{totalPages}</b>
+          </div>
+
+          <div className="btn-group">
             <button
-              className="btn btn-sm btn-outline-light"
+              className="btn btn-outline-light btn-sm fw-bold"
+              onClick={() => setCurrentPage(1)}
+              disabled={safeCurrentPage === 1}
+            >
+              « First
+            </button>
+            <button
+              className="btn btn-outline-light btn-sm fw-bold"
               onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
               disabled={safeCurrentPage === 1}
             >
-              Previous
+              ‹ Prev
             </button>
-            <span className="text-muted small">
-              Page {safeCurrentPage} of {totalPages}
-            </span>
             <button
-              className="btn btn-sm btn-outline-light"
+              className="btn btn-outline-light btn-sm fw-bold"
               onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
               disabled={safeCurrentPage === totalPages}
             >
-              Next
+              Next ›
+            </button>
+            <button
+              className="btn btn-outline-light btn-sm fw-bold"
+              onClick={() => setCurrentPage(totalPages)}
+              disabled={safeCurrentPage === totalPages}
+            >
+              Last »
             </button>
           </div>
         </div>
