@@ -326,7 +326,7 @@ export default function AdminBoxingBookings() {
 
   // filters
   const [filterPaid, setFilterPaid] = useState("all");     // all | paid | unpaid
-  const [filterStatus, setFilterStatus] = useState("all"); // all | pending | active | on-hold | completed
+  const [filterStatus, setFilterStatus] = useState("all"); // all | pending | active | expired | on-hold | completed
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   // modal
@@ -1133,6 +1133,7 @@ export default function AdminBoxingBookings() {
             <option value="all" className="fw-bold">All</option>
             <option value="pending" className="fw-bold">Pending</option>
             <option value="active" className="fw-bold">Active</option>
+            <option value="expired" className="fw-bold">Expired</option>
             <option value="on-hold" className="fw-bold">On Hold</option>
             <option value="completed" className="fw-bold">Completed</option>
           </select>
