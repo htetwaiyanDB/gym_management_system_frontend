@@ -310,7 +310,6 @@ export default function AdminTrainerBookings() {
   const [defaultPrice, setDefaultPrice] = useState(30000);
 
   // filters
-  const [filterPaid, setFilterPaid] = useState("all");     // all | paid | unpaid
   const [filterStatus, setFilterStatus] = useState("all"); // all | pending | active | expired | on-hold | completed
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStartDate, setFilterStartDate] = useState("");
@@ -938,17 +937,14 @@ export default function AdminTrainerBookings() {
 
   // ✅ filter + sort (active first, completed last)
   const filteredBookings = useMemo(() => {
-    const paidF = String(filterPaid).toLowerCase();
     const statusF = String(filterStatus).toLowerCase();
     const searchValue = String(searchTerm || "").trim().toLowerCase();
     const selectedStartDate = parseDateOnly(filterStartDate);
     const selectedEndDate = parseDateOnly(filterEndDate);
 
     const list = bookings.filter((b) => {
-      const paid = String(b?.paid_status || "").toLowerCase();
       const st = getDisplayBookingStatus(b);
 
-      if (paidF !== "all" && paid !== paidF) return false;
       if (statusF !== "all" && st !== statusF) return false;
       if (searchValue) {
         const fields = [
@@ -965,11 +961,15 @@ export default function AdminTrainerBookings() {
       }
 
       if (selectedStartDate || selectedEndDate) {
-        const bookingStartDate = parseDateOnly(getBookingStartDateValue(b));
-        const bookingEndDate = parseDateOnly(getBookingEndDateValue(b));
-        if (!bookingStartDate || !bookingEndDate) return false;
-        if (selectedStartDate && bookingEndDate < selectedStartDate) return false;
-        if (selectedEndDate && bookingStartDate > selectedEndDate) return false;
+        const bookingDate = parseDateOnly(getBookingStartDateValue(b));
+        if (!bookingDate) return false;
+        if (selectedStartDate && selectedEndDate) {
+          if (bookingDate < selectedStartDate || bookingDate > selectedEndDate) return false;
+        } else if (selectedStartDate && bookingDate < selectedStartDate) {
+          return false;
+        } else if (selectedEndDate && bookingDate > selectedEndDate) {
+          return false;
+        }
       }
 
       return true;
@@ -985,7 +985,7 @@ export default function AdminTrainerBookings() {
     });
 
     return list;
-  }, [bookings, filterPaid, filterStatus, searchTerm, filterStartDate, filterEndDate]);
+  }, [bookings, filterStatus, searchTerm, filterStartDate, filterEndDate]);
 
   const totalPages = Math.max(1, Math.ceil(filteredBookings.length / PAGE_SIZE));
   const safeCurrentPage = Math.min(currentPage, totalPages);
@@ -994,7 +994,7 @@ export default function AdminTrainerBookings() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [filterPaid, filterStatus, searchTerm, filterStartDate, filterEndDate]);
+  }, [filterStatus, searchTerm, filterStartDate, filterEndDate]);
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -1088,17 +1088,14 @@ export default function AdminTrainerBookings() {
 
       
       <div className="d-flex flex-wrap gap-2 align-items-end mb-3">
-        <div style={{ minWidth: 180 }}>
-          <label className="form-label mb-1">Paid Filter</label>
-          <select
-            className="form-select admin-select-dark"
-            value={filterPaid}
-            onChange={(e) => setFilterPaid(e.target.value)}
-          >
-            <option value="all" className="fw-bold">All</option>
-            <option value="paid" className="fw-bold">Paid</option>
-            <option value="unpaid" className="fw-bold">Unpaid</option>
-          </select>
+        <div style={{ minWidth: 260 }}>
+          <label className="form-label mb-1">Search</label>
+          <input
+            className="form-control admin-search-input"
+            placeholder="Search by user/trainer name or phone"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
 
         <div style={{ minWidth: 220 }}>
@@ -1115,16 +1112,6 @@ export default function AdminTrainerBookings() {
             <option value="on-hold" className="fw-bold">On Hold</option>
             <option value="completed" className="fw-bold">Completed</option>
           </select>
-        </div>
-
-        <div style={{ minWidth: 260 }}>
-          <label className="form-label mb-1">Search</label>
-          <input
-            className="form-control admin-search-input"
-            placeholder="Search by user/trainer name or phone"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
         </div>
 
         <div style={{ minWidth: 170 }}>
@@ -1150,7 +1137,6 @@ export default function AdminTrainerBookings() {
         <button
           className="btn btn-outline-primary"
           onClick={() => {
-            setFilterPaid("all");
             setFilterStatus("all");
             setSearchTerm("");
             setFilterStartDate("");
