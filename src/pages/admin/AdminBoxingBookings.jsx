@@ -341,6 +341,8 @@ export default function AdminBoxingBookings() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStartDate, setFilterStartDate] = useState("");
   const [filterEndDate, setFilterEndDate] = useState("");
+  const [appliedFilterStartDate, setAppliedFilterStartDate] = useState("");
+  const [appliedFilterEndDate, setAppliedFilterEndDate] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   // modal
   const [showModal, setShowModal] = useState(false);
@@ -984,8 +986,8 @@ export default function AdminBoxingBookings() {
   const filteredBookings = useMemo(() => {
     const statusF = String(filterStatus).toLowerCase();
     const searchValue = String(searchTerm || "").trim().toLowerCase();
-    const selectedStartDate = parseDateOnly(filterStartDate);
-    const selectedEndDate = parseDateOnly(filterEndDate);
+    const selectedStartDate = parseDateOnly(appliedFilterStartDate);
+    const selectedEndDate = parseDateOnly(appliedFilterEndDate);
 
     const list = bookings.filter((b) => {
       const st = getDisplayBookingStatus(b);
@@ -1032,7 +1034,7 @@ export default function AdminBoxingBookings() {
     });
 
     return list;
-  }, [bookings, filterStatus, searchTerm, filterStartDate, filterEndDate]);
+  }, [bookings, filterStatus, searchTerm, appliedFilterStartDate, appliedFilterEndDate]);
 
   const totalPages = Math.max(1, Math.ceil(filteredBookings.length / PAGE_SIZE));
   const safeCurrentPage = Math.min(currentPage, totalPages);
@@ -1041,7 +1043,7 @@ export default function AdminBoxingBookings() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [filterStatus, searchTerm, filterStartDate, filterEndDate]);
+  }, [filterStatus, searchTerm, appliedFilterStartDate, appliedFilterEndDate]);
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -1135,7 +1137,7 @@ export default function AdminBoxingBookings() {
 
       
       <div className="d-flex flex-wrap gap-2 align-items-end mb-3">
-        <div style={{ minWidth: 260 }}>
+        <div style={{ minWidth: 220 }}>
           <label className="form-label mb-1">Search</label>
           <input
             className="form-control admin-search-input"
@@ -1145,7 +1147,7 @@ export default function AdminBoxingBookings() {
           />
         </div>
 
-        <div style={{ minWidth: 220 }}>
+        <div style={{ minWidth: 180 }}>
           <label className="form-label mb-1">Status Filter</label>
           <select
             className="form-select admin-select-dark"
@@ -1182,12 +1184,24 @@ export default function AdminBoxingBookings() {
         </div>
 
         <button
+          className="btn btn-primary"
+          onClick={() => {
+            setAppliedFilterStartDate(filterStartDate);
+            setAppliedFilterEndDate(filterEndDate);
+          }}
+        >
+          Search
+        </button>
+
+        <button
           className="btn btn-outline-primary"
           onClick={() => {
             setFilterStatus("all");
             setSearchTerm("");
             setFilterStartDate("");
             setFilterEndDate("");
+            setAppliedFilterStartDate("");
+            setAppliedFilterEndDate("");
           }}
         >
           Clear Filters
