@@ -111,6 +111,18 @@ function getBookingEndDateValue(booking) {
   ]);
 }
 
+function getBookingStartDateValue(booking) {
+  return pickFirstValue(booking, [
+    "month_start_date",
+    "monthly_start_date",
+    "sessions_start_date",
+    "session_start_date",
+    "start_date",
+    "session_date",
+    "session_datetime",
+  ]);
+}
+
 function getDisplayBookingStatus(booking) {
   const normalizedStatus = normalizeBookingStatus(booking?.status);
   if (normalizedStatus === "active" && isExpiredByDate(getBookingEndDateValue(booking))) {
@@ -301,6 +313,8 @@ export default function AdminTrainerBookings() {
   const [filterPaid, setFilterPaid] = useState("all");     // all | paid | unpaid
   const [filterStatus, setFilterStatus] = useState("all"); // all | pending | active | expired | on-hold | completed
   const [searchTerm, setSearchTerm] = useState("");
+  const [filterStartDate, setFilterStartDate] = useState("");
+  const [filterEndDate, setFilterEndDate] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   // modal
   const [showModal, setShowModal] = useState(false);
@@ -927,6 +941,8 @@ export default function AdminTrainerBookings() {
     const paidF = String(filterPaid).toLowerCase();
     const statusF = String(filterStatus).toLowerCase();
     const searchValue = String(searchTerm || "").trim().toLowerCase();
+    const selectedStartDate = parseDateOnly(filterStartDate);
+    const selectedEndDate = parseDateOnly(filterEndDate);
 
     const list = bookings.filter((b) => {
       const paid = String(b?.paid_status || "").toLowerCase();
@@ -947,6 +963,15 @@ export default function AdminTrainerBookings() {
           return false;
         }
       }
+
+      if (selectedStartDate || selectedEndDate) {
+        const bookingStartDate = parseDateOnly(getBookingStartDateValue(b));
+        const bookingEndDate = parseDateOnly(getBookingEndDateValue(b));
+        if (!bookingStartDate || !bookingEndDate) return false;
+        if (selectedStartDate && bookingEndDate < selectedStartDate) return false;
+        if (selectedEndDate && bookingStartDate > selectedEndDate) return false;
+      }
+
       return true;
     });
 
@@ -960,7 +985,7 @@ export default function AdminTrainerBookings() {
     });
 
     return list;
-  }, [bookings, filterPaid, filterStatus, searchTerm]);
+  }, [bookings, filterPaid, filterStatus, searchTerm, filterStartDate, filterEndDate]);
 
   const totalPages = Math.max(1, Math.ceil(filteredBookings.length / PAGE_SIZE));
   const safeCurrentPage = Math.min(currentPage, totalPages);
@@ -969,7 +994,7 @@ export default function AdminTrainerBookings() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [filterPaid, filterStatus, searchTerm]);
+  }, [filterPaid, filterStatus, searchTerm, filterStartDate, filterEndDate]);
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -1102,12 +1127,34 @@ export default function AdminTrainerBookings() {
           />
         </div>
 
+        <div style={{ minWidth: 170 }}>
+          <label className="form-label mb-1">Start Date</label>
+          <input
+            type="date"
+            className="form-control admin-search-input"
+            value={filterStartDate}
+            onChange={(e) => setFilterStartDate(e.target.value)}
+          />
+        </div>
+
+        <div style={{ minWidth: 170 }}>
+          <label className="form-label mb-1">End Date</label>
+          <input
+            type="date"
+            className="form-control admin-search-input"
+            value={filterEndDate}
+            onChange={(e) => setFilterEndDate(e.target.value)}
+          />
+        </div>
+
         <button
           className="btn btn-outline-primary"
           onClick={() => {
             setFilterPaid("all");
             setFilterStatus("all");
             setSearchTerm("");
+            setFilterStartDate("");
+            setFilterEndDate("");
           }}
         >
           Clear Filters
