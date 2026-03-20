@@ -128,6 +128,9 @@ export default function AdminSubscriptions() {
 
   const [subs, setSubs] = useState([]);
   const [tableSearch, setTableSearch] = useState("");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterStartDate, setFilterStartDate] = useState("");
+  const [filterEndDate, setFilterEndDate] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
   // modal state
@@ -501,9 +504,36 @@ export default function AdminSubscriptions() {
 
   const filteredSubscriptions = useMemo(() => {
     const keyword = tableSearch.trim().toLowerCase();
-    if (!keyword) return sortedSubscriptions;
-    return sortedSubscriptions.filter((record) => subscriptionSearchText(record).includes(keyword));
-  }, [sortedSubscriptions, tableSearch]);
+    const selectedStatus = String(filterStatus || "all").toLowerCase();
+    const selectedStartDate = parseDateOnly(filterStartDate);
+    const selectedEndDate = parseDateOnly(filterEndDate);
+
+    return sortedSubscriptions.filter((record) => {
+      if (keyword && !subscriptionSearchText(record).includes(keyword)) {
+        return false;
+      }
+
+      const rawStatus = String(record?.status || "");
+      const isOnHold = !!record?.is_on_hold;
+      const isExpired = rawStatus.toLowerCase() === "expired" || isExpiredByDate(record?.end_date);
+      const normalizedStatus = isExpired
+        ? "expired"
+        : isOnHold
+          ? "on-hold"
+          : rawStatus.trim().toLowerCase();
+      if (selectedStatus !== "all" && normalizedStatus !== selectedStatus) {
+        return false;
+      }
+
+      if (!selectedStartDate && !selectedEndDate) return true;
+      const membershipStartDate = parseDateOnly(record?.start_date);
+      const membershipEndDate = parseDateOnly(record?.end_date);
+      if (!membershipStartDate || !membershipEndDate) return false;
+      if (selectedStartDate && membershipEndDate < selectedStartDate) return false;
+      if (selectedEndDate && membershipStartDate > selectedEndDate) return false;
+      return true;
+    });
+  }, [sortedSubscriptions, tableSearch, filterStatus, filterStartDate, filterEndDate]);
 
   const totalPages = Math.max(1, Math.ceil(filteredSubscriptions.length / PAGE_SIZE));
   const safeCurrentPage = Math.min(currentPage, totalPages);
@@ -512,7 +542,7 @@ export default function AdminSubscriptions() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [tableSearch]);
+  }, [tableSearch, filterStatus, filterStartDate, filterEndDate]);
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -527,6 +557,34 @@ export default function AdminSubscriptions() {
 
   return (
     <div className="admin-card p-4">
+      <style>
+        {`
+          .admin-select-dark {
+            background-color: #212529;
+            color: #fff;
+            border-color: #495057;
+          }
+          .admin-select-dark:focus {
+            background-color: #212529;
+            color: #fff;
+            border-color: #0d6efd;
+            box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+          }
+          .admin-select-dark option {
+            background-color: #212529;
+            color: #fff;
+          }
+          .admin-search-input {
+            background-color: #212529;
+            color: #fff;
+            border-color: #495057;
+          }
+          .admin-search-input::placeholder {
+            color: #adb5bd;
+            opacity: 1;
+          }
+        `}
+      </style>
       <div className="d-flex align-items-center justify-content-between mb-3">
         <div>
           <h4 className="mb-1">Memberships Management</h4>
@@ -571,14 +629,69 @@ export default function AdminSubscriptions() {
 
       {msg && <div className={`alert alert-${msg.type}`}>{msg.text}</div>}
 
-      <div className="mb-3" style={{ maxWidth: "520px" }}>
-        <input
-          type="text"
-          className="form-control bg-dark text-white border-secondary"
-          placeholder="Search by member name / ID / phone"
-          value={tableSearch}
-          onChange={(e) => setTableSearch(e.target.value)}
-        />
+      <div className="d-flex flex-wrap gap-2 align-items-end mb-3">
+        <div style={{ minWidth: 220, maxWidth: 320 }}>
+          <label className="form-label mb-1">Search</label>
+          <input
+            type="text"
+            className="form-control admin-search-input"
+            placeholder="Search by member / ID / phone"
+            value={tableSearch}
+            onChange={(e) => setTableSearch(e.target.value)}
+          />
+        </div>
+
+        <div style={{ minWidth: 220 }}>
+          <label className="form-label mb-1">Status Filter</label>
+          <select
+            className="form-select admin-select-dark"
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+          >
+            <option value="all" className="fw-bold">All</option>
+            <option value="pending" className="fw-bold">Pending</option>
+            <option value="active" className="fw-bold">Active</option>
+            <option value="on-hold" className="fw-bold">On Hold</option>
+            <option value="expired" className="fw-bold">Expired</option>
+            <option value="complete" className="fw-bold">Complete</option>
+          </select>
+        </div>
+
+        <div style={{ minWidth: 170 }}>
+          <label className="form-label mb-1">Start Date</label>
+          <input
+            type="date"
+            className="form-control admin-search-input"
+            value={filterStartDate}
+            onChange={(e) => setFilterStartDate(e.target.value)}
+          />
+        </div>
+
+        <div style={{ minWidth: 170 }}>
+          <label className="form-label mb-1">End Date</label>
+          <input
+            type="date"
+            className="form-control admin-search-input"
+            value={filterEndDate}
+            onChange={(e) => setFilterEndDate(e.target.value)}
+          />
+        </div>
+
+        <button
+          className="btn btn-outline-primary"
+          onClick={() => {
+            setTableSearch("");
+            setFilterStatus("all");
+            setFilterStartDate("");
+            setFilterEndDate("");
+          }}
+        >
+          Clear Filters
+        </button>
+
+        <div className="ms-auto text-muted">
+          Showing <b>{filteredSubscriptions.length}</b> membership(s)
+        </div>
       </div>
 
       <div className="table-responsive">
