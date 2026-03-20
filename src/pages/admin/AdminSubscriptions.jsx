@@ -131,6 +131,8 @@ export default function AdminSubscriptions() {
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterStartDate, setFilterStartDate] = useState("");
   const [filterEndDate, setFilterEndDate] = useState("");
+  const [appliedFilterStartDate, setAppliedFilterStartDate] = useState("");
+  const [appliedFilterEndDate, setAppliedFilterEndDate] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
   // modal state
@@ -505,8 +507,8 @@ export default function AdminSubscriptions() {
   const filteredSubscriptions = useMemo(() => {
     const keyword = tableSearch.trim().toLowerCase();
     const selectedStatus = String(filterStatus || "all").toLowerCase();
-    const selectedStartDate = parseDateOnly(filterStartDate);
-    const selectedEndDate = parseDateOnly(filterEndDate);
+    const selectedStartDate = parseDateOnly(appliedFilterStartDate);
+    const selectedEndDate = parseDateOnly(appliedFilterEndDate);
 
     return sortedSubscriptions.filter((record) => {
       if (keyword && !subscriptionSearchText(record).includes(keyword)) {
@@ -533,7 +535,7 @@ export default function AdminSubscriptions() {
       if (selectedEndDate && membershipStartDate > selectedEndDate) return false;
       return true;
     });
-  }, [sortedSubscriptions, tableSearch, filterStatus, filterStartDate, filterEndDate]);
+  }, [sortedSubscriptions, tableSearch, filterStatus, appliedFilterStartDate, appliedFilterEndDate]);
 
   const totalPages = Math.max(1, Math.ceil(filteredSubscriptions.length / PAGE_SIZE));
   const safeCurrentPage = Math.min(currentPage, totalPages);
@@ -542,7 +544,7 @@ export default function AdminSubscriptions() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [tableSearch, filterStatus, filterStartDate, filterEndDate]);
+  }, [tableSearch, filterStatus, appliedFilterStartDate, appliedFilterEndDate]);
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -641,7 +643,7 @@ export default function AdminSubscriptions() {
           />
         </div>
 
-        <div style={{ minWidth: 220 }}>
+        <div style={{ minWidth: 170, maxWidth: 220 }}>
           <label className="form-label mb-1">Status Filter</label>
           <select
             className="form-select admin-select-dark"
@@ -678,12 +680,24 @@ export default function AdminSubscriptions() {
         </div>
 
         <button
+          className="btn btn-primary"
+          onClick={() => {
+            setAppliedFilterStartDate(filterStartDate);
+            setAppliedFilterEndDate(filterEndDate);
+          }}
+        >
+          Search
+        </button>
+
+        <button
           className="btn btn-outline-primary"
           onClick={() => {
             setTableSearch("");
             setFilterStatus("all");
             setFilterStartDate("");
             setFilterEndDate("");
+            setAppliedFilterStartDate("");
+            setAppliedFilterEndDate("");
           }}
         >
           Clear Filters
