@@ -65,6 +65,54 @@ function isExpiredByDate(endDateValue) {
   return today > endDate;
 }
 
+function normalizeMembershipStatus(record) {
+  const rawCandidates = [
+    record?.status,
+    record?.subscription_status,
+    record?.membership_status,
+    record?.approval_status,
+  ];
+
+  const raw = rawCandidates.find((value) => value !== null && value !== undefined && String(value).trim() !== "");
+  const normalized = String(raw || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-");
+
+  if (record?.is_on_hold || normalized === "hold" || normalized === "on-hold" || normalized === "paused") {
+    return "on-hold";
+  }
+
+  if (
+    record?.is_pending === true ||
+    record?.pending === true ||
+    normalized === "pending" ||
+    normalized === "awaiting" ||
+    normalized === "awaiting-approval"
+  ) {
+    return "pending";
+  }
+
+  if (normalized === "complete" || normalized === "completed" || normalized === "done") {
+    return "complete";
+  }
+
+  if (normalized === "expired") {
+    return "expired";
+  }
+
+  if (normalized === "active" || normalized === "confirmed" || normalized === "resumed") {
+    return "active";
+  }
+
+  if (record?.is_active === true && record?.is_pending !== true && record?.pending !== true) {
+    return "active";
+  }
+
+  if (!normalized) return "-";
+  return normalized;
+}
+
 function memberIdOf(member) {
   return member?.id ?? member?.user_id ?? member?.member_id ?? null;
 }
@@ -145,7 +193,7 @@ export default function AdminSubscriptions() {
   const [memberSearch, setMemberSearch] = useState("");
   const [planId, setPlanId] = useState("");
   const [startDate, setStartDate] = useState(""); // optional
-  const [status, setStatus] = useState("active");
+  const [status, setStatus] = useState("pending");
   const [discountPercentage, setDiscountPercentage] = useState("");
   const [extendTargetId, setExtendTargetId] = useState(null);
   const [showExtendModal, setShowExtendModal] = useState(false);
@@ -157,7 +205,7 @@ export default function AdminSubscriptions() {
     setMemberSearch("");
     setPlanId("");
     setStartDate("");
-    setStatus("active");
+    setStatus("pending");
     setDiscountPercentage("");
   };
 
@@ -490,14 +538,14 @@ export default function AdminSubscriptions() {
   const sortedSubscriptions = useMemo(() => {
     const list = [...subs];
     list.sort((a, b) => {
-      const statusA = String(a?.status || "").toLowerCase();
-      const statusB = String(b?.status || "").toLowerCase();
+      const statusA = normalizeMembershipStatus(a);
+      const statusB = normalizeMembershipStatus(b);
       const expiredA = statusA === "expired" || isExpiredByDate(a?.end_date);
       const expiredB = statusB === "expired" || isExpiredByDate(b?.end_date);
       const activeA = statusA === "active" && !expiredA;
       const activeB = statusB === "active" && !expiredB;
-      const rankA = activeA ? 0 : expiredA ? 2 : 1;
-      const rankB = activeB ? 0 : expiredB ? 2 : 1;
+      const rankA = activeA ? 0 : statusA === "pending" ? 1 : expiredA ? 3 : 2;
+      const rankB = activeB ? 0 : statusB === "pending" ? 1 : expiredB ? 3 : 2;
       if (rankA !== rankB) return rankA - rankB;
       return (b?.id ?? 0) - (a?.id ?? 0);
     });
@@ -515,14 +563,8 @@ export default function AdminSubscriptions() {
         return false;
       }
 
-      const rawStatus = String(record?.status || "");
-      const isOnHold = !!record?.is_on_hold;
-      const isExpired = rawStatus.toLowerCase() === "expired" || isExpiredByDate(record?.end_date);
-      const normalizedStatus = isExpired
-        ? "expired"
-        : isOnHold
-          ? "on-hold"
-          : rawStatus.trim().toLowerCase();
+      const baseStatus = normalizeMembershipStatus(record);
+      const normalizedStatus = baseStatus === "active" && isExpiredByDate(record?.end_date) ? "expired" : baseStatus;
       if (selectedStatus !== "all" && normalizedStatus !== selectedStatus) {
         return false;
       }
@@ -735,12 +777,11 @@ export default function AdminSubscriptions() {
               </tr>
             ) : (
               paginatedSubscriptions.map((s, index) => {
-                const rawStatus = String(s?.status || "");
-                const isOnHold = !!s?.is_on_hold;
-                const isExpired = rawStatus.toLowerCase() === "expired" || isExpiredByDate(s?.end_date);
-                const status = isExpired ? "Expired" : isOnHold ? "On Hold" : rawStatus || "-";
-                const canHold = !isExpired && !isOnHold && rawStatus.toLowerCase() === "active";
-                const canResume = !isExpired && isOnHold;
+                const normalizedStatus = normalizeMembershipStatus(s);
+                const isExpired = normalizedStatus === "expired" || isExpiredByDate(s?.end_date);
+                const status = isExpired ? "Expired" : normalizedStatus;
+                const canHold = !isExpired && normalizedStatus === "active";
+                const canResume = !isExpired && normalizedStatus === "on-hold";
                 const canExtend = isExpired;
 
                 return (
@@ -758,16 +799,19 @@ export default function AdminSubscriptions() {
                     <td>{s.start_date || "-"}</td>
                     <td>{s.end_date || "-"}</td>
                     <td>
+                      {status.toLowerCase() === "pending" && (
+                        <span className="badge bg-secondary">Pending</span>
+                      )}
                       {status.toLowerCase() === "active" && (
                         <span className="badge bg-success">Active</span>
                       )}
-                      {status.toLowerCase() === "on hold" && (
+                      {(status.toLowerCase() === "on hold" || status.toLowerCase() === "on-hold") && (
                         <span className="badge bg-warning text-dark">On Hold</span>
                       )}
                       {status.toLowerCase() === "expired" && (
                         <span className="badge bg-danger text-white">Expired</span>
                       )}
-                      {!["active", "on hold", "expired"].includes(status.toLowerCase()) && (
+                      {!["pending", "active", "on hold", "on-hold", "expired"].includes(status.toLowerCase()) && (
                         <span className="badge bg-info text-dark">{status || "-"}</span>
                       )}
                     </td>
