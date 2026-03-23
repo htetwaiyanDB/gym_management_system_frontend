@@ -153,10 +153,35 @@ function isTruthyFlag(value) {
   return normalized === "1" || normalized === "true" || normalized === "yes";
 }
 
+function parseDateValue(value) {
+  if (!value) return null;
+  const str = String(value).trim();
+  const dateOnlyMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dateOnlyMatch) {
+    const [, year, month, day] = dateOnlyMatch;
+    return new Date(Number(year), Number(month) - 1, Number(day));
+  }
+
+  const normalized = str.includes("T") ? str : str.replace(" ", "T");
+  const parsed = new Date(normalized);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function isFutureStartDate(value) {
+  const parsed = parseDateValue(value);
+  if (!parsed) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  parsed.setHours(0, 0, 0, 0);
+  return parsed.getTime() > today.getTime();
+}
+
 function resolveSubscriptionStatus(sub) {
+  const startDate = pick(sub, ["start_date", "starts_at", "start"]);
   if (isTruthyFlag(sub?.is_pending) || isTruthyFlag(sub?.pending)) return "pending";
   if (isTruthyFlag(sub?.is_on_hold) || isTruthyFlag(sub?.on_hold)) return "on-hold";
   const rawStatus = String(pick(sub, ["status", "state"]) || "").toLowerCase();
+  if (rawStatus === "active" && isFutureStartDate(startDate)) return "pending";
   return rawStatus || "—";
 }
 
