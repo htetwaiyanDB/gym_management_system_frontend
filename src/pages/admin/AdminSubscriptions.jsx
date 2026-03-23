@@ -65,6 +65,14 @@ function isExpiredByDate(endDateValue) {
   return today > endDate;
 }
 
+function hasReachedStartDate(startDateValue) {
+  const startDate = parseDateOnly(startDateValue);
+  if (!startDate) return true;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return today >= startDate;
+}
+
 function normalizeMembershipStatus(record) {
   const rawCandidates = [
     record?.status,
@@ -99,6 +107,10 @@ function normalizeMembershipStatus(record) {
 
   if (normalized === "expired") {
     return "expired";
+  }
+
+  if (!hasReachedStartDate(record?.start_date)) {
+    return "pending";
   }
 
   if (normalized === "active" || normalized === "confirmed" || normalized === "resumed") {
