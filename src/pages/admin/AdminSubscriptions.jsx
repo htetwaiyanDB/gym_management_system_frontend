@@ -109,16 +109,16 @@ function normalizeMembershipStatus(record) {
     return "expired";
   }
 
-  if (!hasReachedStartDate(record?.start_date)) {
-    return "pending";
-  }
-
   if (normalized === "active" || normalized === "confirmed" || normalized === "resumed") {
     return "active";
   }
 
   if (record?.is_active === true && record?.is_pending !== true && record?.pending !== true) {
     return "active";
+  }
+
+  if (!hasReachedStartDate(record?.start_date)) {
+    return "pending";
   }
 
   if (!normalized) return "-";
