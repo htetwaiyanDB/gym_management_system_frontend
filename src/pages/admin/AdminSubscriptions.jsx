@@ -73,6 +73,14 @@ function hasReachedStartDate(startDateValue) {
   return today >= startDate;
 }
 
+function isTruthyFlag(value) {
+  if (value === true) return true;
+  if (value === false || value === null || value === undefined) return false;
+  if (typeof value === "number") return value === 1;
+  const normalized = String(value).trim().toLowerCase();
+  return normalized === "1" || normalized === "true" || normalized === "yes";
+}
+
 function normalizeMembershipStatus(record) {
   const rawCandidates = [
     record?.status,
@@ -92,8 +100,8 @@ function normalizeMembershipStatus(record) {
   }
 
   if (
-    record?.is_pending === true ||
-    record?.pending === true ||
+    isTruthyFlag(record?.is_pending) ||
+    isTruthyFlag(record?.pending) ||
     normalized === "pending" ||
     normalized === "awaiting" ||
     normalized === "awaiting-approval"
@@ -117,7 +125,7 @@ function normalizeMembershipStatus(record) {
     return "active";
   }
 
-  if (record?.is_active === true && record?.is_pending !== true && record?.pending !== true) {
+  if (isTruthyFlag(record?.is_active) && !isTruthyFlag(record?.is_pending) && !isTruthyFlag(record?.pending)) {
     return "active";
   }
 

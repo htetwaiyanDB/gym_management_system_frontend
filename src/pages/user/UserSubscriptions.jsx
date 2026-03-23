@@ -145,7 +145,17 @@ function isClassSubscription(sub) {
   return type === "class" || name.includes("class");
 }
 
+function isTruthyFlag(value) {
+  if (value === true) return true;
+  if (value === false || value === null || value === undefined) return false;
+  if (typeof value === "number") return value === 1;
+  const normalized = String(value).trim().toLowerCase();
+  return normalized === "1" || normalized === "true" || normalized === "yes";
+}
+
 function resolveSubscriptionStatus(sub) {
+  if (isTruthyFlag(sub?.is_pending) || isTruthyFlag(sub?.pending)) return "pending";
+  if (isTruthyFlag(sub?.is_on_hold) || isTruthyFlag(sub?.on_hold)) return "on-hold";
   const rawStatus = String(pick(sub, ["status", "state"]) || "").toLowerCase();
   return rawStatus || "—";
 }
