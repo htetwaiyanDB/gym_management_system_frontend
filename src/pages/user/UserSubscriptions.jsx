@@ -145,21 +145,8 @@ function isClassSubscription(sub) {
   return type === "class" || name.includes("class");
 }
 
-function hasStarted(value) {
-  if (!value) return false;
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return false;
-  const now = new Date();
-  now.setHours(23, 59, 59, 999);
-  return d.getTime() <= now.getTime();
-}
-
 function resolveSubscriptionStatus(sub) {
   const rawStatus = String(pick(sub, ["status", "state"]) || "").toLowerCase();
-  const startDate = pick(sub, ["start_date", "starts_at", "start"]);
-  if (rawStatus === "pending" && hasStarted(startDate)) {
-    return "active";
-  }
   return rawStatus || "—";
 }
 
