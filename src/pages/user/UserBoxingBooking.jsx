@@ -207,6 +207,12 @@ function getTime(b) {
   return "—";
 }
 
+function formatDisplayDate(value) {
+  const d = parseBackendDateTime(value) || parseDateValue(value);
+  if (!d) return "—";
+  return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
+}
+
 function getCoachName(b) {
   return (
     pick(b, [
@@ -458,8 +464,8 @@ function UserBoxingBookings() {
                   <span style={pill("rgba(255,255,255,0.12)")}>
                     <FaClock /> {getTime(b)}
                   </span>
-                  <span style={pill("rgba(255,255,255,0.12)")}>Start: {startDateValue ? String(startDateValue).slice(0, 10) : "—"}</span>
-                  <span style={pill(isExpired ? "rgba(220,53,69,0.45)" : "rgba(255,255,255,0.12)")}>End: {endDateValue ? String(endDateValue).slice(0, 10) : "—"}</span>
+                  <span style={pill("rgba(255,255,255,0.12)")}>Start: {formatDisplayDate(startDateValue)}</span>
+                  <span style={pill(isExpired ? "rgba(220,53,69,0.45)" : "rgba(255,255,255,0.12)")}>End: {formatDisplayDate(endDateValue)}</span>
                 </div>
 
                 {selectedId === bookingId && (
@@ -510,12 +516,12 @@ function UserBoxingBookings() {
                       </div>
                       <div className="d-flex justify-content-between">
                         <span style={{ opacity: 0.8 }}>Start date</span>
-                        <span>{startDateValue ? String(startDateValue).slice(0, 10) : "—"}</span>
+                        <span>{formatDisplayDate(startDateValue)}</span>
                       </div>
                       <div className="d-flex justify-content-between">
                         <span style={{ opacity: 0.8 }}>End date</span>
                         <span style={{ color: isExpired ? "#ff9aa2" : undefined }}>
-                          {endDateValue ? String(endDateValue).slice(0, 10) : "—"}
+                          {formatDisplayDate(endDateValue)}
                         </span>
                       </div>
                       <div className="d-flex justify-content-between">
