@@ -576,10 +576,10 @@ export default function TrainerBooking() {
 
                 <div className="mt-2 d-flex gap-2 flex-wrap">
                   <span style={pill("rgba(255,255,255,0.12)")}>
-                    <FaCalendar /> {getDate(b) || "—"}
+                    {getDate(b) || "—"}
                   </span>
                   <span style={pill("rgba(255,255,255,0.12)")}>
-                    <FaClock /> {getTime(b)}
+                    {getTime(b)}
                   </span>
                 </div>
 

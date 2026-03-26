@@ -459,10 +459,10 @@ function UserBoxingBookings() {
 
                 <div className="mt-2 d-flex gap-2 flex-wrap">
                   <span style={pill("rgba(255,255,255,0.12)")}>
-                    <FaCalendar /> {getDate(b) || "—"}
+                    {getDate(b) || "—"}
                   </span>
                   <span style={pill("rgba(255,255,255,0.12)")}>
-                    <FaClock /> {getTime(b)}
+                    {getTime(b)}
                   </span>
                   <span style={pill("rgba(255,255,255,0.12)")}>Start: {formatDisplayDate(startDateValue)}</span>
                   <span style={pill(isExpired ? "rgba(220,53,69,0.45)" : "rgba(255,255,255,0.12)")}>End: {formatDisplayDate(endDateValue)}</span>
