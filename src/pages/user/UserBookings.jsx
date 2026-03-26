@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import axiosClient from "../../api/axiosClient";
-import { FaCalendar, FaClock, FaPhoneAlt, FaUser } from "react-icons/fa";
+import { FaPhoneAlt, FaUser } from "react-icons/fa";
 
 /* ------------ helpers ------------ */
 
@@ -568,10 +568,10 @@ export default function UserBookings() {
 
                 <div className="mt-2 d-flex gap-2 flex-wrap">
                   <span style={pill("rgba(255,255,255,0.12)")}>
-                    <FaCalendar /> {sessionDateTime ? String(sessionDateTime).slice(0, 10) : "—"}
+                    {sessionDateTime ? String(sessionDateTime).slice(0, 10) : "—"}
                   </span>
                   <span style={pill("rgba(255,255,255,0.12)")}>
-                    <FaClock /> {sessionDateTime ? fmtDateTime(sessionDateTime).split(", ")[1] || "—" : "—"}
+                    {sessionDateTime ? fmtDateTime(sessionDateTime).split(", ")[1] || "—" : "—"}
                   </span>
                   <span style={pill("rgba(255,255,255,0.12)")}>Start: {startDate ? String(startDate).slice(0, 10) : "—"}</span>
                   <span style={pill(isExpired ? "rgba(220,53,69,0.45)" : "rgba(255,255,255,0.12)")}>End: {endDate ? String(endDate).slice(0, 10) : "—"}</span>

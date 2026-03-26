@@ -4,7 +4,7 @@ import useRealtimePolling from "../../hooks/useRealtimePolling";
 import UserBookings from "./UserBookings";
 import UserSubscriptions from "./UserSubscriptions";
 import UserClassSubscriptions from "./UserClassSubscriptions";
-import { FaCalendar, FaClock, FaPhoneAlt, FaUser } from "react-icons/fa";
+import { FaPhoneAlt, FaUser } from "react-icons/fa";
 
 function pick(obj, keys) {
   for (const k of keys) {
