@@ -493,6 +493,10 @@ function UserBoxingBookings() {
             const { total: totalSessions, remaining: remainingSessions } = getSessionProgress(b);
             const isMonthlyPackage = isMonthlyBasedBooking(b);
             const monthCount = getMonthCount(b);
+            const startDate = getStartDateValue(b);
+            const endDate = getEndDateValue(b);
+            const parsedEndDate = parseDateValue(endDate);
+            const isExpired = Boolean(parsedEndDate && parsedEndDate.getTime() < Date.now());
             const isCompleted =
               remainingSessions === 0 || isCompletedStatus(resolveBookingStatus(b));
             const { totalPrice, discountPercent, finalPrice } = getPricingDetails(b);
@@ -530,6 +534,12 @@ function UserBoxingBookings() {
                   </span>
                   <span style={pill("rgba(255,255,255,0.12)")}>
                     <FaClock /> {getTime(b)}
+                  </span>
+                  <span style={pill("rgba(255,255,255,0.12)")}>
+                    Start: {startDate ? String(startDate).slice(0, 10) : "—"}
+                  </span>
+                  <span style={pill(isExpired ? "rgba(220,53,69,0.45)" : "rgba(255,255,255,0.12)")}>
+                    End: {endDate ? String(endDate).slice(0, 10) : "—"}
                   </span>
                 </div>
 
