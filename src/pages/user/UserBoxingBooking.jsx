@@ -6,6 +6,32 @@ import UserSubscriptions from "./UserSubscriptions";
 import UserClassSubscriptions from "./UserClassSubscriptions";
 import { FaPhoneAlt, FaUser } from "react-icons/fa";
 
+function toText(v) {
+  if (v === null || v === undefined) return "—";
+  if (typeof v === "string" || typeof v === "number" || typeof v === "boolean")
+    return String(v);
+
+  if (typeof v === "object") {
+    const name =
+      v?.name || v?.full_name || v?.title || v?.email || v?.phone || null;
+    if (name) return String(name);
+
+    try {
+      return JSON.stringify(v);
+    } catch {
+      return "[object]";
+    }
+  }
+
+  return String(v);
+}
+
+function titleize(s) {
+  return String(s || "")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (m) => m.toUpperCase());
+}
+
 function pick(obj, keys) {
   for (const k of keys) {
     const v = obj?.[k];
@@ -46,6 +72,19 @@ function isMonthlyPackageType(value) {
   return s.includes("month");
 }
 
+
+function fmtDateTime(v) {
+  if (!v) return "—";
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return toText(v);
+  return d.toLocaleString([], {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 function hasStarted(value) {
   if (!value) return false;
@@ -255,13 +294,14 @@ function normalizeBookings(payload) {
 function UserBoxingBookings() {
   const isMobile = useMemo(() => window.innerWidth < 768, []);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState("");
   const [msg, setMsg] = useState(null);
   const [busyKey, setBusyKey] = useState(null);
-  const [bookings, setBookings] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [search, setSearch] = useState("");
   const [date, setDate] = useState("");
+  const [filter, setFilter] = useState("all");
+  const [bookings, setBookings] = useState([]);
 
   const fetchBookings = useCallback(async ({ silent = false } = {}) => {
     if (!silent) setLoading(true);
@@ -309,12 +349,26 @@ function UserBoxingBookings() {
 
   const filtered = useMemo(() => {
     return bookings.filter((b) => {
+      const s = getDisplayBookingStatus(b);
       const nameMatch =
         !search || getCoachName(b).toLowerCase().includes(search.toLowerCase());
-      const dateMatch = !date || getDate(b) === date;
-      return nameMatch && dateMatch;
+      const sessionDateTime =
+        pick(b, ["session_datetime", "session_time", "datetime", "date_time", "start_time", "starts_at"]) ||
+        pick(b, ["booking_date", "date"]);
+      const dateMatch = !date || String(sessionDateTime || "").slice(0, 10) === date;
+      const statusMatch = filter === "all" || normalizeStatusFilter(s) === filter;
+      return nameMatch && dateMatch && statusMatch;
     });
-  }, [bookings, search, date]);
+  }, [bookings, search, date, filter]);
+
+  const normalizeStatusFilter = useCallback((statusValue) => {
+    const s = String(statusValue || "").toLowerCase();
+    if (s.includes("pending")) return "pending";
+    if (s.includes("active")) return "active";
+    if (s.includes("hold")) return "on-hold";
+    if (s.includes("complete") || s.includes("done")) return "complete";
+    return s;
+  }, []);
 
   const cardStyle = {
     borderRadius: 14,
@@ -381,39 +435,62 @@ function UserBoxingBookings() {
           </button>
         </div>
 
-        <div className="mt-3 d-flex gap-2">
-          <input
-            className="form-control"
-            placeholder="Search coach..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{
-              borderRadius: 12,
-              background: "rgba(0,0,0,0.45)",
-              border: "1px solid rgba(255,255,255,0.12)",
-              color: "#fff",
-            }}
-          />
+          <div className="mt-3 d-flex gap-2">
+            <input
+              className="form-control"
+              placeholder="Search coach..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{
+                borderRadius: 12,
+                background: "rgba(0,0,0,0.45)",
+                border: "1px solid rgba(255,255,255,0.12)",
+                color: "#fff",
+              }}
+            />
 
-          <input
-            type="date"
-            className="form-control"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            style={{
-              borderRadius: 12,
-              background: "rgba(0,0,0,0.45)",
-              border: "1px solid rgba(255,255,255,0.12)",
-              color: "#fff",
-              width: 150,
-            }}
-          />
-        </div>
+            <input
+              type="date"
+              className="form-control"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              style={{
+                borderRadius: 12,
+                background: "rgba(0,0,0,0.45)",
+                border: "1px solid rgba(255,255,255,0.12)",
+                color: "#fff",
+                width: 150,
+              }}
+            />
+
+            <select
+              className="form-select"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              style={{
+                borderRadius: 12,
+                background: "rgba(0,0,0,0.45)",
+                border: "1px solid rgba(255,255,255,0.12)",
+                color: "#fff",
+                width: 160,
+              }}
+            >
+              <option value="all">All status</option>
+              <option value="pending">Pending</option>
+              <option value="active">Active</option>
+              <option value="on-hold">On-hold</option>
+              <option value="complete">Complete</option>
+            </select>
+          </div>
       </div>
 
-      {error && <div className="alert alert-danger">{error}</div>}
-
       {msg && <div className={`alert alert-${msg.type}`}>{msg.text}</div>}
+
+      {error && (
+        <div className="alert alert-danger" style={{ fontWeight: 600 }}>
+          {error}
+        </div>
+      )}
 
       {loading ? (
         <div style={cardStyle}>Loading bookings...</div>
@@ -421,8 +498,8 @@ function UserBoxingBookings() {
         <div style={cardStyle}>No bookings found.</div>
       ) : (
         <div className="d-flex flex-column gap-2">
-          {filtered.map((b, i) => {
-            const bookingId = b?.id ?? i;
+          {filtered.map((b, idx) => {
+            const id = pick(b, ["id", "booking_id", "reference_id"]) ?? idx;
             const status = getDisplayBookingStatus(b);
             const startDateValue = getStartDateValue(b);
             const endDateValue = getEndDateValue(b);
@@ -432,122 +509,174 @@ function UserBoxingBookings() {
             const monthCount = getMonthCount(b);
             const isCompleted =
               remainingSessions === 0 || isCompletedStatus(status);
+
+            const service =
+              pick(b, ["service", "service_name", "type", "category", "package_name"]) ||
+              pick(b?.package, ["name", "title"]) ||
+              pick(b?.boxing_package, ["name", "title"]) ||
+              "—";
+
+            const packageType = getPackageType(b);
+            const note = pick(b, ["note", "remark", "message", "description"]);
+            const paidStatus = pick(b, ["paid_status", "payment_status"]);
+
+            const coachObj = b?.coach || b?.trainer;
+            const coachName =
+              getCoachName(b) !== "—"
+                ? getCoachName(b)
+                : typeof coachObj === "object"
+                  ? (coachObj?.name || coachObj?.email || coachObj?.phone)
+                  : coachObj || "—";
+
+            const coachPhone =
+              getCoachPhone(b) !== "—"
+                ? getCoachPhone(b)
+                : typeof coachObj === "object"
+                  ? coachObj?.phone
+                  : "—";
+
+            const sessionDateTime =
+              pick(b, [
+                "session_datetime",
+                "session_time",
+                "datetime",
+                "date_time",
+                "start_time",
+                "starts_at",
+              ]) || pick(b, ["booking_date", "date"]);
             return (
               <div
-                key={bookingId}
+                key={id}
                 style={{
                   ...cardStyle,
                   cursor: "pointer",
                 }}
-                onClick={() =>
-                  setSelectedId((prev) => (prev === bookingId ? null : bookingId))
-                }
+                onClick={() => setSelectedId((prev) => (prev === id ? null : id))}
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
-                    setSelectedId((prev) => (prev === bookingId ? null : bookingId));
+                    setSelectedId((prev) => (prev === id ? null : id));
                   }
                 }}
               >
-                <div className="d-flex justify-content-between">
-                  <div style={{ fontWeight: 900 }}>{getCoachName(b)}</div>
-                  <span style={statusPill(status)}>
-                    {String(status || "ACTIVE").toUpperCase()}
-                  </span>
+                <div className="d-flex justify-content-between align-items-start" style={{ gap: 10 }}>
+                  <div>
+                    <div style={{ fontWeight: 800, fontSize: 16 }}>
+                      {titleize(toText(service))}
+                    </div>
+                    <div style={{ opacity: 0.75, fontSize: 12, marginTop: 4 }}>
+                      Booking ID: {toText(id)}
+                    </div>
+                    <div style={{ opacity: 0.8, fontSize: 12, marginTop: 4 }}>
+                      Coach: {toText(coachName)}
+                    </div>
+                  </div>
+
+                  <span style={statusPill(status)}>{String(status || "—").toUpperCase()}</span>
                 </div>
 
                 <div className="mt-2 d-flex gap-2 flex-wrap">
                   <span style={pill("rgba(255,255,255,0.12)")}>
-                    {getDate(b) || "—"}
+                    {sessionDateTime ? String(sessionDateTime).slice(0, 10) : "—"}
                   </span>
                   <span style={pill("rgba(255,255,255,0.12)")}>
-                    {getTime(b)}
+                    {sessionDateTime ? fmtDateTime(sessionDateTime).split(", ")[1] || "—" : "—"}
                   </span>
+                  <span style={pill("rgba(255,255,255,0.12)")}>Start: {startDateValue ? String(startDateValue).slice(0, 10) : "—"}</span>
+                  <span style={pill(isExpired ? "rgba(220,53,69,0.45)" : "rgba(255,255,255,0.12)")}>End: {endDateValue ? String(endDateValue).slice(0, 10) : "—"}</span>
                 </div>
 
-                {selectedId === bookingId && (
+                {selectedId === id && (
                   <div
-                    className="mt-3"
                     style={{
-                      background: "rgba(255,255,255,0.06)",
+                      marginTop: 12,
+                      display: "grid",
+                      gap: 8,
+                      background: "rgba(255,255,255,0.04)",
                       borderRadius: 12,
                       padding: 12,
-                      border: "1px solid rgba(255,255,255,0.1)",
+                      border: "1px solid rgba(255,255,255,0.08)",
                     }}
                   >
                     <div className="d-flex justify-content-between align-items-center">
                       <div className="d-flex align-items-center gap-2">
                         <FaUser />
-                        <span style={{ fontWeight: 700 }}>{getCoachName(b)}</span>
+                        <span style={{ fontWeight: 700 }}>{toText(coachName)}</span>
                       </div>
-                      <span style={paidPill(b.paid_status)}>
-                        {String(b.paid_status || "—").toUpperCase()}
+                      {paidStatus ? (
+                        <span style={pill("rgba(25,135,84,0.35)")}>{String(paidStatus).toUpperCase()}</span>
+                      ) : null}
+                    </div>
+
+                    <div className="d-flex justify-content-between" style={{ gap: 12 }}>
+                      <span style={{ opacity: 0.8 }}>Phone</span>
+                      <span className="d-flex align-items-center gap-2">
+                        <FaPhoneAlt />
+                        {toText(coachPhone)}
                       </span>
                     </div>
 
-                    <div className="mt-2 d-flex flex-column gap-2">
-                      <div className="d-flex justify-content-between">
-                        <span style={{ opacity: 0.8 }}>Phone</span>
-                        <span className="d-flex align-items-center gap-2">
-                          <FaPhoneAlt />
-                          {getCoachPhone(b)}
-                        </span>
-                      </div>
-                      <div className="d-flex justify-content-between">
-                        <span style={{ opacity: 0.8 }}>Package type</span>
-                        <span>{getPackageType(b)}</span>
-                      </div>
-                      <div className="d-flex justify-content-between">
-                        <span style={{ opacity: 0.8 }}>
-                          Count
-                        </span>
-                        <span>
-                          {isMonthlyPackage
-                            ? monthCount ?? "—"
-                            : totalSessions === null && remainingSessions !== null
-                            ? `${remainingSessions} / —`
-                            : totalSessions === null
-                            ? b?.sessions_count ?? "—"
-                            : `${remainingSessions ?? "—"} / ${totalSessions}`}
-                        </span>
-                      </div>
-                      <div className="d-flex justify-content-between">
-                        <span style={{ opacity: 0.8 }}>Start Date</span>
-                        <span>{formatDisplayDate(startDateValue)}</span>
-                      </div>
-                      <div className="d-flex justify-content-between">
-                        <span style={{ opacity: 0.8 }}>End Date</span>
-                        <span style={{ color: isExpired ? "#ff9aa2" : undefined }}>
-                          {formatDisplayDate(endDateValue)}
-                        </span>
-                      </div>
-                      <div className="d-flex justify-content-between">
-                        <span style={{ opacity: 0.8 }}>Status</span>
-                        <span>{String(status || "—")}</span>
-                      </div>
-                      {!isMonthlyPackage && (
-                        <div className="d-flex justify-content-between align-items-center">
-                          <span style={{ opacity: 0.8 }}>Session confirmation</span>
-                          <button
-                            className="btn btn-sm btn-outline-info"
-                            onClick={() => confirmSession(bookingId)}
-                            disabled={isCompleted || busyKey === `confirm-${bookingId}`}
-                            title={
-                              isCompleted ? "All sessions completed" : "Confirm this session"
-                            }
-                          >
-                            {busyKey === `confirm-${bookingId}` ? "..." : "Confirm"}
-                          </button>
-                        </div>
-                      )}
+                    <div className="d-flex justify-content-between" style={{ gap: 12 }}>
+                      <span style={{ opacity: 0.8 }}>Package type</span>
+                      <b style={{ textAlign: "right" }}>{toText(packageType)}</b>
                     </div>
 
-                    {b?.notes && (
-                      <div className="small mt-2" style={{ opacity: 0.9 }}>
-                        {b.notes}
+                    <div className="d-flex justify-content-between" style={{ gap: 12 }}>
+                      <span style={{ opacity: 0.8 }}>
+                        Count
+                      </span>
+                      <b style={{ textAlign: "right" }}>
+                        {isMonthlyPackage
+                          ? toText(
+                              monthCount ??
+                                pick(b, ["months_count", "month_count", "duration_months", "months", "duration"])
+                            )
+                          : totalSessions === null
+                          ? toText(b?.sessions_count)
+                          : `${remainingSessions ?? "—"} / ${totalSessions}`}
+                      </b>
+                    </div>
+
+                    <div className="d-flex justify-content-between" style={{ gap: 12 }}>
+                      <span style={{ opacity: 0.8 }}>Start date</span>
+                      <b style={{ textAlign: "right" }}>{startDateValue ? String(startDateValue).slice(0, 10) : "—"}</b>
+                    </div>
+
+                    <div className="d-flex justify-content-between" style={{ gap: 12 }}>
+                      <span style={{ opacity: 0.8 }}>End date</span>
+                      <b style={{ textAlign: "right", color: isExpired ? "#ff9aa2" : undefined }}>
+                        {endDateValue ? String(endDateValue).slice(0, 10) : "—"}
+                      </b>
+                    </div>
+
+                    <div className="d-flex justify-content-between" style={{ gap: 12 }}>
+                      <span style={{ opacity: 0.8 }}>Status</span>
+                      <b style={{ textAlign: "right" }}>{toText(status)}</b>
+                    </div>
+
+                    {!isMonthlyPackage && (
+                      <div className="d-flex justify-content-between align-items-center" style={{ gap: 12 }}>
+                        <span style={{ opacity: 0.8 }}>Session confirmation</span>
+                        <button
+                          className="btn btn-sm btn-outline-info"
+                          onClick={(event) => confirmSession(id, event)}
+                          disabled={isCompleted || busyKey === `confirm-${id}`}
+                          title={isCompleted ? "All sessions completed" : "Confirm this session"}
+                        >
+                          {busyKey === `confirm-${id}` ? "..." : "Confirm"}
+                        </button>
                       </div>
                     )}
+
+                    {note ? (
+                      <div style={{ marginTop: 6, opacity: 0.92, lineHeight: 1.6 }}>
+                        <div style={{ opacity: 0.75, fontSize: 12, marginBottom: 4 }}>
+                          Note
+                        </div>
+                        <div>{toText(note)}</div>
+                      </div>
+                    ) : null}
                   </div>
                 )}
               </div>
