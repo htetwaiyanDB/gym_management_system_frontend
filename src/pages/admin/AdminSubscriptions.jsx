@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axiosClient from "../../api/axiosClient";
+import { formatDateDDMMYYYY } from "../../utils/dateFormat";
 
 function moneyMMK(v) {
   if (v === null || v === undefined || v === "") return "-";
@@ -816,8 +817,8 @@ export default function AdminSubscriptions() {
                     <td>{moneyMMK(s.price)}</td>
                     <td>{s.discount_percentage !== null && s.discount_percentage !== undefined && s.discount_percentage !== "" ? `${s.discount_percentage}%` : "-"}</td>
                     <td>{moneyMMK(s.final_price ?? s.price)}</td>
-                    <td>{s.start_date || "-"}</td>
-                    <td>{s.end_date || "-"}</td>
+                    <td>{formatDateDDMMYYYY(s.start_date, "-")}</td>
+                    <td>{formatDateDDMMYYYY(s.end_date, "-")}</td>
                     <td>
                       {status.toLowerCase() === "pending" && (
                         <span className="badge bg-secondary">Pending</span>
