@@ -4,7 +4,7 @@ import useRealtimePolling from "../../hooks/useRealtimePolling";
 import UserBookings from "./UserBookings";
 import UserSubscriptions from "./UserSubscriptions";
 import UserClassSubscriptions from "./UserClassSubscriptions";
-import { FaCalendar, FaClock, FaPhoneAlt, FaUser } from "react-icons/fa";
+import { FaCalendar, FaPhoneAlt, FaUser } from "react-icons/fa";
 
 function pick(obj, keys) {
   for (const k of keys) {
@@ -194,6 +194,15 @@ function isMonthlyBasedBooking(booking) {
   );
 }
 
+function formatDateOnly(value) {
+  const d = parseDateValue(value);
+  if (d) return formatISODate(d);
+
+  if (typeof value === "string" && value.length >= 10) return value.slice(0, 10);
+
+  return "—";
+}
+
 function getDate(b) {
   const dtRaw =
     b?.session_datetime ||
@@ -206,37 +215,12 @@ function getDate(b) {
   const d = parseBackendDateTime(dtRaw);
   if (d) return formatISODate(d);
 
-  if (b?.date) return b.date;
-  if (b?.start_date) return b.start_date;
+  if (b?.date) return formatDateOnly(b.date);
+  if (b?.start_date) return formatDateOnly(b.start_date);
 
   if (typeof dtRaw === "string" && dtRaw.length >= 10) return dtRaw.slice(0, 10);
 
   return "";
-}
-
-function getTime(b) {
-  const dtRaw =
-    b?.session_datetime ||
-    b?.session_time ||
-    b?.datetime ||
-    b?.date_time ||
-    b?.starts_at ||
-    b?.start_time;
-
-  const d = parseBackendDateTime(dtRaw);
-  if (d) {
-    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  }
-
-  if (b?.time) return b.time;
-
-  if (typeof dtRaw === "string") {
-    if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(dtRaw)) return dtRaw;
-    const maybe = dtRaw.split(" ")[1] || dtRaw.split("T")[1];
-    if (maybe) return maybe;
-  }
-
-  return "—";
 }
 
 function getCoachName(b) {
@@ -528,9 +512,6 @@ function UserBoxingBookings() {
                   <span style={pill("rgba(255,255,255,0.12)")}>
                     <FaCalendar /> {getDate(b) || "—"}
                   </span>
-                  <span style={pill("rgba(255,255,255,0.12)")}>
-                    <FaClock /> {getTime(b)}
-                  </span>
                 </div>
 
                 {selectedId === bookingId && (
@@ -580,6 +561,14 @@ function UserBoxingBookings() {
                             ? b?.sessions_count ?? "—"
                             : `${remainingSessions ?? "—"} / ${totalSessions}`}
                         </span>
+                      </div>
+                      <div className="d-flex justify-content-between">
+                        <span style={{ opacity: 0.8 }}>Start date</span>
+                        <span>{formatDateOnly(getStartDateValue(b))}</span>
+                      </div>
+                      <div className="d-flex justify-content-between">
+                        <span style={{ opacity: 0.8 }}>End date</span>
+                        <span>{formatDateOnly(getEndDateValue(b))}</span>
                       </div>
                       <div className="d-flex justify-content-between">
                         <span style={{ opacity: 0.8 }}>Status</span>
