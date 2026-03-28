@@ -464,8 +464,6 @@ function UserBoxingBookings() {
                   <span style={pill("rgba(255,255,255,0.12)")}>
                     {getTime(b)}
                   </span>
-                  <span style={pill("rgba(255,255,255,0.12)")}>Start: {startDateValue ? String(startDateValue).slice(0, 10) : "—"}</span>
-                  <span style={pill(isExpired ? "rgba(220,53,69,0.45)" : "rgba(255,255,255,0.12)")}>End: {endDateValue ? String(endDateValue).slice(0, 10) : "—"}</span>
                 </div>
 
                 {selectedId === bookingId && (
@@ -515,13 +513,13 @@ function UserBoxingBookings() {
                         </span>
                       </div>
                       <div className="d-flex justify-content-between">
-                        <span style={{ opacity: 0.8 }}>Start date</span>
-                        <span>{startDateValue ? String(startDateValue).slice(0, 10) : "—"}</span>
+                        <span style={{ opacity: 0.8 }}>Start Date</span>
+                        <span>{formatDisplayDate(startDateValue)}</span>
                       </div>
                       <div className="d-flex justify-content-between">
-                        <span style={{ opacity: 0.8 }}>End date</span>
+                        <span style={{ opacity: 0.8 }}>End Date</span>
                         <span style={{ color: isExpired ? "#ff9aa2" : undefined }}>
-                          {endDateValue ? String(endDateValue).slice(0, 10) : "—"}
+                          {formatDisplayDate(endDateValue)}
                         </span>
                       </div>
                       <div className="d-flex justify-content-between">
