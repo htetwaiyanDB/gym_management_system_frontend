@@ -1,17 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import axiosClient from "../../api/axiosClient";
+import { formatDateTimeDDMMYYYY } from "../../utils/dateFormat";
 
 function toChatDateTime(iso) {
   if (!iso) return "";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return String(iso);
 
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  const yyyy = d.getFullYear();
-
-  const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  return `${mm}/${dd}/${yyyy}, ${time}`;
+  return formatDateTimeDDMMYYYY(d);
 }
 
 export default function TrainerMessages() {

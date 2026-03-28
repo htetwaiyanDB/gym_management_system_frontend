@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import axiosClient from "../../api/axiosClient";
 import { FaPhoneAlt, FaUser } from "react-icons/fa";
+import { formatDateTimeDDMMYYYY } from "../../utils/dateFormat";
 
 /* ------------ helpers ------------ */
 
@@ -111,13 +112,7 @@ function fmtDateTime(v) {
   if (!v) return "—";
   const d = new Date(v);
   if (Number.isNaN(d.getTime())) return toText(v);
-  return d.toLocaleString([], {
-    year: "numeric",
-    month: "short",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatDateTimeDDMMYYYY(d);
 }
 
 function toNumber(value) {

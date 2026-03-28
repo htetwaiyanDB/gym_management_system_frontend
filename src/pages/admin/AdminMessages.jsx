@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import axiosClient from "../../api/axiosClient";
+import { formatDateTimeDDMMYYYY } from "../../utils/dateFormat";
 
 function normalizeList(payload) {
   if (Array.isArray(payload)) return payload;
@@ -26,14 +27,7 @@ function parseBackendDateTime(s) {
 function formatDateTimeVideoStyle(s) {
   const d = parseBackendDateTime(s);
   if (!d) return "-";
-  return d.toLocaleString("en-US", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  });
+  return formatDateTimeDDMMYYYY(d);
 }
 
 function getUserId(convo) {

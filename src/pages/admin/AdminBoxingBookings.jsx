@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import axiosClient from "../../api/axiosClient";
+import { formatDateTimeDDMMYYYY } from "../../utils/dateFormat";
 
 function moneyMMK(v) {
   if (v === null || v === undefined || v === "") return "-";
@@ -68,17 +69,7 @@ function formatDateTimeVideoStyle(s) {
   const d = parseBackendDateTime(s);
   if (!d) return "-";
 
-  const y = d.getFullYear();
-  const m = pad2(d.getMonth() + 1);
-  const day = pad2(d.getDate());
-
-  let hours = d.getHours();
-  const minutes = pad2(d.getMinutes());
-  const ampm = hours >= 12 ? "PM" : "AM";
-  hours = hours % 12;
-  if (hours === 0) hours = 12;
-
-  return `${y}-${m}-${day} ${hours}:${minutes} ${ampm}`;
+  return formatDateTimeDDMMYYYY(d);
 }
 
 function toNumber(value) {
