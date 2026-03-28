@@ -67,11 +67,11 @@ function resolveBookingStatus(booking) {
 }
 
 function getStartDateValue(booking) {
-  return pick(booking, ["start_date", "starts_at", "start_time", "session_datetime", "date"]);
+  return pick(booking, ["start_date", "starts_at", "start_time", "session_datetime", "date", "month_start_date", "monthly_start_date", "sessions_start_date", "session_start_date"]);
 }
 
 function getEndDateValue(booking) {
-  return pick(booking, ["end_date", "ends_at", "expiry_date", "expires_at", "expiration_date"]);
+  return pick(booking, ["end_date", "ends_at", "expiry_date", "expires_at", "expiration_date", "month_end_date", "monthly_end_date", "sessions_end_date", "session_end_date"]);
 }
 
 function parseDateValue(value) {
@@ -464,8 +464,8 @@ function UserBoxingBookings() {
                   <span style={pill("rgba(255,255,255,0.12)")}>
                     {getTime(b)}
                   </span>
-                  <span style={pill("rgba(255,255,255,0.12)")}>Start: {formatDisplayDate(startDateValue)}</span>
-                  <span style={pill(isExpired ? "rgba(220,53,69,0.45)" : "rgba(255,255,255,0.12)")}>End: {formatDisplayDate(endDateValue)}</span>
+                  <span style={pill("rgba(255,255,255,0.12)")}>Start: {startDateValue ? String(startDateValue).slice(0, 10) : "—"}</span>
+                  <span style={pill(isExpired ? "rgba(220,53,69,0.45)" : "rgba(255,255,255,0.12)")}>End: {endDateValue ? String(endDateValue).slice(0, 10) : "—"}</span>
                 </div>
 
                 {selectedId === bookingId && (
@@ -516,12 +516,12 @@ function UserBoxingBookings() {
                       </div>
                       <div className="d-flex justify-content-between">
                         <span style={{ opacity: 0.8 }}>Start date</span>
-                        <span>{formatDisplayDate(startDateValue)}</span>
+                        <span>{startDateValue ? String(startDateValue).slice(0, 10) : "—"}</span>
                       </div>
                       <div className="d-flex justify-content-between">
                         <span style={{ opacity: 0.8 }}>End date</span>
                         <span style={{ color: isExpired ? "#ff9aa2" : undefined }}>
-                          {formatDisplayDate(endDateValue)}
+                          {endDateValue ? String(endDateValue).slice(0, 10) : "—"}
                         </span>
                       </div>
                       <div className="d-flex justify-content-between">
