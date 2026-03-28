@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import axiosClient from "../../api/axiosClient";
+import { formatDateTimeDDMMYYYY } from "../../utils/dateFormat";
 
 function getNotificationType(notification) {
   if (!notification) return "";
@@ -195,7 +196,7 @@ export default function Notifications() {
           notifications.map((item) => {
             const body = formatNotificationBody(item);
             const createdAt = item?.created_at
-              ? new Date(item.created_at).toLocaleString()
+              ? formatDateTimeDDMMYYYY(item.created_at)
               : "Just now";
             const isRead = Boolean(item?.read_at);
             const showAlertDot = !isRead && shouldShowAlertDot(item);

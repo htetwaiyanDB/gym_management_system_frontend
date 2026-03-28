@@ -10,6 +10,7 @@ import {
 import RfidInputListener from "../../components/RfidInputListener";
 import { isCardNotRegisteredError, normalizeCardId } from "../../utils/rfid";
 import { awardScanPoints } from "../../api/pointsApi";
+import { formatDateTimeDDMMYYYY } from "../../utils/dateFormat";
 
 function parseBackendDateTime(s) {
   if (!s) return null;
@@ -22,14 +23,7 @@ function parseBackendDateTime(s) {
 function formatDateTimeVideoStyle(s) {
   const d = parseBackendDateTime(s);
   if (!d) return "-";
-  return d.toLocaleString("en-US", {
-    month: "short",
-    day: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  });
+  return formatDateTimeDDMMYYYY(d);
 }
 
 function normalizeRole(role) {

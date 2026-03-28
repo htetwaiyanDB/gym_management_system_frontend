@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import axiosClient from "../../api/axiosClient";
+import { formatDateDDMMYYYY } from "../../utils/dateFormat";
 
 function moneyMMK(v) {
   if (v === null || v === undefined || v === "") return "-";
@@ -66,7 +67,7 @@ function displayDate(value) {
   if (!value) return "-";
   const parsed = parseDate(value);
   if (!parsed) return String(value);
-  return parsed.toLocaleDateString("en-CA");
+  return formatDateDDMMYYYY(parsed);
 }
 
 function statusBadge(status) {

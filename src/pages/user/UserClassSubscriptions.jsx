@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import axiosClient from "../../api/axiosClient";
 import { getUserClassSubscriptions, getUserSubscriptions } from "../../api/userApi";
+import { formatDateDDMMYYYY } from "../../utils/dateFormat";
 
 function pick(obj, keys) {
   for (const k of keys) {
@@ -71,7 +72,7 @@ function fmtDate(v) {
   if (!v) return "-";
   const d = new Date(v);
   if (Number.isNaN(d.getTime())) return String(v);
-  return d.toLocaleDateString();
+  return formatDateDDMMYYYY(d);
 }
 
 function fmtMoney(v) {

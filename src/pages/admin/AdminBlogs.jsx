@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import axiosClient, { clearRequestCache } from "../../api/axiosClient";
+import { formatDateDDMMYYYY } from "../../utils/dateFormat";
 
 function normalizeList(payload) {
   if (Array.isArray(payload)) return payload;
@@ -26,11 +27,7 @@ function parseBackendDateTime(s) {
 function formatDateShort(s) {
   const d = parseBackendDateTime(s);
   if (!d) return "-";
-  return d.toLocaleDateString("en-US", {
-    month: "short",
-    day: "2-digit",
-    year: "numeric",
-  });
+  return formatDateDDMMYYYY(d);
 }
 
 function nowIsoLocal() {
