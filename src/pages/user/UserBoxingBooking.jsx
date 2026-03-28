@@ -73,19 +73,6 @@ function isMonthlyPackageType(value) {
 }
 
 
-function fmtDateTime(v) {
-  if (!v) return "—";
-  const d = new Date(v);
-  if (Number.isNaN(d.getTime())) return toText(v);
-  return d.toLocaleString([], {
-    year: "numeric",
-    month: "short",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
 function hasStarted(value) {
   if (!value) return false;
   const d = new Date(value);
@@ -580,11 +567,6 @@ function UserBoxingBookings() {
                   <span style={pill("rgba(255,255,255,0.12)")}>
                     {sessionDateTime ? String(sessionDateTime).slice(0, 10) : "—"}
                   </span>
-                  <span style={pill("rgba(255,255,255,0.12)")}>
-                    {sessionDateTime ? fmtDateTime(sessionDateTime).split(", ")[1] || "—" : "—"}
-                  </span>
-                  <span style={pill("rgba(255,255,255,0.12)")}>Start: {startDateValue ? String(startDateValue).slice(0, 10) : "—"}</span>
-                  <span style={pill(isExpired ? "rgba(220,53,69,0.45)" : "rgba(255,255,255,0.12)")}>End: {endDateValue ? String(endDateValue).slice(0, 10) : "—"}</span>
                 </div>
 
                 {selectedId === id && (
