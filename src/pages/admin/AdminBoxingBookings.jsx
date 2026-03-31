@@ -871,7 +871,8 @@ export default function AdminBoxingBookings() {
     );
     if (value !== null) return value;
     const fallbackSessions = toNumber(selectedPackage?.sessions_count ?? sessionsCount);
-    return fallbackSessions !== null ? 1 : null;
+    if (fallbackSessions === null || fallbackSessions <= 0) return null;
+    return Math.max(1, Math.ceil(fallbackSessions / 10));
   }, [selectedPackage, sessionsCount]);
 
   useEffect(() => {
