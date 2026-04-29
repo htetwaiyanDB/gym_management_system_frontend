@@ -92,6 +92,80 @@ function resolveCoverUrl(post) {
   );
 }
 
+async function fileToImage(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(img);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Failed to load selected image."));
+    };
+    img.src = url;
+  });
+}
+
+async function optimizeCoverImage(file) {
+  const targetWidth = 1200;
+  const targetHeight = 627;
+  const quality = 0.86;
+
+  const img = await fileToImage(file);
+  const srcW = img.naturalWidth || img.width;
+  const srcH = img.naturalHeight || img.height;
+  if (!srcW || !srcH) return file;
+
+  // Center-crop source to target aspect ratio before resizing.
+  const targetRatio = targetWidth / targetHeight;
+  const srcRatio = srcW / srcH;
+  let cropW = srcW;
+  let cropH = srcH;
+  let cropX = 0;
+  let cropY = 0;
+
+  if (srcRatio > targetRatio) {
+    cropW = Math.round(srcH * targetRatio);
+    cropX = Math.round((srcW - cropW) / 2);
+  } else if (srcRatio < targetRatio) {
+    cropH = Math.round(srcW / targetRatio);
+    cropY = Math.round((srcH - cropH) / 2);
+  }
+
+  const canvas = document.createElement("canvas");
+  canvas.width = targetWidth;
+  canvas.height = targetHeight;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return file;
+
+  ctx.drawImage(
+    img,
+    cropX,
+    cropY,
+    cropW,
+    cropH,
+    0,
+    0,
+    targetWidth,
+    targetHeight
+  );
+
+  const blob = await new Promise((resolve) =>
+    canvas.toBlob(resolve, "image/jpeg", quality)
+  );
+  if (!blob) return file;
+
+  const baseName = (file.name || "cover")
+    .replace(/\.[^/.]+$/, "")
+    .replace(/[^a-zA-Z0-9_-]/g, "_");
+  return new File([blob], `${baseName}.jpg`, {
+    type: "image/jpeg",
+    lastModified: Date.now(),
+  });
+}
+
 export default function AdminBlogs() {
   // view: "list" | "form"
   const [view, setView] = useState("list");
@@ -183,14 +257,27 @@ export default function AdminBlogs() {
     }
   };
 
-  const onPickCover = (file) => {
-    setCoverFile(file || null);
+  const onPickCover = async (file) => {
     if (!file) {
+      setCoverFile(null);
       setCoverPreview(null);
       return;
     }
-    const url = URL.createObjectURL(file);
-    setCoverPreview(url);
+
+    try {
+      const optimized = await optimizeCoverImage(file);
+      setCoverFile(optimized);
+      const url = URL.createObjectURL(optimized);
+      setCoverPreview(url);
+    } catch {
+      setCoverFile(file);
+      const url = URL.createObjectURL(file);
+      setCoverPreview(url);
+      setMsg({
+        type: "warning",
+        text: "Image optimization failed. Using original file instead.",
+      });
+    }
   };
 
   const submit = async (e) => {
@@ -364,7 +451,7 @@ export default function AdminBlogs() {
                             alt="current cover"
                             style={{
                               width: "100%",
-                              height: "clamp(150px, 36vw, 190px)",
+                              height: "clamp(120px, 22vw, 150px)",
                               objectFit: "cover",
                               borderRadius: 8,
                             }}
@@ -388,7 +475,7 @@ export default function AdminBlogs() {
                         style={{
                           border: "1px solid rgba(0,0,0,0.08)",
                           borderRadius: 8,
-                          height: "clamp(150px, 36vw, 190px)",
+                          height: "clamp(120px, 22vw, 150px)",
                           overflow: "hidden",
                           background: "#0d0d0ed7",
                           display: "flex",

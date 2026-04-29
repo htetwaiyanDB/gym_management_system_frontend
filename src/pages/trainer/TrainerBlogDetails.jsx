@@ -135,7 +135,7 @@ export default function TrainerBlogDetails() {
         <div
           style={{
             width: "100%",
-            height: "clamp(170px, 42vw, 230px)",
+            height: "clamp(130px, 34vw, 185px)",
             overflow: "hidden",
             borderRadius: 14,
             marginTop: 10,
