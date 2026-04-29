@@ -126,7 +126,7 @@ export default function UserBlogDetails() {
         <div
           style={{
             width: "100%",
-            height: 220,
+            height: "clamp(170px, 42vw, 230px)",
             overflow: "hidden",
             borderRadius: 14,
             marginTop: 10,

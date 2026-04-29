@@ -362,7 +362,12 @@ export default function AdminBlogs() {
                           <img
                             src={currentCoverUrl}
                             alt="current cover"
-                            style={{ width: "100%", maxHeight: 180, objectFit: "cover", borderRadius: 8 }}
+                            style={{
+                              width: "100%",
+                              height: "clamp(150px, 36vw, 190px)",
+                              objectFit: "cover",
+                              borderRadius: 8,
+                            }}
                           />
                         </div>
                         
@@ -383,7 +388,7 @@ export default function AdminBlogs() {
                         style={{
                           border: "1px solid rgba(0,0,0,0.08)",
                           borderRadius: 8,
-                          height: 170,
+                          height: "clamp(150px, 36vw, 190px)",
                           overflow: "hidden",
                           background: "#0d0d0ed7",
                           display: "flex",
