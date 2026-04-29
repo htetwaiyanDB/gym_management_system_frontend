@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 function getServerOrigin() {
@@ -61,6 +61,21 @@ export default function UserBlogDetails() {
 
   const img = blog ? resolveBlogImage(blog) : null;
   const [failed, setFailed] = useState(false);
+  const [showImageViewer, setShowImageViewer] = useState(false);
+
+  useEffect(() => {
+    if (!showImageViewer) return;
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") setShowImageViewer(false);
+    };
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [showImageViewer]);
 
   if (!blog) {
     return (
@@ -143,9 +158,16 @@ export default function UserBlogDetails() {
             <img
               src={img}
               alt={title}
-              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "contain",
+                background: "#0d0d0e",
+                cursor: "zoom-in",
+              }}
               loading="lazy"
               onError={() => setFailed(true)}
+              onClick={() => setShowImageViewer(true)}
             />
           ) : (
             <span style={{ fontSize: 13, opacity: 0.75 }}>
@@ -171,6 +193,54 @@ export default function UserBlogDetails() {
           {content || "No content available."}
         </div>
       </div>
+
+      {showImageViewer && img ? (
+        <div
+          onClick={() => setShowImageViewer(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.9)",
+            zIndex: 2000,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 14,
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setShowImageViewer(false)}
+            style={{
+              position: "absolute",
+              top: 16,
+              right: 16,
+              border: "1px solid rgba(255,255,255,0.28)",
+              background: "rgba(255,255,255,0.12)",
+              color: "#fff",
+              borderRadius: 10,
+              padding: "6px 10px",
+              cursor: "pointer",
+            }}
+          >
+            Close
+          </button>
+
+          <img
+            src={img}
+            alt={title}
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              maxWidth: "100%",
+              maxHeight: "100%",
+              width: "auto",
+              height: "auto",
+              objectFit: "contain",
+              borderRadius: 10,
+            }}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

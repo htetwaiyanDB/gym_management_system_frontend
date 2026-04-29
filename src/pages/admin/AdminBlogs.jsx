@@ -118,39 +118,22 @@ async function optimizeCoverImage(file) {
   const srcH = img.naturalHeight || img.height;
   if (!srcW || !srcH) return file;
 
-  // Center-crop source to target aspect ratio before resizing.
-  const targetRatio = targetWidth / targetHeight;
-  const srcRatio = srcW / srcH;
-  let cropW = srcW;
-  let cropH = srcH;
-  let cropX = 0;
-  let cropY = 0;
-
-  if (srcRatio > targetRatio) {
-    cropW = Math.round(srcH * targetRatio);
-    cropX = Math.round((srcW - cropW) / 2);
-  } else if (srcRatio < targetRatio) {
-    cropH = Math.round(srcW / targetRatio);
-    cropY = Math.round((srcH - cropH) / 2);
-  }
-
   const canvas = document.createElement("canvas");
   canvas.width = targetWidth;
   canvas.height = targetHeight;
   const ctx = canvas.getContext("2d");
   if (!ctx) return file;
 
-  ctx.drawImage(
-    img,
-    cropX,
-    cropY,
-    cropW,
-    cropH,
-    0,
-    0,
-    targetWidth,
-    targetHeight
-  );
+  // Keep full image visible: scale to fit inside target frame (no cropping).
+  const scale = Math.min(targetWidth / srcW, targetHeight / srcH);
+  const drawW = Math.round(srcW * scale);
+  const drawH = Math.round(srcH * scale);
+  const offsetX = Math.round((targetWidth - drawW) / 2);
+  const offsetY = Math.round((targetHeight - drawH) / 2);
+
+  ctx.fillStyle = "#0d0d0e";
+  ctx.fillRect(0, 0, targetWidth, targetHeight);
+  ctx.drawImage(img, offsetX, offsetY, drawW, drawH);
 
   const blob = await new Promise((resolve) =>
     canvas.toBlob(resolve, "image/jpeg", quality)
