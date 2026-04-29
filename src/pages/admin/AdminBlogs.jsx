@@ -451,9 +451,10 @@ export default function AdminBlogs() {
                             alt="current cover"
                             style={{
                               width: "100%",
-                              height: "clamp(120px, 22vw, 150px)",
-                              objectFit: "cover",
+                              height: "clamp(180px, 35vw, 280px)",
+                              objectFit: "contain",
                               borderRadius: 8,
+                              background: "#0d0d0ed7",
                             }}
                           />
                         </div>
@@ -475,7 +476,7 @@ export default function AdminBlogs() {
                         style={{
                           border: "1px solid rgba(0,0,0,0.08)",
                           borderRadius: 8,
-                          height: "clamp(120px, 22vw, 150px)",
+                          height: "clamp(180px, 35vw, 280px)",
                           overflow: "hidden",
                           background: "#0d0d0ed7",
                           display: "flex",
@@ -487,14 +488,14 @@ export default function AdminBlogs() {
                           <img
                             src={coverPreview}
                             alt="cover preview"
-                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                            style={{ width: "100%", height: "100%", objectFit: "contain" }}
                           />
 
                         ) : currentCoverUrl ? (
                           <img
                             src={currentCoverUrl}
                             alt="current cover"
-                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                            style={{ width: "100%", height: "100%", objectFit: "contain" }}
                           />
                         ) : (
                           <div className="text-light">Cover image preview</div>
