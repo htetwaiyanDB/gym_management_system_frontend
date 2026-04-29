@@ -267,7 +267,8 @@ export default function AdminBlogs() {
     try {
       const optimized = await optimizeCoverImage(file);
       setCoverFile(optimized);
-      const url = URL.createObjectURL(optimized);
+      // Show full original image to admin in preview; upload still uses optimized file.
+      const url = URL.createObjectURL(file);
       setCoverPreview(url);
     } catch {
       setCoverFile(file);
