@@ -1,0 +1,64 @@
+.route-transition-shell {
+  position: relative;
+  min-width: 0;
+}
+
+.route-page-enter {
+  transform-origin: top center;
+  animation: route-page-enter 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.route-content-loader {
+  display: grid;
+  min-height: 160px;
+  place-items: center;
+  opacity: 0;
+  animation: route-loader-reveal 120ms ease-out 120ms forwards;
+}
+
+.app-route-loader {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 24px;
+  background: #0b0d11;
+}
+
+.app-route-loader__card {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 14px;
+  background: rgba(24, 28, 36, 0.92);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.32);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.9375rem;
+}
+
+@keyframes route-page-enter {
+  from {
+    opacity: 0.12;
+    transform: translateY(14px) scale(0.992);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes route-loader-reveal {
+  to { opacity: 0.7; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-page-enter,
+  .route-content-loader {
+    animation: none;
+  }
+
+  .route-content-loader {
+    opacity: 0.7;
+  }
+}

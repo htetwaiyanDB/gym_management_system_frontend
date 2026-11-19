@@ -2,6 +2,10 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axiosClient from "../../api/axiosClient";
 import { formatDateDDMMYYYY } from "../../utils/dateFormat";
+import {
+  belongsToActiveMember,
+  getActiveMemberIdentityKeys,
+} from "../../utils/activeMemberRecords";
 
 function moneyMMK(v) {
   if (v === null || v === undefined || v === "") return "-";
@@ -578,15 +582,25 @@ export default function AdminSubscriptions() {
     const selectedStatus = String(filterStatus || "all").toLowerCase();
     const selectedStartDate = parseDateOnly(appliedFilterStartDate);
     const selectedEndDate = parseDateOnly(appliedFilterEndDate);
+    const getDisplayStatus = (record) => {
+      const baseStatus = normalizeMembershipStatus(record);
+      return baseStatus === "active" && isExpiredByDate(record?.end_date) ? "expired" : baseStatus;
+    };
+    const activeMemberKeys = getActiveMemberIdentityKeys(sortedSubscriptions, getDisplayStatus);
 
     return sortedSubscriptions.filter((record) => {
       if (keyword && !subscriptionSearchText(record).includes(keyword)) {
         return false;
       }
 
-      const baseStatus = normalizeMembershipStatus(record);
-      const normalizedStatus = baseStatus === "active" && isExpiredByDate(record?.end_date) ? "expired" : baseStatus;
+      const normalizedStatus = getDisplayStatus(record);
       if (selectedStatus !== "all" && normalizedStatus !== selectedStatus) {
+        return false;
+      }
+      if (
+        selectedStatus === "expired" &&
+        belongsToActiveMember(record, activeMemberKeys)
+      ) {
         return false;
       }
 

@@ -11,6 +11,10 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  --motion-fast: 160ms;
+  --motion-standard: 220ms;
+  --motion-ease: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* Professional, slim scrollbar styling (global) */
@@ -87,6 +91,55 @@ body {
   place-items: center;
   min-width: 320px;
   min-height: 100vh;
+  overflow-x: hidden;
+}
+
+button,
+.btn,
+a,
+input,
+select,
+textarea,
+.form-control,
+.form-select,
+.nav-link {
+  transition:
+    color var(--motion-fast) ease-out,
+    background-color var(--motion-fast) ease-out,
+    border-color var(--motion-fast) ease-out,
+    box-shadow var(--motion-standard) var(--motion-ease),
+    transform var(--motion-fast) var(--motion-ease),
+    opacity var(--motion-fast) ease-out;
+}
+
+button,
+.btn,
+a,
+.nav-link {
+  touch-action: manipulation;
+}
+
+.btn:not(:disabled):active,
+button:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+.form-control:focus,
+.form-select:focus {
+  transform: translateY(-1px);
+}
+
+.table > tbody > tr {
+  transition: background-color var(--motion-fast) ease-out, box-shadow var(--motion-standard) var(--motion-ease);
+}
+
+.modal.d-block .modal-dialog {
+  animation: modal-dialog-enter var(--motion-standard) var(--motion-ease) both;
+}
+
+@keyframes modal-dialog-enter {
+  from { opacity: 0; transform: translateY(10px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 h1 {
@@ -111,6 +164,17 @@ button:hover {
 button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 @media (prefers-color-scheme: light) {

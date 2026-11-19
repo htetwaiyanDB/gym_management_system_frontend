@@ -4,7 +4,7 @@ import { scanRfidAttendance } from "../../api/attendanceApi";
 import RfidInputListener from "../../components/RfidInputListener";
 import { isCardNotRegisteredError, normalizeCardId } from "../../utils/rfid";
 import { awardScanPoints } from "../../api/pointsApi";
-import { formatDateTimeDDMMYYYY } from "../../utils/dateFormat";
+import { formatDateDDMMYYYY, formatDateTimeDDMMYYYY } from "../../utils/dateFormat";
 
 function parseBackendDateTime(s) {
   if (!s) return null;
@@ -18,14 +18,6 @@ function formatDateTimeVideoStyle(s) {
   const d = parseBackendDateTime(s);
   if (!d) return "-";
   return formatDateTimeDDMMYYYY(d);
-}
-
-function normalizeRole(role) {
-  const r = String(role || "").toLowerCase();
-  if (r === "trainer") return "Trainer";
-  if (r === "user") return "User";
-  if (r === "admin" || r === "administrator") return "Admin";
-  return role || "-";
 }
 
 function roleBadge(role) {
@@ -112,6 +104,91 @@ const extractScanPayload = (payload) => {
   return { user, attendance, message: payload.message ?? payload.data?.message ?? null };
 };
 
+const firstValue = (source, keys) => {
+  for (const key of keys) {
+    const value = source?.[key];
+    if (value !== null && value !== undefined && value !== "") return value;
+  }
+  return null;
+};
+
+const planEndDate = (record) => firstValue(record, [
+  "end_date",
+  "month_end_date",
+  "monthly_end_date",
+  "sessions_end_date",
+  "session_end_date",
+  "ends_at",
+]);
+
+const planDisplayName = (record) =>
+  firstValue(record, [
+    "plan_name",
+    "package_name",
+    "membership_plan_name",
+    "trainer_package_name",
+    "boxing_package_name",
+    "name",
+    "title",
+  ]) ??
+  firstValue(
+    record?.membership_plan ?? record?.trainer_package ?? record?.boxing_package ?? record?.plan ?? record?.package,
+    ["name", "title", "plan_name", "package_name"],
+  ) ??
+  "Plan";
+
+const isActivePlanRecord = (record) => {
+  const endDate = parseBackendDateTime(planEndDate(record));
+  if (!endDate) return false;
+  endDate.setHours(23, 59, 59, 999);
+  if (endDate < new Date()) return false;
+
+  const status = String(record?.status ?? record?.subscription_status ?? record?.state ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[_\s]+/g, "-");
+  if (["expired", "completed", "complete", "done", "on-hold", "hold", "cancelled", "canceled"].includes(status)) {
+    return false;
+  }
+  if ([true, 1, "1", "true"].includes(record?.is_expired)) return false;
+
+  const startDate = parseBackendDateTime(
+    firstValue(record, ["start_date", "month_start_date", "sessions_start_date", "session_start_date"]),
+  );
+  if (startDate && startDate > new Date()) return false;
+
+  return ["", "active", "confirmed", "resumed", "pending"].includes(status);
+};
+
+const newestActivePlan = (records, type) => {
+  const active = (Array.isArray(records) ? records : [])
+    .filter(isActivePlanRecord)
+    .sort((a, b) => (parseBackendDateTime(planEndDate(b))?.getTime() ?? 0) - (parseBackendDateTime(planEndDate(a))?.getTime() ?? 0));
+  if (active.length === 0) return null;
+  return {
+    type,
+    name: planDisplayName(active[0]),
+    endDate: planEndDate(active[0]),
+  };
+};
+
+const buildPlanReminders = (payload) => [
+  newestActivePlan(payload?.subscriptions ?? payload?.memberships, "Membership"),
+  newestActivePlan(payload?.trainer_bookings ?? payload?.trainerbookings, "Trainer"),
+  newestActivePlan(payload?.boxing_bookings ?? payload?.boxingbookings, "Boxing"),
+].filter(Boolean);
+
+const loadUserPlanReminders = async (userId) => {
+  let response;
+  try {
+    response = await axiosClient.get(`/user/${userId}/records`, { cache: false });
+  } catch (error) {
+    if (error?.response?.status !== 404) throw error;
+    response = await axiosClient.get(`/users/${userId}/records`, { cache: false });
+  }
+  return buildPlanReminders(response?.data || {});
+};
+
 
 const normalizeReportPayload = (resData) => {
   let payload =
@@ -164,12 +241,6 @@ const cardGlass = {
 const titleText = { color: "rgba(255,255,255,0.92)" };
 const bodyText = { color: "rgba(255,255,255,0.80)" };
 const mutedText = { color: "rgba(255,255,255,0.60)" };
-
-const glassSelectStyle = {
-  background: "rgba(0,0,0,0.55)",
-  color: "#fff",
-  border: "1px solid rgba(255,255,255,0.18)",
-};
 
 const SCAN_COOLDOWN_MS = 1500;
 
@@ -444,6 +515,8 @@ export default function AdminAttendance() {
         user,
         attendance,
         message: message || "Scan recorded successfully.",
+        planReminders: [],
+        planRemindersLoading: String(user?.role || "").toLowerCase() === "user",
       });
 
       const scannedUserId =
@@ -456,6 +529,22 @@ export default function AdminAttendance() {
       const scannedAction = normalizeRecordType(attendance);
       if (scannedUserId && (scannedAction === "check_in" || scannedAction === "check_out")) {
         await awardScanPoints({ userId: scannedUserId, action: scannedAction, points: 50 });
+      }
+
+      if (scannedUserId && String(user?.role || "").toLowerCase() === "user") {
+        try {
+          const planReminders = await loadUserPlanReminders(scannedUserId);
+          setScanResult((current) => current ? {
+            ...current,
+            planReminders,
+            planRemindersLoading: false,
+          } : current);
+        } catch {
+          setScanResult((current) => current ? {
+            ...current,
+            planRemindersLoading: false,
+          } : current);
+        }
       }
 
       await Promise.all([loadRecords(false), loadCheckedIn(false), loadActiveCheckins(false), loadMemberCount(false)]);
@@ -594,6 +683,36 @@ export default function AdminAttendance() {
               <strong>{normalizeScanStatus(scanResult.attendance)}</strong>
             </div>
           </div>
+
+          {scanResult.planRemindersLoading && (
+            <div className="small mt-3" style={mutedText} role="status" aria-live="polite">
+              Checking active plan expiry dates...
+            </div>
+          )}
+
+          {!scanResult.planRemindersLoading && scanResult.planReminders?.length > 0 && (
+            <div className="mt-3" aria-live="polite">
+              <div className="d-flex align-items-center gap-2 mb-2" style={bodyText}>
+                <i className="bi bi-bell-fill text-warning" aria-hidden="true"></i>
+                <strong>Active Plan Expiry Reminder</strong>
+              </div>
+              <div className="d-flex flex-wrap gap-2">
+                {scanResult.planReminders.map((plan) => (
+                  <div
+                    key={`${plan.type}-${plan.name}-${plan.endDate}`}
+                    className="border border-warning rounded px-3 py-2 flex-grow-1"
+                    style={{ minWidth: 210, background: "rgba(255,193,7,0.08)" }}
+                  >
+                    <div className="small text-warning fw-semibold">{plan.type}</div>
+                    <div className="fw-semibold text-white">{plan.name}</div>
+                    <div className="small" style={bodyText}>
+                      Expires: <strong>{formatDateDDMMYYYY(plan.endDate, "-")}</strong>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <button className="btn btn-outline-light mt-3" onClick={resetScanPanel}>
             Reset Scan Panel

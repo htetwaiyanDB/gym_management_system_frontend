@@ -87,7 +87,8 @@ axiosClient.interceptors.response.use(
   },
 
   (err) => {
-    if (err?.response?.status === 401) {
+    const isLoginRequest = String(err?.config?.url || "").replace(/\/+$/, "") === "/login";
+    if (err?.response?.status === 401 && !isLoginRequest) {
       clearAuth();
       window.location.href = "/login";
     }

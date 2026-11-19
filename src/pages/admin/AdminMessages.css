@@ -1,0 +1,23 @@
+.admin-unread-conversation > td {
+  background: rgba(220, 53, 69, 0.07) !important;
+}
+
+.admin-unread-conversation .fw-semibold {
+  color: #ffffff;
+}
+
+.admin-conversation-badge {
+  display: inline-flex;
+  min-width: 20px;
+  height: 20px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #dc3545;
+  color: #ffffff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}

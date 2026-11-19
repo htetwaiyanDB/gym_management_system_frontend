@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import axiosClient from "../../api/axiosClient";
+import { markAdminConversationAsRead } from "../../api/adminMessagesApi";
 import { formatDateTimeDDMMYYYY } from "../../utils/dateFormat";
+import "./AdminMessages.css";
 
 function normalizeList(payload) {
   if (Array.isArray(payload)) return payload;
@@ -73,6 +75,11 @@ function getLastMessage(convo) {
 
 function getUpdatedAt(convo) {
   return convo?.updated_at || convo?.last_time || convo?.lastTime || convo?.created_at || null;
+}
+
+function getUnreadCount(convo) {
+  const count = Number(convo?.unread_count ?? convo?.unreadCount ?? 0);
+  return Number.isFinite(count) && count > 0 ? Math.floor(count) : 0;
 }
 
 function normalizeThread(payload) {
@@ -164,6 +171,18 @@ export default function AdminMessages() {
     setActiveUserId(userId);
     setActiveLabel(getUserLabel(c));
     await loadThread(userId);
+
+    try {
+      const { unreadCount } = await markAdminConversationAsRead(userId);
+      setConvos((current) => current.map((convo) =>
+        getUserId(convo) === userId ? { ...convo, unread_count: 0 } : convo,
+      ));
+      window.dispatchEvent(new CustomEvent("admin-messages-updated", {
+        detail: { unreadCount },
+      }));
+    } catch {
+      // The thread endpoint also marks messages as read; do not interrupt opening a chat.
+    }
   };
 
   const sendMessage = async () => {
@@ -260,16 +279,24 @@ export default function AdminMessages() {
                     filteredConvos.map((c, idx) => {
                       const userId = getUserId(c);
                       const active = activeUserId && userId === activeUserId;
+                      const unreadCount = getUnreadCount(c);
 
                       return (
                         <tr
                           key={userId || idx}
                           style={{ cursor: "pointer" }}
                           onClick={() => openConversation(c)}
-                          className={active ? "table-active" : ""}
+                          className={`${active ? "table-active" : ""}${unreadCount > 0 ? " admin-unread-conversation" : ""}`}
                         >
                           <td>
-                            <div className="fw-semibold">{getUserLabel(c)}</div>
+                            <div className="d-flex align-items-center gap-2">
+                              <div className="fw-semibold">{getUserLabel(c)}</div>
+                              {unreadCount > 0 && (
+                                <span className="admin-conversation-badge" aria-label={`${unreadCount} unread messages`}>
+                                  {unreadCount > 99 ? "99+" : unreadCount}
+                                </span>
+                              )}
+                            </div>
                             <div className="text-light small" style={{ maxWidth: 280 }}>
                               {safeText(getLastMessage(c)).slice(0, 60)}
                               {safeText(getLastMessage(c)).length > 60 ? "..." : ""}

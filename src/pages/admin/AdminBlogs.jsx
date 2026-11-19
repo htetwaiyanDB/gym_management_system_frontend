@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import axiosClient, { clearRequestCache } from "../../api/axiosClient";
 import { formatDateDDMMYYYY } from "../../utils/dateFormat";
+import "./AdminBlogs.css";
 
 function normalizeList(payload) {
   if (Array.isArray(payload)) return payload;
@@ -352,7 +353,6 @@ export default function AdminBlogs() {
 
   useEffect(() => {
     loadBlogs();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const sortedBlogs = useMemo(() => {
@@ -381,19 +381,15 @@ export default function AdminBlogs() {
         <div className="row justify-content-center">
           <div className="col-12 col-lg-8">
             <div
-              className="card"
-              style={{
-                background: "rgba(10, 1, 1, 0.72)",
-                border: "1px solid rgba(0,0,0,0.08)",
-                borderRadius: 10,
-              }}
+              className="card admin-blog-form"
             >
               <div className="card-body p-4">
                 <form onSubmit={submit}>
                   <div className="mb-3">
-                    <label className="form-label text-light fw-bold">Title</label>
+                    <label className="form-label text-light fw-bold" htmlFor="blog-title">Title</label>
                     <input
-                      className="form-control "
+                      id="blog-title"
+                      className="form-control"
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
                       required
@@ -402,8 +398,9 @@ export default function AdminBlogs() {
                   </div>
 
                   <div className="mb-3">
-                    <label className="form-label text-light fw-bold">Summary</label>
+                    <label className="form-label text-light fw-bold" htmlFor="blog-summary">Summary</label>
                     <textarea
+                      id="blog-summary"
                       className="form-control"
                       rows={3}
                       value={summary}
@@ -414,8 +411,9 @@ export default function AdminBlogs() {
                   </div>
 
                   <div className="mb-3">
-                    <label className="form-label text-light fw-bold">Content</label>
+                    <label className="form-label text-light fw-bold" htmlFor="blog-content">Content</label>
                     <textarea
+                      id="blog-content"
                       className="form-control"
                       rows={8}
                       value={content}
@@ -426,6 +424,7 @@ export default function AdminBlogs() {
                   </div>
 
                   <div className="mb-3">
+                    <label className="form-label text-light fw-bold" htmlFor="blog-cover-image">Cover Image</label>
                     {currentCoverUrl ? (
                       <div className="small mb-2 text-light">
                         Current cover image
@@ -447,6 +446,7 @@ export default function AdminBlogs() {
                     ) : null}
 
                     <input
+                      id="blog-cover-image"
                       type="file"
                       className="form-control"
                       accept="image/*"
@@ -508,8 +508,9 @@ export default function AdminBlogs() {
                   </div>
 
                   <div className="mt-3">
-                    <label className="form-label text-light fw-semibold">Publish Date (optional)</label>
+                    <label className="form-label text-light fw-semibold" htmlFor="blog-publish-date">Publish Date (optional)</label>
                     <input
+                      id="blog-publish-date"
                       type="datetime-local"
                       className="form-control"
                       value={publishDate}
@@ -596,16 +597,33 @@ export default function AdminBlogs() {
             ) : (
               sortedBlogs.map((post) => {
                 const st = computeStatus(post);
+                const coverUrl = resolveCoverUrl(post);
                 return (
                   <tr key={post?.id}>
                     <td>
-                      <div className="fw-semibold text-white">{safeText(post?.title)}</div>
-                      {post?.summary ? (
-                        <div className="text-light small" style={{ maxWidth: 640 }}>
-                          {safeText(post.summary).slice(0, 90)}
-                          {safeText(post.summary).length > 90 ? "..." : ""}
+                      <div className="d-flex align-items-center gap-3">
+                        <div className="admin-blog-thumbnail" aria-hidden={!coverUrl}>
+                          <i className="bi bi-image" aria-hidden="true"></i>
+                          {coverUrl ? (
+                            <img
+                              src={coverUrl}
+                              alt={`Cover image for ${safeText(post?.title) || "blog post"}`}
+                              loading="lazy"
+                              decoding="async"
+                              onError={(event) => { event.currentTarget.style.display = "none"; }}
+                            />
+                          ) : null}
                         </div>
-                      ) : null}
+                        <div className="admin-blog-title-copy">
+                          <div className="fw-semibold text-white text-break">{safeText(post?.title)}</div>
+                          {post?.summary ? (
+                            <div className="text-light small" style={{ maxWidth: 640 }}>
+                              {safeText(post.summary).slice(0, 90)}
+                              {safeText(post.summary).length > 90 ? "..." : ""}
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
                     </td>
 
                     <td>{statusBadge(st)}</td>
@@ -631,6 +649,7 @@ export default function AdminBlogs() {
           </tbody>
         </table>
       </div>
+
     </div>
   );
 }

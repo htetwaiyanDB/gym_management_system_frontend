@@ -1,12 +1,52 @@
-import React from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { logoutApi } from "../api/authApi";
 import { clearRequestCache } from "../api/axiosClient";
+import { getAdminUnreadMessageCount } from "../api/adminMessagesApi";
 import AppScrollbar from "../components/AppScrollbar";
+import RouteTransition from "../components/RouteTransition";
 import "./AdminLayout.css";
 
 export default function AdminLayout() {
   const nav = useNavigate();
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
+
+  const loadUnreadMessageCount = useCallback(async () => {
+    try {
+      const count = await getAdminUnreadMessageCount();
+      setUnreadMessageCount(count);
+    } catch {
+      // Keep the last successful count if the notification request fails.
+    }
+  }, []);
+
+  useEffect(() => {
+    const initialLoad = window.setTimeout(() => { void loadUnreadMessageCount(); }, 0);
+    const refreshIfVisible = () => {
+      if (document.visibilityState === "visible") void loadUnreadMessageCount();
+    };
+    const onMessagesUpdated = (event) => {
+      const suppliedCount = Number(event?.detail?.unreadCount);
+      if (Number.isFinite(suppliedCount) && suppliedCount >= 0) {
+        setUnreadMessageCount(Math.floor(suppliedCount));
+        return;
+      }
+      void loadUnreadMessageCount();
+    };
+
+    const interval = window.setInterval(refreshIfVisible, 30000);
+    window.addEventListener("focus", refreshIfVisible);
+    window.addEventListener("admin-messages-updated", onMessagesUpdated);
+    document.addEventListener("visibilitychange", refreshIfVisible);
+
+    return () => {
+      window.clearTimeout(initialLoad);
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refreshIfVisible);
+      window.removeEventListener("admin-messages-updated", onMessagesUpdated);
+      document.removeEventListener("visibilitychange", refreshIfVisible);
+    };
+  }, [loadUnreadMessageCount]);
 
   const logout = async () => {
     try { await logoutApi(); } catch {}
@@ -82,7 +122,13 @@ export default function AdminLayout() {
               </NavLink>
 
               <NavLink to="/admin/messages" className={({isActive}) => `admin-link ${isActive ? "active" : ""}`}>
-                <i className="bi bi-chat-dots"></i> Messages
+                <i className="bi bi-chat-dots"></i>
+                <span>Messages</span>
+                {unreadMessageCount > 0 && (
+                  <span className="admin-message-badge" aria-label={`${unreadMessageCount} unread messages`}>
+                    {unreadMessageCount > 99 ? "99+" : unreadMessageCount}
+                  </span>
+                )}
               </NavLink>
 
               <NavLink to="/admin/blogs" className={({isActive}) => `admin-link ${isActive ? "active" : ""}`}>
@@ -117,7 +163,9 @@ export default function AdminLayout() {
               </div>
             </div>
 
-            <Outlet />
+            <RouteTransition>
+              <Outlet />
+            </RouteTransition>
           </div>
         </AppScrollbar>
       </main>

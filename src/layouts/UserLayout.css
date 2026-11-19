@@ -20,7 +20,8 @@
   padding-bottom: calc(120px + env(safe-area-inset-bottom));
 }
 
-.user-content > div {
+.user-content > div:not(.route-transition-shell),
+.user-content > .route-transition-shell > .route-page-enter > div {
   background: rgba(255, 255, 255, 0.08);
   border-radius: 16px;
   padding: 18px;
@@ -73,7 +74,7 @@
   color: rgba(255, 255, 255, 0.72);
 
   border-radius: 14px;
-  transition: background-color 120ms ease, color 120ms ease;
+  transition: background-color 180ms ease-out, color 180ms ease-out, transform 180ms ease-out;
 }
 
 .user-nav-icon {
@@ -97,6 +98,7 @@
 
 .user-nav-item:active {
   opacity: 0.92;
+  transform: scale(0.97);
 }
 
 @media (min-width: 768px) {

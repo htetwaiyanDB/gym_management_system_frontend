@@ -1,5 +1,6 @@
 import React, { Suspense, lazy } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
+import RouteTransition, { AppRouteLoader } from "./components/RouteTransition";
 
 const Login = lazy(() => import("./pages/public/Login"));
 const Register = lazy(() => import("./pages/public/Register"));
@@ -97,15 +98,13 @@ function RoleOnly({ role, children }) {
   return have === need ? children : <Navigate to="/login" replace />;
 }
 
+function PublicPage({ children }) {
+  return <RouteTransition>{children}</RouteTransition>;
+}
+
 export default function App() {
   return (
-    <Suspense
-      fallback={
-        <div className="d-flex min-vh-100 align-items-center justify-content-center">
-          <div className="text-muted">Loading...</div>
-        </div>
-      }
-    >
+    <Suspense fallback={<AppRouteLoader />}>
       <Routes>
         <Route
           path="/"
@@ -123,12 +122,12 @@ export default function App() {
           path="/login"
           element={
             <PublicOnly>
-              <Login />
+              <PublicPage><Login /></PublicPage>
             </PublicOnly>
           }
         />
-        <Route path="/register" element={<Register />} />
-        <Route path="/verify-email" element={<VerifyEmail />} />
+        <Route path="/register" element={<PublicPage><Register /></PublicPage>} />
+        <Route path="/verify-email" element={<PublicPage><VerifyEmail /></PublicPage>} />
         {/* Admin */}
         <Route
           path="/admin"

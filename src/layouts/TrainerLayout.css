@@ -23,7 +23,8 @@
 }
 
 /* GLASS CARD STYLE */
-.trainer-content > div {
+.trainer-content > div:not(.route-transition-shell),
+.trainer-content > .route-transition-shell > .route-page-enter > div {
   background: rgba(255, 255, 255, 0.08);
   border-radius: 16px;
   padding: 18px;
@@ -91,7 +92,7 @@
   color: rgba(255, 255, 255, 0.72);
 
   border-radius: 14px;
-  transition: background-color 120ms ease, color 120ms ease;
+  transition: background-color 180ms ease-out, color 180ms ease-out, transform 180ms ease-out;
 }
 
 /* ICON */
@@ -119,6 +120,7 @@
 /* TAP FEEDBACK */
 .nav-item:active {
   opacity: 0.92;
+  transform: scale(0.97);
 }
 
 /* TABLET & DESKTOP */

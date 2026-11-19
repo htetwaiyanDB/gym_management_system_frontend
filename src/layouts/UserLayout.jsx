@@ -10,6 +10,7 @@ import {
 } from "react-icons/fi";
 import axiosClient from "../api/axiosClient";
 import AppScrollbar from "../components/AppScrollbar";
+import RouteTransition from "../components/RouteTransition";
 import "./UserLayout.css";
 
 export default function UserLayout() {
@@ -106,7 +107,9 @@ export default function UserLayout() {
     <div className="user-shell">
       <AppScrollbar className="user-scrollbar">
         <main className="user-content">
-          <Outlet />
+          <RouteTransition>
+            <Outlet />
+          </RouteTransition>
         </main>
       </AppScrollbar>
 

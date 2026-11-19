@@ -10,6 +10,7 @@ import {
 } from "react-icons/fi";
 import axiosClient from "../api/axiosClient";
 import AppScrollbar from "../components/AppScrollbar";
+import RouteTransition from "../components/RouteTransition";
 import "./TrainerLayout.css";
 
 export default function TrainerLayout() {
@@ -106,7 +107,9 @@ export default function TrainerLayout() {
     <div className="trainer-shell">
       <AppScrollbar className="trainer-scrollbar">
         <main className="trainer-content">
-          <Outlet />
+          <RouteTransition>
+            <Outlet />
+          </RouteTransition>
         </main>
       </AppScrollbar>
 

@@ -1,6 +1,15 @@
 import React, { useEffect, useMemo, useState } from "react";
 import axiosClient from "../../api/axiosClient";
 import { formatDateTimeDDMMYYYY } from "../../utils/dateFormat";
+import {
+  belongsToActiveMember,
+  getActiveMemberIdentityKeys,
+} from "../../utils/activeMemberRecords";
+import {
+  getBookingDatePayload,
+  getEndDateAfterPackageChange,
+  isMonthBasedPackage,
+} from "../../utils/bookingPackageDates";
 
 function moneyMMK(v) {
   if (v === null || v === undefined || v === "") return "-";
@@ -24,10 +33,6 @@ function parseBackendDateTime(s) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return null;
   return d;
-}
-
-function pad2(n) {
-  return String(n).padStart(2, "0");
 }
 
 function parseDateOnly(value) {
@@ -232,14 +237,6 @@ function getMonthCount(booking) {
     booking?.month_count ??
     booking?.months_count;
   return toNumber(monthValue);
-}
-
-function formatDateInputValue(date) {
-  if (!date) return "";
-  const y = date.getFullYear();
-  const m = pad2(date.getMonth() + 1);
-  const d = pad2(date.getDate());
-  return `${y}-${m}-${d}`;
 }
 
 function addMonthsToDate(baseDate, months) {
@@ -495,11 +492,19 @@ export default function AdminTrainerBookings() {
   const createBooking = async () => {
     setMsg(null);
 
+    const selectedPackage = findSelectedPackage();
+    const isMonthBased = isMonthBasedPackage(selectedPackage);
+
     if (!memberId) return setMsg({ type: "danger", text: "Please select a member." });
     if (!trainerId) return setMsg({ type: "danger", text: "Please select a trainer." });
     if (!packageType) return setMsg({ type: "danger", text: "Please select a package type." });
+    if (trainerPackages.length > 0 && !selectedPackage) {
+      return setMsg({ type: "danger", text: "Please select a package from the list." });
+    }
     if (!startDate) return setMsg({ type: "danger", text: "Please select a start date." });
-    if (!endDate) return setMsg({ type: "danger", text: "Please select an end date." });
+    if (!isMonthBased && !endDate) {
+      return setMsg({ type: "danger", text: "Please select an end date." });
+    }
 
     const sessions = Number(sessionsCount);
     const price = Number(pricePerSession);
@@ -514,11 +519,6 @@ export default function AdminTrainerBookings() {
     setBusyKey("create");
     try {
   
-      const selectedPackage = findSelectedPackage();
-      if (trainerPackages.length > 0 && !selectedPackage) {
-        setBusyKey(null);
-        return setMsg({ type: "danger", text: "Please select a package from the list." });
-      }
       const selectedPackageId = getPackageId(selectedPackage);
       const payload = {
         member_id: Number(memberId),
@@ -544,8 +544,7 @@ export default function AdminTrainerBookings() {
         status,
         paid_status: paidStatus,
         notes: notes || null,
-        start_date: startDate,
-        end_date: endDate,
+        ...getBookingDatePayload(startDate, endDate, selectedPackage),
       };
 
       const res = await axiosClient.post("/trainer-bookings", payload);
@@ -815,21 +814,10 @@ export default function AdminTrainerBookings() {
   }, [showModal]);
 
   const selectedPackage = useMemo(() => findSelectedPackage(), [packageType, trainerPackages]);
+  const isMonthBasedSelected = isMonthBasedPackage(selectedPackage);
   const selectedPackageCount =
     selectedPackage?.duration_months ?? selectedPackage?.sessions_count ?? "";
   const countLabel = selectedPackage?.duration_months ? "Month Count" : "Session Count";
-  const durationMonths = useMemo(() => {
-    const value = toNumber(
-      selectedPackage?.duration_months ??
-        selectedPackage?.months_count ??
-        selectedPackage?.month_count
-    );
-    if (value !== null) return value;
-    const fallbackSessions = toNumber(selectedPackage?.sessions_count ?? sessionsCount);
-    if (fallbackSessions === null || fallbackSessions <= 0) return null;
-    return Math.max(1, Math.ceil(fallbackSessions / 10));
-  }, [selectedPackage, sessionsCount]);
-
   useEffect(() => {
     if (!packageType) return;
     if (priceSource !== "package") return;
@@ -843,16 +831,6 @@ export default function AdminTrainerBookings() {
       setSessionsCount(String(selectedPackageCount));
     }
   }, [packageType, priceSource, selectedPackage, selectedPackageCount]);
-
-  useEffect(() => {
-    if (!startDate) return;
-    if (durationMonths === null) return;
-    const baseDate = new Date(`${startDate}T00:00:00`);
-    if (Number.isNaN(baseDate.getTime())) return;
-    const nextDate = addMonthsToDate(baseDate, durationMonths);
-    if (!nextDate) return;
-    setEndDate(formatDateInputValue(nextDate));
-  }, [startDate, durationMonths]);
 
     const packagesByType = useMemo(() => {
     if (!Array.isArray(trainerPackages)) {
@@ -868,9 +846,11 @@ export default function AdminTrainerBookings() {
 
   const handlePackageSelect = (group) => (event) => {
     const value = event.target.value;
+    const nextPackage = findSelectedPackage(trainerPackages, value);
     setPackageType(value);
     setPackageGroup(value ? group : "");
     setPriceSource("package");
+    setEndDate((current) => getEndDateAfterPackageChange(current, nextPackage));
   };
 
   const renderPackageOptions = (packages, fallbackLabel) =>
@@ -935,11 +915,13 @@ export default function AdminTrainerBookings() {
     const searchValue = String(searchTerm || "").trim().toLowerCase();
     const selectedStartDate = parseDateOnly(appliedFilterStartDate);
     const selectedEndDate = parseDateOnly(appliedFilterEndDate);
+    const activeMemberKeys = getActiveMemberIdentityKeys(bookings, getDisplayBookingStatus);
 
     const list = bookings.filter((b) => {
       const st = getDisplayBookingStatus(b);
 
       if (statusF !== "all" && st !== statusF) return false;
+      if (statusF === "expired" && belongsToActiveMember(b, activeMemberKeys)) return false;
       if (searchValue) {
         const fields = [
           b?.member_name,
@@ -1740,21 +1722,22 @@ export default function AdminTrainerBookings() {
                     />
                   </div>
 
-                  <div className="col-12 col-md-6">
-                    <label className="form-label fw-bold">End Date</label>
-                    <input
-                      type="date"
-                      className="form-control"
-                      value={endDate}
-                      onChange={(e) => setEndDate(e.target.value)}
-                      disabled={optionsLoading || durationMonths !== null}
-                    />
-                    <div className="admin-muted mt-1">
-                      {durationMonths !== null
-                        ? `Duration: ${durationMonths} month${durationMonths === 1 ? "" : "s"}`
-                        : "Set end date manually"}
+                  {!isMonthBasedSelected && (
+                    <div className="col-12 col-md-6">
+                      <label className="form-label fw-bold">End Date</label>
+                      <input
+                        type="date"
+                        className="form-control"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        disabled={optionsLoading}
+                        required
+                      />
+                      <div className="admin-muted mt-1">
+                        Select the end date manually
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   <div className="col-12 col-md-6">
                     <label className="form-label fw-bold">Price per Session (MMK)</label>
