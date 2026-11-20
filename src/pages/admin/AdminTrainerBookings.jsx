@@ -2,6 +2,10 @@ import React, { useEffect, useMemo, useState } from "react";
 import axiosClient from "../../api/axiosClient";
 import { formatDateTimeDDMMYYYY } from "../../utils/dateFormat";
 import {
+  compareDatesDescending,
+  isRecordRangeContainedByFilter,
+} from "../../utils/dateRangeFilter";
+import {
   belongsToActiveMember,
   getActiveMemberIdentityKeys,
 } from "../../utils/activeMemberRecords";
@@ -938,14 +942,13 @@ export default function AdminTrainerBookings() {
 
       if (selectedStartDate || selectedEndDate) {
         const bookingDate = parseDateOnly(getBookingStartDateValue(b));
-        if (!bookingDate) return false;
-        if (selectedStartDate && selectedEndDate) {
-          if (bookingDate < selectedStartDate || bookingDate > selectedEndDate) return false;
-        } else if (selectedStartDate && bookingDate < selectedStartDate) {
-          return false;
-        } else if (selectedEndDate && bookingDate > selectedEndDate) {
-          return false;
-        }
+        const bookingEndDate = parseDateOnly(getBookingEndDateValue(b));
+        if (!isRecordRangeContainedByFilter(
+          bookingDate,
+          bookingEndDate,
+          selectedStartDate,
+          selectedEndDate,
+        )) return false;
       }
 
       return true;
@@ -953,6 +956,13 @@ export default function AdminTrainerBookings() {
 
     // sort by status priority then session_datetime desc
     list.sort((a, b) => {
+      if (statusF === "expired") {
+        const dateDifference = compareDatesDescending(
+          parseDateOnly(getBookingEndDateValue(a)),
+          parseDateOnly(getBookingEndDateValue(b)),
+        );
+        if (dateDifference !== 0) return dateDifference;
+      }
       const priorityDiff = getBookingPriority(a) - getBookingPriority(b);
       if (priorityDiff !== 0) return priorityDiff;
       const da = parseBackendDateTime(a?.session_datetime)?.getTime() ?? 0;

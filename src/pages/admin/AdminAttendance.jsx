@@ -5,6 +5,7 @@ import RfidInputListener from "../../components/RfidInputListener";
 import { isCardNotRegisteredError, normalizeCardId } from "../../utils/rfid";
 import { awardScanPoints } from "../../api/pointsApi";
 import { formatDateDDMMYYYY, formatDateTimeDDMMYYYY } from "../../utils/dateFormat";
+import "./AdminAttendance.css";
 
 function parseBackendDateTime(s) {
   if (!s) return null;
@@ -178,6 +179,44 @@ const buildPlanReminders = (payload) => [
   newestActivePlan(payload?.boxing_bookings ?? payload?.boxingbookings, "Boxing"),
 ].filter(Boolean);
 
+const hasInlinePlanReminderPayload = (payload) => [
+  "subscriptions",
+  "memberships",
+  "trainer_bookings",
+  "trainerbookings",
+  "boxing_bookings",
+  "boxingbookings",
+].some((key) => Array.isArray(payload?.[key]));
+
+const planReminderIcon = (type) => {
+  const normalized = String(type || "").toLowerCase();
+  if (normalized === "trainer") return "bi-person-check-fill";
+  if (normalized === "boxing") return "bi-lightning-charge-fill";
+  return "bi-credit-card-2-front-fill";
+};
+
+const planDaysRemaining = (endDateValue) => {
+  const endDate = parseBackendDateTime(endDateValue);
+  if (!endDate) return null;
+  endDate.setHours(0, 0, 0, 0);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.ceil((endDate.getTime() - today.getTime()) / 86400000);
+};
+
+const planCountdownLabel = (daysRemaining) => {
+  if (daysRemaining === null) return "Date unavailable";
+  if (daysRemaining <= 0) return "Expires today";
+  if (daysRemaining === 1) return "1 day left";
+  return `${daysRemaining} days left`;
+};
+
+const planUrgencyClass = (daysRemaining) => {
+  if (daysRemaining !== null && daysRemaining <= 3) return "attendance-plan-card--urgent";
+  if (daysRemaining !== null && daysRemaining <= 7) return "attendance-plan-card--soon";
+  return "";
+};
+
 const loadUserPlanReminders = async (userId) => {
   let response;
   try {
@@ -250,6 +289,9 @@ export default function AdminAttendance() {
   const scanInputRef = useRef(null);
   const scanTimeoutRef = useRef(null);
   const cardCooldownsRef = useRef(new Map());
+  const processingCardsRef = useRef(new Set());
+  const scanRequestIdRef = useRef(0);
+  const latestScanRequestIdRef = useRef(0);
 
   // Records
   const [recordsLoading, setRecordsLoading] = useState(false);
@@ -492,6 +534,13 @@ export default function AdminAttendance() {
       return;
     }
 
+    if (processingCardsRef.current.has(cardId)) {
+      setScanError("This card is still processing. Please wait before scanning it again.");
+      setScanValue("");
+      setTimeout(() => scanInputRef.current?.focus(), 0);
+      return;
+    }
+
     const lockUntil = cardCooldownsRef.current.get(cardId) ?? 0;
     const msRemaining = lockUntil - Date.now();
     if (msRemaining > 0) {
@@ -501,23 +550,20 @@ export default function AdminAttendance() {
       setTimeout(() => scanInputRef.current?.focus(), 0);
       return;
     }
-    cardCooldownsRef.current.set(cardId, Date.now() + SCAN_COOLDOWN_MS);
+
+    processingCardsRef.current.add(cardId);
+    const scanRequestId = ++scanRequestIdRef.current;
+    latestScanRequestIdRef.current = scanRequestId;
 
     setActiveScanCount((count) => count + 1);
     setScanError(null);
+    setScanValue("");
+    setTimeout(() => scanInputRef.current?.focus(), 0);
 
     try {
       const res = await scanRfidAttendance(cardId);
       const payload = res?.data ?? {};
       const { user, attendance, message } = extractScanPayload(payload);
-
-      setScanResult({
-        user,
-        attendance,
-        message: message || "Scan recorded successfully.",
-        planReminders: [],
-        planRemindersLoading: String(user?.role || "").toLowerCase() === "user",
-      });
 
       const scannedUserId =
         user?.id ??
@@ -526,38 +572,76 @@ export default function AdminAttendance() {
         attendance?.user?.id ??
         attendance?.member_id ??
         null;
-      const scannedAction = normalizeRecordType(attendance);
+      const scannedAction = normalizeRecordType(attendance) || normalizeRecordType(payload);
+      const scannedRole = String(user?.role || attendance?.user?.role || "").toLowerCase();
+      const shouldLoadPlanReminders = Boolean(
+        scannedUserId &&
+        scannedAction === "check_in" &&
+        (!scannedRole || scannedRole === "user" || scannedRole === "member"),
+      );
+      const reminderPayload = payload?.data ?? payload;
+      const immediatePlanReminders = buildPlanReminders(reminderPayload);
+      const needsPlanReminderFallback = shouldLoadPlanReminders && !hasInlinePlanReminderPayload(reminderPayload);
+
+      if (latestScanRequestIdRef.current === scanRequestId) {
+        setScanResult({
+          scanRequestId,
+          user,
+          attendance,
+          message: message || "Scan recorded successfully.",
+          planReminders: immediatePlanReminders,
+          planRemindersLoading: needsPlanReminderFallback,
+        });
+      }
+
+      const backgroundTasks = [];
+      if (needsPlanReminderFallback) {
+        backgroundTasks.push(
+          loadUserPlanReminders(scannedUserId)
+            .then((planReminders) => {
+              setScanResult((current) => current?.scanRequestId === scanRequestId ? {
+                ...current,
+                planReminders,
+                planRemindersLoading: false,
+              } : current);
+            })
+            .catch(() => {
+              setScanResult((current) => current?.scanRequestId === scanRequestId ? {
+                ...current,
+                planRemindersLoading: false,
+              } : current);
+            }),
+        );
+      }
+
       if (scannedUserId && (scannedAction === "check_in" || scannedAction === "check_out")) {
-        await awardScanPoints({ userId: scannedUserId, action: scannedAction, points: 50 });
+        backgroundTasks.push(
+          awardScanPoints({ userId: scannedUserId, action: scannedAction, points: 50 }),
+        );
       }
 
-      if (scannedUserId && String(user?.role || "").toLowerCase() === "user") {
-        try {
-          const planReminders = await loadUserPlanReminders(scannedUserId);
-          setScanResult((current) => current ? {
-            ...current,
-            planReminders,
-            planRemindersLoading: false,
-          } : current);
-        } catch {
-          setScanResult((current) => current ? {
-            ...current,
-            planRemindersLoading: false,
-          } : current);
-        }
-      }
+      backgroundTasks.push(
+        Promise.allSettled([
+          loadRecords(false),
+          loadCheckedIn(false),
+          loadActiveCheckins(false),
+          loadMemberCount(false),
+        ]),
+      );
 
-      await Promise.all([loadRecords(false), loadCheckedIn(false), loadActiveCheckins(false), loadMemberCount(false)]);
-      setScanValue("");
-      setTimeout(() => scanInputRef.current?.focus(), 0);
+      void Promise.allSettled(backgroundTasks);
     } catch (e) {
       const message = e?.response?.data?.message || "Unable to scan member card.";
-      if (isCardNotRegisteredError(message)) {
-        setScanError("This card is not registered. Please register the member card first.");
-      } else {
-        setScanError(message);
+      if (latestScanRequestIdRef.current === scanRequestId) {
+        if (isCardNotRegisteredError(message)) {
+          setScanError("This card is not registered. Please register the member card first.");
+        } else {
+          setScanError(message);
+        }
       }
     } finally {
+      processingCardsRef.current.delete(cardId);
+      cardCooldownsRef.current.set(cardId, Date.now() + SCAN_COOLDOWN_MS);
       setActiveScanCount((count) => Math.max(0, count - 1));
     }
   };
@@ -572,6 +656,7 @@ export default function AdminAttendance() {
     }
 
     scanTimeoutRef.current = window.setTimeout(() => {
+      scanTimeoutRef.current = null;
       handleScanSubmit(value);
     }, 250);
   };
@@ -579,6 +664,10 @@ export default function AdminAttendance() {
   const handleScanKeyDown = (event) => {
     if (event.key !== "Enter") return;
     event.preventDefault();
+    if (scanTimeoutRef.current) {
+      window.clearTimeout(scanTimeoutRef.current);
+      scanTimeoutRef.current = null;
+    }
     handleScanSubmit(scanValue);
   };
 
@@ -645,8 +734,16 @@ export default function AdminAttendance() {
         </div>
 
       {scanResult && (
-        <div className="mb-4" style={{ ...cardGlass, borderRadius: 16, padding: 18 }}>
-          <div className="d-flex align-items-start justify-content-between">
+        <div className="attendance-scan-result-card mb-4" style={{ ...cardGlass, borderRadius: 16, padding: 18 }}>
+          <div
+            className={`attendance-scan-result-layout ${
+              scanResult.planRemindersLoading || scanResult.planReminders?.length > 0
+                ? ""
+                : "attendance-scan-result-layout--single"
+            }`.trim()}
+          >
+            <div className="attendance-scan-result__details">
+          <div className="d-flex align-items-start justify-content-between gap-3">
             <div>
               <div style={{ fontWeight: 700, fontSize: 16, color: "rgba(255,255,255,0.95)" }}>
                 Latest Scan Result
@@ -684,39 +781,60 @@ export default function AdminAttendance() {
             </div>
           </div>
 
-          {scanResult.planRemindersLoading && (
-            <div className="small mt-3" style={mutedText} role="status" aria-live="polite">
-              Checking active plan expiry dates...
-            </div>
-          )}
-
-          {!scanResult.planRemindersLoading && scanResult.planReminders?.length > 0 && (
-            <div className="mt-3" aria-live="polite">
-              <div className="d-flex align-items-center gap-2 mb-2" style={bodyText}>
-                <i className="bi bi-bell-fill text-warning" aria-hidden="true"></i>
-                <strong>Active Plan Expiry Reminder</strong>
-              </div>
-              <div className="d-flex flex-wrap gap-2">
-                {scanResult.planReminders.map((plan) => (
-                  <div
-                    key={`${plan.type}-${plan.name}-${plan.endDate}`}
-                    className="border border-warning rounded px-3 py-2 flex-grow-1"
-                    style={{ minWidth: 210, background: "rgba(255,193,7,0.08)" }}
-                  >
-                    <div className="small text-warning fw-semibold">{plan.type}</div>
-                    <div className="fw-semibold text-white">{plan.name}</div>
-                    <div className="small" style={bodyText}>
-                      Expires: <strong>{formatDateDDMMYYYY(plan.endDate, "-")}</strong>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <button className="btn btn-outline-light mt-3" onClick={resetScanPanel}>
+          <button className="attendance-scan-result__reset btn btn-outline-light" onClick={resetScanPanel}>
             Reset Scan Panel
           </button>
+            </div>
+
+          {(scanResult.planRemindersLoading || scanResult.planReminders?.length > 0) && (
+            <div className="attendance-scan-result__reminder">
+
+          {scanResult.planRemindersLoading && (
+            <div className="attendance-plan-reminder-loading" role="status" aria-live="polite">
+              <span className="spinner-border spinner-border-sm" aria-hidden="true"></span>
+              <span>Checking active plan expiry dates...</span>
+            </div>
+          )}
+
+          {scanResult.planReminders?.length > 0 && (
+            <section className="attendance-plan-reminder" role="alert" aria-live="assertive" aria-label="Active plan expiry reminder">
+              <div className="attendance-plan-reminder__header">
+                <span className="attendance-plan-reminder__icon" aria-hidden="true">
+                  <i className="bi bi-bell-fill"></i>
+                </span>
+                <div>
+                  <div className="attendance-plan-reminder__title">Active Plan Expiry Reminder</div>
+                  <div className="attendance-plan-reminder__hint">Please remind this member before they enter the gym.</div>
+                </div>
+              </div>
+              <div className="attendance-plan-reminder__grid">
+                {scanResult.planReminders.map((plan) => {
+                  const daysRemaining = planDaysRemaining(plan.endDate);
+                  return (
+                    <article
+                      key={`${plan.type}-${plan.name}-${plan.endDate}`}
+                      className={`attendance-plan-card ${planUrgencyClass(daysRemaining)}`.trim()}
+                    >
+                      <div className="attendance-plan-card__topline">
+                        <span className="attendance-plan-card__type">
+                          <i className={`bi ${planReminderIcon(plan.type)}`} aria-hidden="true"></i>
+                          {plan.type}
+                        </span>
+                        <span className="attendance-plan-card__countdown">{planCountdownLabel(daysRemaining)}</span>
+                      </div>
+                      <div className="attendance-plan-card__name">{plan.name}</div>
+                      <div className="attendance-plan-card__expiry">
+                        Expires <strong>{formatDateDDMMYYYY(plan.endDate, "-")}</strong>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+            </div>
+          )}
+          </div>
         </div>
       )}
 

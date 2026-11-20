@@ -1,11 +1,17 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import axiosClient from "../../api/axiosClient";
 import { formatDateDDMMYYYY } from "../../utils/dateFormat";
 import {
+  compareDatesDescending,
+  isRecordRangeContainedByFilter,
+} from "../../utils/dateRangeFilter";
+import {
   belongsToActiveMember,
   getActiveMemberIdentityKeys,
 } from "../../utils/activeMemberRecords";
+import "./AdminSubscriptions.css";
 
 function moneyMMK(v) {
   if (v === null || v === undefined || v === "") return "-";
@@ -210,6 +216,7 @@ export default function AdminSubscriptions() {
 
   // modal state
   const [showModal, setShowModal] = useState(false);
+  const addMembershipButtonRef = useRef(null);
   const [optionsLoading, setOptionsLoading] = useState(false);
   const [members, setMembers] = useState([]);
   const [plans, setPlans] = useState([]);
@@ -277,7 +284,50 @@ export default function AdminSubscriptions() {
   const closeModal = () => {
     setShowModal(false);
     setOptionsLoading(false);
+    window.requestAnimationFrame(() => addMembershipButtonRef.current?.focus());
   };
+
+  useEffect(() => {
+    if (!showModal) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const focusTimer = window.setTimeout(() => {
+      if (!optionsLoading) document.getElementById("membership-member-search")?.focus();
+    }, 0);
+
+    const onKeyDown = (event) => {
+      if (event.key === "Escape" && !optionsLoading) {
+        setShowModal(false);
+        window.requestAnimationFrame(() => addMembershipButtonRef.current?.focus());
+        return;
+      }
+      if (event.key !== "Tab") return;
+
+      const modal = document.querySelector(".membership-modal");
+      const focusable = Array.from(modal?.querySelectorAll(
+        'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
+      ) || []);
+      if (focusable.length === 0) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.clearTimeout(focusTimer);
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [showModal, optionsLoading]);
 
   const createSubscription = async () => {
     setMsg(null);
@@ -314,7 +364,7 @@ export default function AdminSubscriptions() {
 
       const res = await axiosClient.post("/subscriptions", payload);
 
-      setShowModal(false);
+      closeModal();
       setMsg({
         type: "success",
         text: res?.data?.message || "Membership created successfully.",
@@ -588,7 +638,7 @@ export default function AdminSubscriptions() {
     };
     const activeMemberKeys = getActiveMemberIdentityKeys(sortedSubscriptions, getDisplayStatus);
 
-    return sortedSubscriptions.filter((record) => {
+    const list = sortedSubscriptions.filter((record) => {
       if (keyword && !subscriptionSearchText(record).includes(keyword)) {
         return false;
       }
@@ -606,11 +656,26 @@ export default function AdminSubscriptions() {
 
       if (!selectedStartDate && !selectedEndDate) return true;
       const membershipStartDate = parseDateOnly(record?.start_date);
-      if (!membershipStartDate) return false;
-      if (selectedStartDate && membershipStartDate < selectedStartDate) return false;
-      if (selectedEndDate && membershipStartDate > selectedEndDate) return false;
-      return true;
+      const membershipEndDate = parseDateOnly(record?.end_date);
+      return isRecordRangeContainedByFilter(
+        membershipStartDate,
+        membershipEndDate,
+        selectedStartDate,
+        selectedEndDate,
+      );
     });
+
+    if (selectedStatus === "expired") {
+      list.sort((a, b) => {
+        const dateDifference = compareDatesDescending(
+          parseDateOnly(a?.end_date),
+          parseDateOnly(b?.end_date),
+        );
+        return dateDifference || (b?.id ?? 0) - (a?.id ?? 0);
+      });
+    }
+
+    return list;
   }, [sortedSubscriptions, tableSearch, filterStatus, appliedFilterStartDate, appliedFilterEndDate]);
 
   const totalPages = Math.max(1, Math.ceil(filteredSubscriptions.length / PAGE_SIZE));
@@ -694,7 +759,7 @@ export default function AdminSubscriptions() {
             {resumeAllBusy ? "Resuming..." : "Resume All"}
           </button>
 
-          <button className="btn btn-sm btn-primary" onClick={openCreateModal} disabled={loading || holdAllBusy || resumeAllBusy}>
+          <button ref={addMembershipButtonRef} className="btn btn-sm btn-primary" onClick={openCreateModal} disabled={loading || holdAllBusy || resumeAllBusy}>
             <i className="bi bi-plus-circle me-2"></i> Add Memberships
           </button>
 
@@ -992,13 +1057,19 @@ export default function AdminSubscriptions() {
       )}
 
       {/* Modal (same style as Create User modal) */}
-      {showModal && (
+      {showModal && createPortal(
         <>
-          <div className="modal fade show d-block" tabIndex="-1">
-            <div className="modal-dialog modal-dialog-centered">
+          <div
+            className="modal membership-modal fade show d-block"
+            tabIndex="-1"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="add-membership-title"
+          >
+            <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable">
               <div className="modal-content bg-dark text-white">
                 <div className="modal-header">
-                  <h5 className="modal-title fw-bolder">Add Memberships</h5>
+                  <h5 className="modal-title fw-bolder" id="add-membership-title">Add Memberships</h5>
                   <button
                     className="btn-close btn-close-white"
                     onClick={closeModal}
@@ -1011,14 +1082,16 @@ export default function AdminSubscriptions() {
     <div className="row g-3">
     
     <div className="col-md-4">
-      <label className="form-label fw-bold">Member</label>
+      <label className="form-label fw-bold" htmlFor="membership-member-search">Member</label>
       <input
+        id="membership-member-search"
         type="text"
         className="form-control bg-dark text-white mb-2"
         placeholder="Search member by name / phone / email"
         value={memberSearch}
         onChange={(e) => onMemberSearchChange(e.target.value)}
         disabled={optionsLoading}
+        autoFocus
       />
       {!!memberSearch.trim() && visibleMemberSuggestions.length > 0 && (
         <div className="list-group mb-2" style={{ maxHeight: 220, overflowY: "auto" }}>
@@ -1150,8 +1223,9 @@ export default function AdminSubscriptions() {
             </div>
           </div>
 
-          <div className="modal-backdrop fade show"></div>
-        </>
+          <div className="modal-backdrop fade show" onClick={optionsLoading ? undefined : closeModal}></div>
+        </>,
+        document.body,
       )}
     </div>
   );

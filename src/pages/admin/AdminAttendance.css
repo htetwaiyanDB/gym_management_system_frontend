@@ -1,0 +1,192 @@
+.attendance-scan-result-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
+}
+
+.attendance-scan-result__details {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.attendance-scan-result__reset {
+  align-self: flex-start;
+  min-height: 44px;
+  margin-top: auto;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.attendance-scan-result__reminder {
+  min-width: 0;
+}
+
+.attendance-plan-reminder {
+  margin-top: 0;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 14px;
+  background: rgba(8, 12, 18, 0.62);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.attendance-plan-reminder__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.attendance-plan-reminder__icon {
+  display: inline-flex;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 12px;
+  color: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.24);
+}
+
+.attendance-plan-reminder__title {
+  color: #fef3c7;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.attendance-plan-reminder__hint {
+  margin-top: 2px;
+  color: #fde68a;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.attendance-plan-reminder__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 10px;
+}
+
+.attendance-plan-card {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background: rgba(2, 6, 23, 0.62);
+}
+
+.attendance-plan-card--urgent {
+  border-color: rgba(248, 113, 113, 0.72);
+  background: rgba(127, 29, 29, 0.28);
+}
+
+.attendance-plan-card--soon {
+  border-color: rgba(251, 191, 36, 0.68);
+}
+
+.attendance-plan-card__topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.attendance-plan-card__type {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #fbbf24;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.attendance-plan-card__countdown {
+  flex: 0 0 auto;
+  padding: 3px 8px;
+  border-radius: 999px;
+  color: #e2e8f0;
+  background: rgba(71, 85, 105, 0.72);
+  font-size: 11px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.attendance-plan-card--urgent .attendance-plan-card__countdown {
+  color: #fff;
+  background: #dc2626;
+}
+
+.attendance-plan-card--soon .attendance-plan-card__countdown {
+  color: #111827;
+  background: #fbbf24;
+}
+
+.attendance-plan-card__name {
+  margin-top: 8px;
+  overflow-wrap: anywhere;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.attendance-plan-card__expiry {
+  margin-top: 6px;
+  color: #cbd5e1;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.attendance-plan-card__expiry strong {
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+
+.attendance-plan-reminder-loading {
+  display: flex;
+  min-height: 52px;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 12px 14px;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 12px;
+  color: #fde68a;
+  background: rgba(120, 53, 15, 0.18);
+}
+
+@media (min-width: 992px) {
+  .attendance-scan-result-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 24px;
+  }
+
+  .attendance-scan-result-layout--single {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 575.98px) {
+  .attendance-plan-reminder {
+    padding: 14px;
+  }
+
+  .attendance-plan-reminder__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .attendance-plan-reminder *,
+  .attendance-plan-reminder-loading * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

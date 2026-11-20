@@ -1,0 +1,66 @@
+.membership-modal {
+  overflow-y: auto;
+  padding: clamp(8px, 2.5vh, 24px);
+}
+
+.membership-modal .modal-dialog {
+  width: min(500px, 100%);
+  max-width: 500px;
+  min-height: calc(100dvh - clamp(16px, 5vh, 48px));
+  margin: 0 auto;
+}
+
+.membership-modal .modal-content {
+  max-height: calc(100dvh - clamp(16px, 5vh, 48px));
+  overflow: hidden;
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.58);
+}
+
+.membership-modal .modal-header,
+.membership-modal .modal-footer {
+  flex: 0 0 auto;
+  background: #212529;
+}
+
+.membership-modal .modal-body {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.membership-modal .modal-footer {
+  position: relative;
+  z-index: 1;
+  gap: 8px;
+  box-shadow: 0 -10px 24px rgba(0, 0, 0, 0.22);
+}
+
+@media (max-width: 575.98px) {
+  .membership-modal {
+    padding: 8px;
+  }
+
+  .membership-modal .modal-content {
+    max-height: calc(100dvh - 16px);
+  }
+
+  .membership-modal .modal-dialog {
+    min-height: calc(100dvh - 16px);
+  }
+
+  .membership-modal .modal-footer .btn {
+    min-height: 44px;
+  }
+}
+
+@media (max-height: 620px) {
+  .membership-modal .modal-dialog {
+    align-items: flex-start;
+  }
+
+  .membership-modal .modal-content {
+    max-height: calc(100dvh - 16px);
+  }
+}
